@@ -54,6 +54,32 @@ l'appareil, et l'appareil porte le commercial.
 
 `linked_record` vaut `null` si le numéro ne correspond à rien.
 
+### `GET /call_tracker/contact/<numero>`
+
+Fiche minimale pour l'affichage à la sonnerie (Caller ID). Même
+authentification.
+
+```json
+{ "status": "found", "name": "Ahmed Benali", "company": "Marché Central",
+  "last_notes": "Relance prévue vendredi", "crm_stage": "Négociation" }
+```
+
+`404 {"status":"not_found"}` si le numéro ne correspond à rien — et non un
+objet vide : l'app doit distinguer « inconnu au CRM » de « connu mais sans
+information », qui s'affichent différemment.
+
+⚠️ **La liste blanche des quatre champs est écrite en dur dans
+`models/call_tracker_log.py`, et nulle part ailleurs.** Le contrôleur travaille
+en `sudo()` : il a accès à tout le contact. Rien dans les droits d'Odoo
+n'empêchera courriel, adresse ou chiffre d'affaires de sortir — c'est ce code
+seul qui les retient. Un test vérifie sur la réponse brute qu'aucun d'eux
+n'apparaît.
+
+`last_notes` est le dernier message de type `comment` du fil, converti en texte
+et tronqué à 200 caractères. Les notifications automatiques (changement
+d'étape, courriel envoyé) sont écartées : elles noieraient la vraie note sous
+du bruit à chaque sonnerie.
+
 ### L'idempotence, et pourquoi elle renvoie 200
 
 L'app garde une file locale persistante et réémet ce qu'elle n'a pas pu
@@ -112,12 +138,42 @@ curl -i -X POST http://localhost:8169/call_tracker/log_call \
        "started_at":"2026-08-09T14:32:00Z"}'
 ```
 
+## Tests
+
+53 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
+révocation, le rapprochement téléphonique et le cycle de vie du jeton.
+
+```bash
+docker compose run --rm -T odoo odoo \
+  --database=call_tracker_test --init=call_tracker \
+  --test-enable --test-tags=/call_tracker --stop-after-init \
+  --log-level=warn --log-handler=odoo.tests:INFO
+```
+
+⚠️ **`--test-tags=/call_tracker` n'est pas optionnel.** Sans lui,
+`--test-enable` lance les 2296 tests de tous les modules installés, dont des
+parcours navigateur qui échouent dans un conteneur sans `websocket-client` :
+on croit alors avoir cassé quelque chose.
+
+⚠️ **`--log-level=warn` seul ne montre RIEN**, pas même le succès : les
+résultats sont journalisés en INFO. D'où `--log-handler=odoo.tests:INFO`.
+
+## Limitation de débit
+
+Posée côté Traefik, pas dans l'addon : voir le routeur `echangocrm-api` et le
+middleware `echangocrm-api-limite` dans `docker-compose.crm.yml`. Les valeurs
+sont hautes délibérément — les opérateurs mobiles algériens font du NAT à
+grande échelle, et l'app vide sa file d'un trait au retour du réseau.
+
 ## Pas encore fait
 
-- **`GET /call_tracker/contact/{numero}`** (Caller ID, spec §3.1) — la route de
-  lecture, avec sa liste blanche stricte de champs.
 - **Création automatique de piste** quand le numéro est inconnu (spec §10.2) :
   la politique n'est pas tranchée. Aujourd'hui l'appel est journalisé sans
   rattachement, et se retrouve par le filtre *Sans contact rattaché*.
-- **Limitation de débit** sur la route d'écriture.
-- **Journal d'audit** des accès (spec §7).
+- **Rétention des données d'appel** et documentation loi 18-07 (spec §7) :
+  aucune durée de conservation, aucune purge.
+- **Journal d'audit** des accès — qui a lu quoi, quand (spec §7). On n'a que
+  `last_seen` sur l'appareil.
+- **Compatibilité Odoo 16**, que la spec §3.2 demande. Le module utilise
+  `_read_group(aggregates=…)`, les vues `<list>` et un `post_init_hook(env)`,
+  tous introduits en **Odoo 17**. Compatible 17 à 19, éprouvé sur 19.

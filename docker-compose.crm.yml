@@ -290,6 +290,25 @@ services:
       # proxy. Les images du filestore sont déjà comprimées.
       - 'traefik.http.middlewares.echangocrm-compress.compress.excludedcontenttypes=text/event-stream,image/png,image/jpeg,image/webp,image/avif'
 
+      # Plafond de débit sur les routes du Call Tracker, seul endpoint que des
+      # appareils extérieurs appellent sans session Odoo.
+      #
+      # ⚠️ Les valeurs sont hautes DÉLIBÉRÉMENT, pour deux raisons qui tirent
+      # dans le même sens :
+      #   - les opérateurs mobiles algériens font du NAT à grande échelle, donc
+      #     plusieurs commerciaux sortent par la MÊME adresse IP. Traefik
+      #     compte par IP source : un plafond serré étranglerait une équipe
+      #     entière au motif qu'elle partage un opérateur ;
+      #   - l'app vide sa file locale d'un trait au retour du réseau. Un
+      #     commercial rentrant de zone blanche envoie trente appels en
+      #     quelques secondes — c'est le fonctionnement nominal, pas un abus.
+      # Ce plafond ne vise donc pas l'usage intensif mais le flot : Odoo tourne
+      # avec deux workers, quelques centaines de requêtes par minute suffisent
+      # à saturer le CRM pour tout le monde.
+      - 'traefik.http.middlewares.echangocrm-api-limite.ratelimit.average=300'
+      - 'traefik.http.middlewares.echangocrm-api-limite.ratelimit.burst=100'
+      - 'traefik.http.middlewares.echangocrm-api-limite.ratelimit.period=1m'
+
       # Refus de /web/database depuis l'extérieur. `ipallowlist` restreint à la
       # boucle locale est l'idiome Traefik pour « interdire ce chemin » : aucune
       # requête entrante ne vient de 127.0.0.1, toutes reçoivent donc 403.
@@ -318,6 +337,17 @@ services:
       - 'traefik.http.routers.echangocrm-ws.priority=25'
       - 'traefik.http.routers.echangocrm-ws.middlewares=echangocrm-headers'
       - 'traefik.http.routers.echangocrm-ws.service=echangocrm-ws-svc'
+
+      # --- Routeur des routes appelées par l'app mobile --------------------
+      # Couvre /call_tracker/* : la remise d'appels comme, plus tard, la
+      # lecture de contact du Caller ID. Pas de compression : les réponses
+      # font quelques dizaines d'octets, comprimer coûterait plus que ça ne
+      # rapporte.
+      - 'traefik.http.routers.echangocrm-api.rule=Host(`echangocrm.${BASE_DOMAIN:-echango.com}`) && PathPrefix(`/call_tracker`)'
+      - 'traefik.http.routers.echangocrm-api.entrypoints=websecure'
+      - 'traefik.http.routers.echangocrm-api.priority=28'
+      - 'traefik.http.routers.echangocrm-api.middlewares=echangocrm-headers,echangocrm-api-limite'
+      - 'traefik.http.routers.echangocrm-api.service=echangocrm-svc'
 
       # --- Routeur de refus du gestionnaire de bases -----------------------
       # priority=30 pour passer devant le routeur principal.

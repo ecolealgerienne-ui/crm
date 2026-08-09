@@ -120,6 +120,13 @@ class CallTrackerController(http.Controller):
     @http.route(
         '/call_tracker/log_call',
         type='http', auth='none', methods=['POST'], csrf=False, save_session=False,
+        # Odoo 19 sert d'abord chaque requête sur un curseur en LECTURE SEULE,
+        # et ne rejoue en écriture qu'après avoir vu échouer l'INSERT. Sans ce
+        # drapeau, chaque appel journalisé exécute donc le contrôleur DEUX
+        # fois — validation, recherche de doublon, rapprochement — et laisse
+        # une trace d'exception dans les journaux, pour un endpoint dont
+        # l'écriture est la raison d'être.
+        readonly=False,
     )
     def log_call(self, **_kwargs):
         appareil = self._authentifier()
@@ -153,6 +160,31 @@ class CallTrackerController(http.Controller):
 
         appareil.sudo().write({'last_seen': fields.Datetime.now()})
         return repondre(self._resultat(appel, 'logged'), 201)
+
+    @http.route(
+        '/call_tracker/contact/<path:numero>',
+        type='http', auth='none', methods=['GET'], csrf=False, save_session=False,
+        # Lecture pure : le curseur en lecture seule d'Odoo 19 convient, et le
+        # déclarer évite qu'une écriture s'y glisse par inadvertance.
+        readonly=True,
+    )
+    def contact(self, numero, **_kwargs):
+        """Fiche minimale pour l'affichage à la sonnerie (Caller ID).
+
+        `<path:numero>` et non `<string:numero>` : un numéro international
+        s'écrit `+213555000000`, et le `+` comme les espaces d'une saisie
+        recopiée traversent mal un segment d'URL classique.
+        """
+        if not self._authentifier():
+            return repondre({'status': 'unauthorized'}, 401)
+
+        fiche = request.env['call.tracker.log'].sudo().fiche_contact(numero)
+        if not fiche:
+            # 404 et non un objet vide : l'app doit pouvoir distinguer
+            # « inconnu au CRM » de « connu mais sans information », qui
+            # s'affichent différemment à l'écran.
+            return repondre({'status': 'not_found'}, 404)
+        return repondre({'status': 'found', **fiche})
 
     def _authentifier(self):
         entete = request.httprequest.headers.get('Authorization', '')

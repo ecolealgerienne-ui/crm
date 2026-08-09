@@ -3,6 +3,7 @@ import logging
 import re
 
 from odoo import api, fields, models
+from odoo.tools import html2plaintext
 
 _logger = logging.getLogger(__name__)
 
@@ -129,12 +130,13 @@ class CallTrackerLog(models.Model):
         for appel in self:
             if not appel.phone_key:
                 continue
-            partenaire = appel._chercher_partenaire()
+            partenaire = self._chercher_partenaire(appel.phone_key)
             if partenaire:
                 appel.partner_id = partenaire
-            appel.lead_id = appel._chercher_piste(partenaire)
+            appel.lead_id = self._chercher_piste(appel.phone_key, partenaire)
 
-    def _condition_telephone(self, nom_modele):
+    @api.model
+    def _condition_telephone(self, nom_modele, cle):
         """Fragment SQL « un de ces numéros finit par la clé », et ses paramètres.
 
         Ne retient que les champs réellement STOCKÉS : ``_fields`` contient
@@ -150,9 +152,10 @@ class CallTrackerLog(models.Model):
             "regexp_replace(coalesce(%s, ''), '\\D', '', 'g') LIKE %%s" % colonne
             for colonne in colonnes
         )
-        return condition, ['%' + self.phone_key] * len(colonnes)
+        return condition, ['%' + cle] * len(colonnes)
 
-    def _chercher_partenaire(self):
+    @api.model
+    def _chercher_partenaire(self, cle):
         """Retrouve un ``res.partner`` dont le téléphone finit par la même clé.
 
         Le rapprochement se fait sur les chiffres du numéro, la mise en forme
@@ -161,9 +164,8 @@ class CallTrackerLog(models.Model):
         d'adresses d'une PME c'est sans conséquence, mais c'est le premier
         endroit à revoir si le rapprochement ralentit.
         """
-        self.ensure_one()
         Partenaire = self.env['res.partner']
-        condition, parametres = self._condition_telephone('res.partner')
+        condition, parametres = self._condition_telephone('res.partner', cle)
         if not condition:
             return Partenaire
         self.env.cr.execute(
@@ -174,9 +176,9 @@ class CallTrackerLog(models.Model):
         ligne = self.env.cr.fetchone()
         return Partenaire.browse(ligne[0]) if ligne else Partenaire
 
-    def _chercher_piste(self, partenaire):
+    @api.model
+    def _chercher_piste(self, cle, partenaire=None):
         """Piste ouverte la plus récente pour ce contact, sinon pour ce numéro."""
-        self.ensure_one()
         Piste = self.env['crm.lead']
         if partenaire:
             piste = Piste.search(
@@ -186,7 +188,7 @@ class CallTrackerLog(models.Model):
             if piste:
                 return piste
         # Une piste peut porter un numéro sans être encore reliée à un contact.
-        condition, parametres = self._condition_telephone('crm.lead')
+        condition, parametres = self._condition_telephone('crm.lead', cle)
         if not condition:
             return Piste
         self.env.cr.execute(
@@ -196,3 +198,79 @@ class CallTrackerLog(models.Model):
         )
         ligne = self.env.cr.fetchone()
         return Piste.browse(ligne[0]) if ligne else Piste
+
+    # ── Fiche renvoyée à l'app (Caller ID) ───────────────────────────────────
+
+    @api.model
+    def fiche_contact(self, numero):
+        """Quatre champs, pas un de plus, pour l'affichage à la sonnerie.
+
+        ⚠️ **La liste blanche est ici, en dur, et nulle part ailleurs.** Elle
+        n'est pas une conséquence des droits d'un compte : le contrôleur
+        travaille en ``sudo()``, il a donc accès à TOUT le contact. C'est ce
+        code, et lui seul, qui décide que le courriel, l'adresse, le chiffre
+        d'affaires et l'historique complet ne sortent pas — conformément au
+        §3.1 de la spec, qui interdit explicitement de s'en remettre aux ACL
+        d'Odoo pour ce filtrage.
+
+        Retourne ``None`` si le numéro ne correspond à rien.
+        """
+        cle = chiffres_significatifs(numero)
+        if not cle:
+            return None
+
+        partenaire = self._chercher_partenaire(cle)
+        piste = self._chercher_piste(cle, partenaire)
+        if not partenaire and not piste:
+            return None
+
+        return {
+            'name': partenaire.name or piste.contact_name or piste.name or '',
+            'company': self._societe(partenaire, piste),
+            'last_notes': self._derniere_note(partenaire, piste),
+            'crm_stage': piste.stage_id.name or '' if piste else '',
+        }
+
+    @api.model
+    def _societe(self, partenaire, piste):
+        if partenaire:
+            # `parent_id` pour un contact rattaché à une société,
+            # `company_name` pour une société saisie à plat sur la fiche.
+            return partenaire.parent_id.name or partenaire.company_name or ''
+        return piste.partner_name or '' if piste else ''
+
+    @api.model
+    def _derniere_note(self, partenaire, piste):
+        """Dernier commentaire du fil de discussion, en texte brut et tronqué.
+
+        C'est le seul champ de la fiche dont le contenu est libre, donc le seul
+        qui puisse contenir n'importe quoi. Trois précautions, et chacune a sa
+        raison :
+
+        - seuls les messages de type ``comment`` sont lus. Les notifications
+          automatiques (changement d'étape, courriel envoyé) rempliraient
+          l'écran de bruit à chaque sonnerie ;
+        - le HTML est converti en texte : un fil Odoo est du HTML, et l'envoyer
+          tel quel ferait afficher des balises sur un téléphone ;
+        - la troncature à 200 caractères borne ce qui sort du CRM. Un
+          commercial a besoin d'un rappel de contexte avant de décrocher, pas
+          d'un dossier complet.
+        """
+        enregistrement = piste or partenaire
+        if not enregistrement:
+            return ''
+
+        message = self.env['mail.message'].search(
+            [
+                ('model', '=', enregistrement._name),
+                ('res_id', '=', enregistrement.id),
+                ('message_type', '=', 'comment'),
+                ('body', '!=', False),
+            ],
+            order='date desc', limit=1,
+        )
+        if not message:
+            return ''
+
+        texte = html2plaintext(message.body or '').strip()
+        return texte[:200]
