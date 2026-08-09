@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        ⚠️ PAS de `noupdate="1"` ici, et c'est un choix payé comptant.
+
+        Un bloc `noupdate` est appliqué à l'INSTALLATION mais ignoré à la MISE
+        À JOUR. Ces enregistrements y étaient d'abord : les tests passaient
+        (base neuve, donc installation), et sur l'instance réelle — déjà
+        installée, donc mise à jour — les greffes ci-dessous n'ont jamais été
+        appliquées. Résultat : plus personne n'avait accès aux appels, sans le
+        moindre message.
+
+        Le risque inverse est réel mais mineur : une mise à jour du module
+        rétablit une implication qu'un administrateur aurait retirée. Perdre
+        l'accès pour tout le monde est nettement pire.
+    -->
+    <data>
+
+        <!--
+            Deux niveaux d'accès au Call Tracker.
+
+            ⚠️ Odoo 19 a remanié les groupes : `res.groups.category_id`
+            N'EXISTE PLUS, il est remplacé par un `privilege_id` pointant vers
+            un `res.groups.privilege`. Un `category_id` fait échouer
+            l'installation du module — pas seulement l'affichage — sur un
+            « Invalid field 'category_id' in 'res.groups' ».
+
+            Le privilège regroupe nos deux niveaux en un seul choix dans la
+            fiche utilisateur, au lieu de deux cases à cocher indépendantes
+            qu'on peut cocher de façon incohérente.
+
+        -->
+        <record id="privilege_call_tracker" model="res.groups.privilege">
+            <field name="name">Call Tracker</field>
+            <field name="category_id" ref="base.module_category_sales_crm"/>
+            <field name="sequence">20</field>
+        </record>
+
+        <record id="group_call_tracker_user" model="res.groups">
+            <field name="name">Utilisateur : ses propres appels</field>
+            <field name="privilege_id" ref="privilege_call_tracker"/>
+            <field name="sequence">10</field>
+            <field name="comment">Voit les appels qu'il a passés ou reçus.</field>
+        </record>
+
+        <record id="group_call_tracker_manager" model="res.groups">
+            <field name="name">Responsable : tous les appels</field>
+            <field name="privilege_id" ref="privilege_call_tracker"/>
+            <field name="sequence">20</field>
+            <!-- Le responsable est aussi un utilisateur : sans cette
+                 implication, retirer le groupe « utilisateur » à un
+                 responsable lui ferait tout perdre. -->
+            <field name="implied_ids" eval="[(4, ref('group_call_tracker_user'))]"/>
+            <field name="comment">Voit les appels de toute l'équipe.</field>
+        </record>
+
+        <!--
+            Rattachement aux rôles de vente existants.
+
+            Sans cela, PERSONNE n'aurait accès au module après installation :
+            les groupes existeraient, vides, et il faudrait les attribuer à la
+            main un par un. Ce qui suit fait qu'un commercial et un
+            responsable des ventes obtiennent le bon niveau dès l'installation.
+        -->
+        <record id="sales_team.group_sale_salesman" model="res.groups">
+            <field name="implied_ids" eval="[(4, ref('group_call_tracker_user'))]"/>
+        </record>
+
+        <record id="sales_team.group_sale_manager" model="res.groups">
+            <field name="implied_ids" eval="[(4, ref('group_call_tracker_manager'))]"/>
+        </record>
+
+    </data>
+</odoo>

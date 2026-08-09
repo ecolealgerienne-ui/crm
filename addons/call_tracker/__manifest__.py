@@ -24,7 +24,10 @@ qui est écrit et de ce qui est renvoyé.
     'license': 'LGPL-3',
     'depends': ['crm'],
     'data': [
+        # Les groupes d'abord : le CSV d'accès et les règles y font référence.
+        'security/call_tracker_groups.xml',
         'security/ir.model.access.csv',
+        'security/call_tracker_rules.xml',
         'data/ir_cron.xml',
         'views/call_tracker_token_wizard_views.xml',
         'views/call_tracker_device_views.xml',

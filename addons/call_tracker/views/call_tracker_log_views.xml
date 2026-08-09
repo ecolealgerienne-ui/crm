@@ -11,6 +11,9 @@
                 <field name="phone_number"/>
                 <field name="direction"/>
                 <field name="duration_seconds" sum="Durée totale"/>
+                <field name="outcome" optional="show"/>
+                <field name="delivery_lag_minutes" optional="hide"/>
+                <field name="hour_of_day" optional="hide"/>
                 <field name="partner_id"/>
                 <field name="lead_id"/>
                 <field name="device_id" optional="hide"/>
@@ -39,6 +42,7 @@
                         <group string="Appel">
                             <field name="phone_number"/>
                             <field name="direction"/>
+                            <field name="outcome"/>
                             <field name="duration_seconds"/>
                             <field name="started_at"/>
                         </group>
@@ -46,6 +50,7 @@
                             <field name="user_id"/>
                             <field name="device_id"/>
                             <field name="client_event_id"/>
+                            <field name="delivery_lag_minutes"/>
                         </group>
                     </group>
                     <group string="Rattachement">
@@ -73,15 +78,30 @@
                 <filter name="sortant" string="Sortants" domain="[('direction','=','outbound')]"/>
                 <filter name="manque" string="Manqués" domain="[('direction','=','missed')]"/>
                 <separator/>
+                <filter name="repondu" string="Répondus" domain="[('outcome','=','answered')]"/>
+                <filter name="sans_reponse" string="Sans réponse"
+                        domain="[('outcome','=','no_answer')]"/>
+                <separator/>
                 <filter name="sans_contact" string="Sans contact rattaché"
                         domain="[('partner_id','=',False)]"/>
                 <filter name="a_qualifier" string="À qualifier"
                         domain="[('partner_id','=',False),('lead_id','=',False)]"/>
                 <separator/>
+                <filter name="mes_appels" string="Mes appels"
+                        domain="[('user_id','=',uid)]"/>
+                <filter name="aujourdhui" string="Aujourd'hui"
+                        domain="[('started_at','&gt;=', datetime.datetime.combine(context_today(), datetime.time(0,0,0)))]"/>
                 <filter name="semaine" string="7 derniers jours"
                         domain="[('started_at','&gt;=', (context_today() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
                 <filter name="avec_note" string="Avec note"
                         domain="[('note','!=',False)]"/>
+                <separator/>
+                <!-- Le filtre à regarder AVANT tout classement entre
+                     commerciaux : un téléphone qui remonte avec des heures de
+                     retard fausse tout chiffre journalier. Voir
+                     docs/REPORTING_KPI.md. -->
+                <filter name="remise_tardive" string="Remise tardive (&gt; 1 h)"
+                        domain="[('delivery_lag_minutes','&gt;',60)]"/>
                 <separator/>
                 <!-- Filtres de regroupement à plat, sans <group> englobant :
                      depuis Odoo 17 le RelaxNG des vues recherche réserve
@@ -92,6 +112,11 @@
                 <filter name="par_commercial" string="Commercial" context="{'group_by': 'user_id'}"/>
                 <filter name="par_direction" string="Direction" context="{'group_by': 'direction'}"/>
                 <filter name="par_jour" string="Jour" context="{'group_by': 'started_at:day'}"/>
+                <filter name="par_issue" string="Issue" context="{'group_by': 'outcome'}"/>
+                <filter name="par_heure" string="Heure de la journée"
+                        context="{'group_by': 'hour_of_day'}"/>
+                <filter name="par_appareil" string="Appareil"
+                        context="{'group_by': 'device_id'}"/>
             </search>
         </field>
     </record>
@@ -126,8 +151,11 @@
         <field name="arch" type="xml">
             <pivot string="Appels" sample="1">
                 <field name="user_id" type="row"/>
-                <field name="direction" type="col"/>
+                <field name="outcome" type="col"/>
                 <field name="duration_seconds" type="measure"/>
+                <!-- Le délai de remise en mesure : c'est ici qu'un téléphone
+                     qui décroche du reste se voit, sans avoir à le chercher. -->
+                <field name="delivery_lag_minutes" type="measure"/>
             </pivot>
         </field>
     </record>

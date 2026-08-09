@@ -4,6 +4,7 @@ import os
 import re
 from datetime import timedelta
 
+import pytz
 from markupsafe import Markup
 
 from odoo import _, api, fields, models
@@ -106,6 +107,104 @@ class CallTrackerLog(models.Model):
     # ── Rattachement ─────────────────────────────────────────────────────────
     partner_id = fields.Many2one('res.partner', string="Contact", index=True)
     lead_id = fields.Many2one('crm.lead', string="Piste", index=True)
+
+    # ── Champs dérivés, pour l'analyse ───────────────────────────────────────
+    # Stockés : ils servent de colonnes de regroupement dans les tableaux
+    # croisés, ce qu'un champ calculé non stocké ne permet pas.
+
+    outcome = fields.Selection(
+        [('answered', "Répondu"), ('no_answer', "Sans réponse")],
+        string="Issue",
+        compute='_compute_outcome',
+        store=True,
+        index=True,
+    )
+    hour_of_day = fields.Integer(
+        string="Heure locale",
+        compute='_compute_hour_of_day',
+        store=True,
+        index=True,
+        help="Heure de l'appel dans le fuseau du commercial, de 0 à 23.",
+    )
+    delivery_lag_minutes = fields.Integer(
+        string="Délai de remise (min)",
+        compute='_compute_delivery_lag',
+        store=True,
+        help="Minutes écoulées entre l'appel et son arrivée dans Odoo.",
+    )
+
+    @api.depends('duration_seconds', 'direction')
+    def _compute_outcome(self):
+        """Répondu ou non — et ce n'est PAS la direction.
+
+        ⚠️ Un appel sortant qui sonne dans le vide est journalisé par Android
+        en `outbound` avec une durée nulle : `missed` ne concerne que les
+        entrants. Sans ce champ, le taux de décroché est donc faux pour toute
+        l'activité sortante, qui est justement celle qu'un manager regarde.
+
+        Une sélection et non un booléen : dans un tableau croisé, des colonnes
+        « Vrai » / « Faux » ne se lisent pas.
+        """
+        for appel in self:
+            appel.outcome = 'answered' if appel.duration_seconds > 0 else 'no_answer'
+
+    @api.depends('started_at', 'user_id')
+    def _compute_hour_of_day(self):
+        """Heure de l'appel, dans le fuseau du COMMERCIAL.
+
+        Ce champ existe parce que le regroupement natif par heure produit
+        « 9 août 14 h », pas « 14 h toutes dates confondues » : la répartition
+        horaire d'une journée type n'est pas atteignable autrement.
+
+        ⚠️ En revanche, **aucun champ « numéro de semaine » n'est ajouté** :
+        Odoo groupe déjà nativement par jour, semaine, mois et trimestre, et il
+        le fait dans le fuseau de l'utilisateur. Un champ stocké serait calculé
+        en UTC — un appel du dimanche 23 h 30 à Alger tomberait dans la mauvaise
+        semaine — et on aurait deux façons de compter la même chose qui ne
+        concordent pas.
+
+        Le fuseau retenu est celui du commercial, à défaut celui de la session,
+        à défaut UTC : l'heure qui a un sens ici est celle vécue par la
+        personne qui passe l'appel. La valeur est figée à l'écriture ; changer
+        le fuseau d'un commercial ne réécrit pas son historique.
+        """
+        for appel in self:
+            if not appel.started_at:
+                appel.hour_of_day = 0
+                continue
+            fuseau = appel.user_id.tz or self.env.context.get('tz') or 'UTC'
+            try:
+                local = pytz.timezone(fuseau)
+            except pytz.UnknownTimeZoneError:
+                local = pytz.utc
+            appel.hour_of_day = pytz.utc.localize(appel.started_at).astimezone(local).hour
+
+    @api.depends('started_at', 'create_date')
+    def _compute_delivery_lag(self):
+        """Minutes entre l'appel et son arrivée dans Odoo.
+
+        La mesure qui doit précéder tout classement entre commerciaux.
+
+        Quand une surcouche constructeur suspend l'application, le receveur
+        n'est plus délivré et rien ne remonte — mais le journal du téléphone
+        continue d'être écrit, et le balayage repart d'un curseur qui n'avance
+        que sur ce qui a été lu. **Au réveil suivant, tout est rattrapé.** Le
+        risque n'est donc pas la perte, c'est le retard : un total mensuel
+        reste juste, un chiffre journalier et une alerte de seuil ne le sont
+        pas.
+
+        Rapporté par appareil, ce délai dit immédiatement quel téléphone
+        décroche du reste. Voir docs/REPORTING_KPI.md.
+        """
+        for appel in self:
+            if not appel.started_at or not appel.create_date:
+                appel.delivery_lag_minutes = 0
+                continue
+            ecart = appel.create_date - appel.started_at
+            # Un appel remonté « avant » d'avoir eu lieu signale une horloge de
+            # téléphone déréglée. On borne à zéro plutôt que d'afficher un
+            # délai négatif, qui fausserait toute moyenne.
+            appel.delivery_lag_minutes = max(0, int(ecart.total_seconds() // 60))
 
     # ── Note prise après l'appel ─────────────────────────────────────────────
     # Saisie par le commercial sur son téléphone, juste après avoir raccroché.

@@ -242,12 +242,61 @@ seule.
 La mesure par défaut est la **durée**, pas le nombre d'appels : dix appels de
 cinq secondes ne valent pas dix conversations.
 
+## Qui voit quoi
+
+Deux niveaux, en un seul choix dans la fiche utilisateur (privilège
+« Call Tracker ») :
+
+| Niveau | Voit | Attribué à |
+|---|---|---|
+| Utilisateur | ses propres appels | tout commercial (`sales_team.group_sale_salesman`) |
+| Responsable | tous les appels | responsable des ventes (`sales_team.group_sale_manager`) |
+
+Le cloisonnement passe par deux règles d'enregistrement **non globales** :
+Odoo les combine par OU entre groupes, donc le responsable bénéficie de la
+règle large. Rendre la règle « utilisateur » globale l'écraserait par ET.
+
+⚠️ Deux pièges qui ont coûté du temps, notés dans les fichiers concernés :
+
+- **`res.groups.category_id` n'existe plus en Odoo 19**, remplacé par
+  `privilege_id` vers un `res.groups.privilege`. L'ancien champ fait échouer
+  l'installation, pas seulement l'affichage.
+- **Les blocs `noupdate="1"` ne s'appliquent qu'à l'installation.** Les
+  greffes sur les groupes de vente y étaient : les tests passaient (base
+  neuve) et l'instance réelle, déjà installée, n'a jamais reçu les droits —
+  plus personne ne voyait les appels, sans message.
+
+Le compteur d'appels sur les fiches contact vérifie l'accès avant de compter :
+sans cela, un comptable ouvrant une fiche verrait la **page entière** échouer
+à cause d'un bouton qui ne le concerne pas.
+
+## Indicateurs
+
+Trois champs dérivés, stockés pour servir de colonnes de regroupement :
+
+| Champ | Pourquoi |
+|---|---|
+| `outcome` | Un sortant sans réponse est journalisé `outbound` avec une durée nulle, **pas** `missed`. Sans ce champ, le taux de décroché est faux sur tout le sortant |
+| `hour_of_day` | Le regroupement natif par heure donne « 9 août 14 h », pas « 14 h toutes dates confondues ». Calculé dans le fuseau du **commercial** |
+| `delivery_lag_minutes` | Écart entre l'appel et son arrivée dans Odoo |
+
+**Pas de champ « numéro de semaine »** : Odoo groupe déjà par semaine dans le
+fuseau de l'utilisateur, un champ stocké serait en UTC, et un appel du dimanche
+soir tomberait dans la mauvaise semaine.
+
+Le **délai de remise** est la mesure à regarder avant tout classement entre
+commerciaux. Quand une surcouche constructeur suspend l'application, rien ne
+remonte — mais le journal du téléphone continue d'être écrit et le balayage
+rattrape au réveil suivant. Le risque n'est donc pas la perte, c'est le
+retard : un total mensuel reste juste, un chiffre journalier non. Voir
+[docs/REPORTING_KPI.md](../../docs/REPORTING_KPI.md).
+
 ## Tests
 
-96 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
+109 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
 révocation, le rapprochement téléphonique, la qualification manuelle,
-la note post-appel, les liens depuis les fiches CRM, la rétention et le
-journal d'audit.
+la note post-appel, les liens depuis les fiches CRM, la rétention, le
+journal d'audit, les champs dérivés et le cloisonnement.
 
 ```bash
 docker compose run --rm -T odoo odoo \

@@ -1,6 +1,6 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_call_tracker_log_user,call.tracker.log lecture commercial,model_call_tracker_log,base.group_user,1,0,0,0
-access_call_tracker_log_manager,call.tracker.log responsable ventes,model_call_tracker_log,sales_team.group_sale_manager,1,1,0,1
+access_call_tracker_log_user,call.tracker.log utilisateur,model_call_tracker_log,group_call_tracker_user,1,1,0,0
+access_call_tracker_log_manager,call.tracker.log responsable,model_call_tracker_log,group_call_tracker_manager,1,1,0,1
 access_call_tracker_device_manager,call.tracker.device administrateur,model_call_tracker_device,base.group_system,1,1,1,1
 access_call_tracker_token_wizard,call.tracker.token.wizard administrateur,model_call_tracker_token_wizard,base.group_system,1,1,1,1
 access_call_tracker_audit_manager,call.tracker.audit administrateur,model_call_tracker_audit,base.group_system,1,0,0,0

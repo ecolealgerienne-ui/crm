@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Sans `noupdate` : une correction du domaine doit se déployer à la
+         mise à jour du module. Voir call_tracker_groups.xml. -->
+    <data>
+
+        <!--
+            Cloisonnement des appels.
+
+            Deux règles NON globales sur le même modèle : Odoo les combine par
+            OU entre groupes. Un responsable, qui porte les deux groupes,
+            bénéficie donc de la règle large — c'est le comportement voulu, et
+            c'est aussi pourquoi la règle « utilisateur » ne doit surtout pas
+            être globale : elle écraserait l'autre par ET.
+        -->
+        <record id="rule_call_tracker_log_utilisateur" model="ir.rule">
+            <field name="name">Appels : les siens uniquement</field>
+            <field name="model_id" ref="model_call_tracker_log"/>
+            <field name="domain_force">[('user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_call_tracker_user'))]"/>
+            <field name="global" eval="False"/>
+        </record>
+
+        <record id="rule_call_tracker_log_responsable" model="ir.rule">
+            <field name="name">Appels : toute l'équipe</field>
+            <field name="model_id" ref="model_call_tracker_log"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_call_tracker_manager'))]"/>
+            <field name="global" eval="False"/>
+        </record>
+
+    </data>
+</odoo>

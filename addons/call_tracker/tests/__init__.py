@@ -7,4 +7,5 @@ from . import test_qualification
 from . import test_note
 from . import test_liens_crm
 from . import test_audit
+from . import test_indicateurs
 from . import test_retention
