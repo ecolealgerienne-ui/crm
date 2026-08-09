@@ -24,6 +24,12 @@
               action="action_call_tracker_coverage"
               sequence="18"/>
 
+    <menuitem id="menu_call_tracker_lead_activity"
+              name="Relance des affaires"
+              parent="menu_call_tracker_root"
+              action="action_call_tracker_lead_activity"
+              sequence="19"/>
+
     <!-- Ouvert à tous les utilisateurs internes : chacun doit pouvoir voir sa
          propre activité, l'action s'ouvrant groupée par commercial. -->
     <menuitem id="menu_call_tracker_dashboard"

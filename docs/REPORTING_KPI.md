@@ -30,7 +30,8 @@ une instance Enterprise pour le produire, ou l'écrire à la main. Écarté.
 `res.partner.user_id` est stocké, `crm.lead.date_last_stage_update` et
 `date_conversion` existent. Le taux de couverture et le lien avec le pipeline
 sont donc calculables — ce qui n'était pas acquis. La couverture est faite
-(§5) ; le lien avec le pipeline reste le chantier le plus lourd (§4).
+(§5), la relance des affaires aussi (§6) — mais sans taux de conversion, et
+c'est délibéré.
 
 ---
 
@@ -129,16 +130,6 @@ Les indicateurs **agrégés** et **personnels** ne posent aucun de ces problème
 et sont disponibles dès maintenant. C'est la comparaison **entre personnes**
 qui attend.
 
-### Le lien avec le pipeline
-
-« Pistes appelées passées à l'étape suivante, contre pistes jamais appelées. »
-Plus lourd encore : il faut savoir **quand** une piste a changé d'étape et le
-corréler à **quand** elle a été appelée. `date_last_stage_update` ne donne que
-le dernier changement ; l'historique complet vit dans le fil de suivi.
-
-Le plus utile des indicateurs de cette liste, et le plus cher. À traiter seul,
-pas glissé dans un lot « ajouter trois champs ».
-
 ---
 
 ## 5. La couverture du portefeuille — fait
@@ -173,7 +164,46 @@ mesurer. C'est le préalable, et il est humain, pas technique.
 
 ---
 
-## 6. Ordre proposé
+## 6. La relance des affaires — fait, et ce qu'elle ne dit pas
+
+*CRM > Call Tracker > Relance des affaires.* Chaque affaire ouverte, avec la
+date du dernier appel qui lui est rattaché, les plus délaissées en tête.
+
+La demande initiale portait sur un **taux de conversion** : « pistes appelées
+passées à l'étape suivante, contre pistes jamais appelées ». Il est livré
+autrement, et volontairement.
+
+### Ce qui est livré
+
+Le croisement **étape × jamais appelée**, dans le tableau croisé. C'est ce qui
+répond à la vraie question du manager — *où le pipeline stagne-t-il faute de
+relance ?* — et c'est actionnable sans interprétation : la liste des affaires
+à rappeler.
+
+Seuls comptent les appels **rattachés à l'affaire**, pas ceux de son contact :
+sinon une entreprise à plusieurs dossiers verrait tous ses dossiers marqués
+relancés par un seul appel.
+
+### Ce qui n'est pas livré, et pourquoi
+
+**Aucun champ nommé « taux de conversion ».** Ce croisement est un instantané,
+pas un suivi de cohorte : on ne sait pas si l'affaire a avancé *après* l'appel.
+Et le biais va dans un sens connu — un commercial appelle en priorité ce qui
+lui paraît prometteur, donc les affaires appelées gagnent davantage même si
+l'appel n'y est pour rien.
+
+Publier ce rapport sous le nom « taux de conversion » ferait conclure que
+téléphoner fait gagner des affaires. C'est peut-être vrai ; ce chiffre-là ne le
+démontre pas.
+
+Le calcul honnête demande de dater **chaque** changement d'étape et de le
+corréler à la date d'appel. `date_last_stage_update` ne donne que le dernier ;
+l'historique vit dans le fil de suivi. Un test vérifie qu'aucun champ de ce
+nom n'apparaît sur le modèle — c'est un garde-fou délibéré, pas un oubli.
+
+---
+
+## 7. Ordre proposé
 
 1. ✅ **Lot 1** — cloisonnement, champs dérivés, filtres, mesure du retard.
 2. ✅ **Couverture du portefeuille.**
@@ -181,6 +211,5 @@ mesurer. C'est le préalable, et il est humain, pas technique.
    semaines.
 4. Selon le résultat : classement et alerte de seuil, calibrée sur jours
    ouvrés.
-5. **Lien avec le pipeline** — le dernier chantier, et le plus lourd : il faut
-   savoir *quand* une piste a changé d'étape et le corréler à *quand* elle a
-   été appelée.
+5. ✅ **Relance des affaires** — le croisement étape × relance. Le taux de
+   conversion causal reste hors périmètre, voir §6.

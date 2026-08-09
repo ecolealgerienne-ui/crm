@@ -315,13 +315,32 @@ chaque affectation de client.
 Le portefeuille, c'est le champ *Commercial* de la fiche client. Non renseigné,
 l'écran est vide — c'est un préalable humain, pas technique.
 
+## Relance des affaires
+
+*CRM > Call Tracker > Relance des affaires* — chaque affaire ouverte, avec la
+date du dernier appel **rattaché à elle**, les plus délaissées en tête. Le
+tableau croisé étape × jamais appelée montre où le pipeline stagne.
+
+Modèle `call.tracker.lead.activity`, vue SQL comme la couverture.
+
+⚠️ **Ce n'est pas un taux de conversion, et il n'y a volontairement aucun champ
+de ce nom** — un test le vérifie. Le croisement est un instantané, pas un suivi
+de cohorte : on ne sait pas si l'affaire a avancé *après* l'appel, et le biais
+va dans un sens connu (on appelle d'abord ce qui paraît prometteur). Le publier
+sous ce nom ferait conclure que téléphoner fait gagner des affaires — c'est
+peut-être vrai, ce chiffre ne le démontre pas.
+
+Seuls les appels rattachés à l'affaire comptent, pas ceux de son contact :
+sinon une entreprise à plusieurs dossiers verrait tous ses dossiers marqués
+relancés par un seul appel.
+
 ## Tests
 
-119 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
+128 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
 révocation, le rapprochement téléphonique, la qualification manuelle,
 la note post-appel, les liens depuis les fiches CRM, la rétention, le
-journal d'audit, les champs dérivés, le cloisonnement et la
-couverture du portefeuille.
+journal d'audit, les champs dérivés, le cloisonnement, la
+couverture du portefeuille et la relance des affaires.
 
 ```bash
 docker compose run --rm -T odoo odoo \

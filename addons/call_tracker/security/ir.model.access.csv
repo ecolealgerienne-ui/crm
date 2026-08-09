@@ -6,3 +6,5 @@ access_call_tracker_token_wizard,call.tracker.token.wizard administrateur,model_
 access_call_tracker_audit_manager,call.tracker.audit administrateur,model_call_tracker_audit,base.group_system,1,0,0,0
 access_call_tracker_coverage_user,call.tracker.coverage utilisateur,model_call_tracker_coverage,group_call_tracker_user,1,0,0,0
 access_call_tracker_coverage_manager,call.tracker.coverage responsable,model_call_tracker_coverage,group_call_tracker_manager,1,0,0,0
+access_call_tracker_lead_activity_user,call.tracker.lead.activity utilisateur,model_call_tracker_lead_activity,group_call_tracker_user,1,0,0,0
+access_call_tracker_lead_activity_manager,call.tracker.lead.activity responsable,model_call_tracker_lead_activity,group_call_tracker_manager,1,0,0,0

@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_call_tracker_lead_activity_list" model="ir.ui.view">
+        <field name="name">call.tracker.lead.activity.list</field>
+        <field name="model">call.tracker.lead.activity</field>
+        <field name="arch" type="xml">
+            <!-- Les plus délaissées en tête : c'est une liste d'affaires à
+                 relancer, pas un état du pipeline. -->
+            <list string="Relance des affaires" create="false" edit="false"
+                  default_order="days_since_last_call desc">
+                <field name="lead_id"/>
+                <field name="stage_id"/>
+                <field name="user_id"/>
+                <field name="last_call_date"/>
+                <field name="days_since_last_call"
+                       decoration-danger="days_since_last_call &gt; 30"
+                       decoration-warning="days_since_last_call &gt; 14"/>
+                <field name="call_count" sum="Total des appels"/>
+                <field name="expected_revenue" sum="Revenu attendu" optional="show"/>
+                <field name="currency_id" column_invisible="True"/>
+                <field name="never_called" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_call_tracker_lead_activity_pivot" model="ir.ui.view">
+        <field name="name">call.tracker.lead.activity.pivot</field>
+        <field name="model">call.tracker.lead.activity</field>
+        <field name="arch" type="xml">
+            <!-- Affaires par étape, appelées ou non. C'est ici que se voit un
+                 pipeline qui stagne faute de relance.
+
+                 ⚠️ Ce croisement N'EST PAS un taux de conversion : c'est un
+                 instantané, et le biais est connu — un commercial appelle
+                 d'abord ce qui lui paraît prometteur. Voir la docstring du
+                 modèle. -->
+            <pivot string="Relance des affaires" sample="1">
+                <field name="stage_id" type="row"/>
+                <field name="never_called" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_call_tracker_lead_activity_search" model="ir.ui.view">
+        <field name="name">call.tracker.lead.activity.search</field>
+        <field name="model">call.tracker.lead.activity</field>
+        <field name="arch" type="xml">
+            <search string="Relance des affaires">
+                <field name="lead_id"/>
+                <field name="user_id"/>
+                <field name="stage_id"/>
+                <filter name="jamais" string="Jamais appelées"
+                        domain="[('never_called','=',True)]"/>
+                <filter name="plus_14" string="Sans appel depuis 14 jours"
+                        domain="[('days_since_last_call','&gt;',14)]"/>
+                <filter name="plus_30" string="Sans appel depuis 30 jours"
+                        domain="[('days_since_last_call','&gt;',30)]"/>
+                <separator/>
+                <!-- Une affaire gagnée qu'on n'a pas rappelée n'est pas un
+                     problème : le filtre par défaut les écarte. -->
+                <filter name="en_cours" string="En cours"
+                        domain="[('is_won','=',False)]"/>
+                <filter name="mes_affaires" string="Mes affaires"
+                        domain="[('user_id','=',uid)]"/>
+                <separator/>
+                <filter name="par_etape" string="Étape"
+                        context="{'group_by': 'stage_id'}"/>
+                <filter name="par_commercial" string="Commercial"
+                        context="{'group_by': 'user_id'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_call_tracker_lead_activity" model="ir.actions.act_window">
+        <field name="name">Relance des affaires</field>
+        <field name="res_model">call.tracker.lead.activity</field>
+        <field name="view_mode">list,pivot</field>
+        <field name="search_view_id" ref="view_call_tracker_lead_activity_search"/>
+        <field name="context">{'search_default_en_cours': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aucune affaire en cours</p>
+            <p>
+                Chaque affaire ouverte, avec la date du dernier appel qui lui a
+                été rattaché. Les plus anciennes en tête.
+            </p>
+            <p>
+                Le croisement « étape × jamais appelée » du tableau croisé
+                montre où le pipeline stagne. Ce n'est pas un taux de
+                conversion : une affaire appelée n'avance pas forcément
+                <em>à cause</em> de l'appel.
+            </p>
+        </field>
+    </record>
+
+</odoo>
