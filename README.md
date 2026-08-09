@@ -46,8 +46,15 @@ docker-compose.crm.yml           stack de PRODUCTION (VPS, /opt/echangocrm)
 docker-compose.yml               stack de DÉVELOPPEMENT local
 .env.production.example          modèle du fichier de secrets du VPS
 addons/echangocrm_bootstrap/     applique le mot de passe admin à la création
+apps/mobile/                     app Android Call Tracker — pas encore démarrée
 docs/DEPLOIEMENT_VPS.md          procédure complète de déploiement
+docs/call_tracker_odoo_spec.md   spec du Call Tracker (mobile + addon Odoo)
 ```
+
+Le dépôt porte donc deux choses : l'infrastructure de l'instance Odoo, en
+service, et le Call Tracker à venir — l'app Android dans `apps/mobile/`, son
+addon Odoo à côté de `echangocrm_bootstrap` dans `addons/`. L'instance locale
+montée par `docker-compose.yml` sert de banc d'essai à cet addon.
 
 ## Configuration
 
