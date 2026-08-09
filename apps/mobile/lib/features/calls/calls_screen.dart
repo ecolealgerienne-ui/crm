@@ -37,7 +37,14 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState etat) {
-    if (etat == AppLifecycleState.resumed) _ouvrirInviteEnAttente();
+    if (etat != AppLifecycleState.resumed) return;
+    // Recharger la liste, et pas seulement rouvrir l'invite : les appels sont
+    // capturés par la couche native alors que l'application est en
+    // arrière-plan. Sans cette invalidation, revenir sur l'app montre l'état
+    // d'avant — et il faut penser à tirer pour rafraîchir, ce que personne ne
+    // fait puisque rien n'indique que la liste est périmée.
+    ref.invalidate(appelsProvider);
+    _ouvrirInviteEnAttente();
   }
 
   Future<void> _ouvrirInviteEnAttente() async {
@@ -82,8 +89,16 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         itemCount: liste.length,
                         separatorBuilder: (_, __) => const Divider(height: 1),
-                        itemBuilder: (context, i) =>
-                            _LigneAppel(appel: liste[i]),
+                        itemBuilder: (context, i) => _LigneAppel(
+                          appel: liste[i],
+                          // Le dialogue est ouvert par l'ÉCRAN, pas par la
+                          // ligne : enregistrer la note recharge la liste,
+                          // donc la ligne disparaît pendant que le dialogue
+                          // vit encore. Le contexte de l'écran, lui, survit.
+                          onNote: () => ouvrirDialogueNote(
+                            this.context, ref, liste[i],
+                          ),
+                        ),
                       ),
               ),
             ],
@@ -139,13 +154,14 @@ class _BandeauSynchro extends ConsumerWidget {
   }
 }
 
-class _LigneAppel extends ConsumerWidget {
-  const _LigneAppel({required this.appel});
+class _LigneAppel extends StatelessWidget {
+  const _LigneAppel({required this.appel, required this.onNote});
 
   final CallEntry appel;
+  final VoidCallback onNote;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final couleurs = Theme.of(context).extension<AppSemanticColors>()!;
     final locale = Localizations.localeOf(context).toLanguageTag();
@@ -211,7 +227,7 @@ class _LigneAppel extends ConsumerWidget {
             IconButton(
               tooltip: l10n.noteAdd,
               icon: const Icon(Icons.edit_note),
-              onPressed: () => ouvrirDialogueNote(context, ref, appel),
+              onPressed: onNote,
             ),
           _PastilleSynchro(appel: appel),
         ],

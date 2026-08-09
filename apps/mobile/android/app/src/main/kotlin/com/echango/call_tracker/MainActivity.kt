@@ -94,7 +94,7 @@ class MainActivity : FlutterActivity() {
             "listCalls" -> {
                 val limite = appel.argument<Int>("limit") ?: 200
                 reponse.success(
-                    CallStore(applicationContext).derniers(limite).map {
+                    CallStore(applicationContext).use { it.derniers(limite) }.map {
                         mapOf(
                             "id" to it.id.toInt(),
                             "clientEventId" to it.clientEventId,
@@ -113,12 +113,12 @@ class MainActivity : FlutterActivity() {
             }
 
             "pendingCount" ->
-                reponse.success(CallStore(applicationContext).nombreEnAttente())
+                reponse.success(CallStore(applicationContext).use { it.nombreEnAttente() })
 
             "saveNote" -> {
                 val id = (appel.argument<Number>("id") ?: 0).toLong()
                 CallStore(applicationContext)
-                    .enregistrerNote(id, appel.argument<String>("note"))
+                    .use { it.enregistrerNote(id, appel.argument<String>("note")) }
                 InviteNote.retirer(applicationContext, id)
                 SyncWorker.forcer(applicationContext)
                 reponse.success(null)
@@ -126,7 +126,7 @@ class MainActivity : FlutterActivity() {
 
             "skipNote" -> {
                 val id = (appel.argument<Number>("id") ?: 0).toLong()
-                CallStore(applicationContext).ignorerNote(id)
+                CallStore(applicationContext).use { it.ignorerNote(id) }
                 InviteNote.retirer(applicationContext, id)
                 SyncWorker.forcer(applicationContext)
                 reponse.success(null)
