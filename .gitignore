@@ -1,0 +1,16 @@
+# Fichier d'environnement réel du VPS — porte le mot de passe Postgres et le
+# mot de passe maître Odoo. Ne JAMAIS le commiter : l'historique Git le
+# garderait même après suppression, il faudrait alors faire tourner les deux
+# secrets, pas seulement retirer le fichier.
+.env.production
+.env
+.env.local
+
+# Sauvegardes / dumps éventuellement produits à la racine
+*.dump
+*.dump.gpg
+*.sql
+
+# Divers
+*.log
+.DS_Store

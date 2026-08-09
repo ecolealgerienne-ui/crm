@@ -1,0 +1,75 @@
+# =============================================================================
+# Docker Compose — EchangoCrm (Odoo 19) — DÉVELOPPEMENT LOCAL
+# =============================================================================
+# Pour faire tourner le CRM sur un poste, sans Traefik ni réseau partagé :
+# les ports sont publiés sur l'hôte et joignables en clair.
+#
+#   docker compose up -d --build
+#   → http://localhost:8069
+#
+# La production, c'est docker-compose.crm.yml (voir docs/DEPLOIEMENT_VPS.md).
+# Les deux partagent la MÊME image (docker/odoo/), donc le même Odoo, la même
+# configuration rendue, les mêmes modules. Ne divergent que : les ports
+# publiés, les secrets (ici en clair, sans valeur), et l'absence de Traefik.
+#
+# ⚠️ Les identifiants ci-dessous sont des valeurs de développement écrites en
+# clair dans un fichier versionné. Elles sont sans danger tant que rien n'est
+# exposé hors du poste — et elles n'ont RIEN à faire sur le VPS. La production
+# lit ses secrets depuis .env.production, qui est gitignoré.
+#
+# `name:` explicite : sans lui, Compose déduirait `echangocrm` du nom du
+# dossier, le même nom que la stack de production, et les deux partageraient
+# le volume Postgres physique. Voir l'en-tête de docker-compose.crm.yml.
+name: echangocrm-dev
+# =============================================================================
+
+services:
+  postgres_crm:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: odoo
+      POSTGRES_PASSWORD: odoo
+      POSTGRES_DB: postgres
+    ports:
+      # 5434 et pas 5432/5433 : les autres projets de la suite occupent déjà
+      # ces ports sur un poste de développement (5433 = echangopromo).
+      - '5434:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U odoo -d postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  odoo:
+    build:
+      context: ./docker/odoo
+      dockerfile: Dockerfile
+      args:
+        ODOO_IMAGE_TAG: ${ODOO_IMAGE_TAG:-19}
+    restart: unless-stopped
+    depends_on:
+      postgres_crm:
+        condition: service_healthy
+    environment:
+      POSTGRES_PASSWORD: odoo
+      ODOO_ADMIN_PASSWD: admin
+      ODOO_DB_NAME: echango_crm
+      # workers >= 2 même en développement : c'est la seule façon d'avoir le
+      # port gevent (8072) actif, donc de reproduire le comportement du
+      # websocket tel qu'il tourne derrière Traefik en production.
+      ODOO_WORKERS: 2
+      ODOO_MAX_CRON_THREADS: 1
+      ODOO_LOG_LEVEL: info
+    ports:
+      - '8069:8069'
+      - '8072:8072'
+    volumes:
+      - odoo_data:/var/lib/odoo
+      - ./addons:/mnt/extra-addons:ro
+
+volumes:
+  postgres_data:
+  odoo_data:

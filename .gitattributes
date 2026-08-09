@@ -1,0 +1,19 @@
+# Fins de ligne — tout ce qui entre dans une image Docker DOIT être en LF.
+#
+# ⚠️ Ce dépôt est édité sous Windows et construit sous Linux. Un script shell
+# livré avec des fins de ligne CRLF produit un shebang `#!/bin/bash\r`, que le
+# noyau interprète comme un interpréteur nommé « bash\r » : le conteneur meurt
+# au démarrage sur `exec format error` ou `no such file or directory`, sans
+# aucun rapport visible avec le contenu du script. Le Dockerfile et le
+# template de configuration subissent la même classe de problème (Odoo
+# n'analyse pas `workers = 2\r` comme l'entier 2).
+#
+# Portée large ici (contrairement au dépôt echangopromo, où elle est étroite) :
+# ce dépôt ne contient QUE de l'infrastructure destinée à Linux, il n'y a rien
+# à préserver en CRLF.
+* text=auto eol=lf
+
+*.sh        text eol=lf
+*.conf      text eol=lf
+*.template  text eol=lf
+Dockerfile  text eol=lf

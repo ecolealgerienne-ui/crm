@@ -1,0 +1,191 @@
+# =============================================================================
+# Docker Compose — EchangoCrm (Odoo 19) — PRODUCTION VPS
+# =============================================================================
+# Stack autonome, clonée dans /opt/echangocrm. Elle ne partage avec les autres
+# projets du VPS (Vendure, echango Promo) QUE deux choses :
+#   - le réseau Docker externe `echango_network` ;
+#   - le conteneur Traefik qui y est attaché, et son certificat wildcard
+#     *.echango.com (echangocrm.echango.com est donc déjà couvert, aucune
+#     configuration ACME à ajouter).
+# Aucun code partagé, aucune image partagée, aucune base partagée, et — choix
+# délibéré, voir la section « labels » plus bas — aucun middleware Traefik
+# emprunté à un autre dépôt.
+#
+# Prérequis : `echango_network` doit déjà exister (stack principale démarrée
+# au moins une fois). Vérifier : docker network inspect echango_network
+#
+# Usage — TOUJOURS avec --env-file, le fichier sert aussi à la substitution
+# ${...} de ce fichier-ci :
+#   docker compose --env-file .env.production -f docker-compose.crm.yml up -d --build
+#
+# Procédure complète (création de la base, modules, sauvegardes) :
+# docs/DEPLOIEMENT_VPS.md
+#
+# `name:` explicite : sans lui, Compose dérive le nom de projet du nom du
+# dossier (`echangocrm`), donc le MÊME que docker-compose.yml (dev local) — les
+# deux stacks partageraient alors le volume Postgres physique
+# `echangocrm_postgres_data`. Deux processus Postgres écrivant le même
+# répertoire de données corrompent le catalogue ; c'est arrivé sur le dépôt
+# echangopromo le 2026-07-12, ce préfixe distinct est la correction.
+name: echangocrm
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL — dédié, jamais joignable depuis echango_network
+  # ---------------------------------------------------------------------------
+  # Nommé `postgres_crm` et non `postgres` : la stack Vendure expose un service
+  # nommé `postgres` sur echango_network. Le conteneur odoo étant attaché aux
+  # deux réseaux, le nom générique se résoudrait silencieusement vers LEUR
+  # conteneur. Classe d'erreur constatée en vrai sur echango Promo — le
+  # symptôme (« password authentication failed ») n'oriente pas du tout vers un
+  # problème de résolution DNS. Détail dans docs/DEPLOIEMENT_VPS.md.
+  #
+  # Réseau `internal` uniquement : la base n'a aucune raison d'être atteignable
+  # depuis le réseau partagé avec les autres stacks, et aucun port n'est publié
+  # sur l'hôte.
+  postgres_crm:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: odoo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?requis — voir .env.production.example}
+      # Base d'amorçage seulement. La base applicative (${ODOO_DB_NAME}) est
+      # créée par Odoo lui-même, cf. docs/DEPLOIEMENT_VPS.md. Le rôle `odoo`
+      # est superutilisateur du conteneur, il a donc bien le droit CREATEDB
+      # qu'Odoo exige.
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U odoo -d postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: '1.0'
+
+  # ---------------------------------------------------------------------------
+  # Odoo 19 — CRM
+  # ---------------------------------------------------------------------------
+  odoo:
+    build:
+      context: ./docker/odoo
+      dockerfile: Dockerfile
+      args:
+        ODOO_IMAGE_TAG: ${ODOO_IMAGE_TAG:-19}
+    restart: unless-stopped
+    depends_on:
+      postgres_crm:
+        condition: service_healthy
+    # Même fichier que --env-file : un seul endroit où le mot de passe
+    # Postgres est écrit, donc aucun risque de désynchronisation entre la
+    # valeur vue par le conteneur Postgres et celle vue par Odoo.
+    env_file:
+      - ./.env.production
+    volumes:
+      # Filestore, sessions, pièces jointes. À sauvegarder au même titre que
+      # la base : un dump SQL seul restaure un CRM aux pièces jointes cassées.
+      - odoo_data:/var/lib/odoo
+      # Addons custom versionnés dans ce dépôt. En lecture seule : les modules
+      # s'ajoutent par `git pull` + rebuild, pas par téléversement dans l'UI,
+      # pour qu'aucun code de production n'existe hors du dépôt.
+      - ./addons:/mnt/extra-addons:ro
+    networks:
+      - internal
+      - echango_network
+    healthcheck:
+      # python3 plutôt que curl/wget : c'est l'interpréteur d'Odoo, il est
+      # forcément là, alors que la présence de curl dans l'image amont n'est
+      # pas un contrat.
+      test:
+        - CMD
+        - python3
+        - -c
+        - |
+          import sys, urllib.request
+          sys.exit(0 if urllib.request.urlopen("http://localhost:8069/web/health", timeout=5).status == 200 else 1)
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      # Premier démarrage après un build : chargement du registre de modules.
+      start_period: 180s
+    labels:
+      - 'traefik.enable=true'
+      # Le conteneur est sur DEUX réseaux. Sans cette ligne, Traefik peut
+      # retenir l'IP du réseau `internal`, qu'il n'atteint pas — le routeur
+      # existe alors mais répond 502. La configuration Traefik de la stack
+      # principale fixe déjà un réseau par défaut, on ne s'y fie pas : ce
+      # dépôt ne dépend d'aucun réglage d'un autre dépôt.
+      - 'traefik.docker.network=echango_network'
+
+      # --- Services -----------------------------------------------------
+      # Odoo écoute sur DEUX ports : 8069 (HTTP) et 8072 (gevent/websocket).
+      - 'traefik.http.services.echangocrm-svc.loadbalancer.server.port=8069'
+      - 'traefik.http.services.echangocrm-ws-svc.loadbalancer.server.port=8072'
+
+      # --- Middlewares, définis ICI et pas empruntés à la stack Vendure ---
+      # Deux raisons. D'abord l'autonomie : `security-headers@file` vit dans le
+      # dépôt vendure (infra/traefik/dynamic/middlewares.yml), le référencer
+      # rendrait ce déploiement dépendant d'un fichier d'un autre projet.
+      # Ensuite la correction : ce middleware-là pose `X-Frame-Options: DENY`,
+      # ce qui casse l'éditeur de site et les vues incorporées d'Odoo, qui
+      # fonctionnent en iframe de même origine. Il faut SAMEORIGIN.
+      - 'traefik.http.middlewares.echangocrm-headers.headers.stsSeconds=31536000'
+      - 'traefik.http.middlewares.echangocrm-headers.headers.stsIncludeSubdomains=true'
+      - 'traefik.http.middlewares.echangocrm-headers.headers.stsPreload=true'
+      - 'traefik.http.middlewares.echangocrm-headers.headers.contentTypeNosniff=true'
+      - 'traefik.http.middlewares.echangocrm-headers.headers.browserXssFilter=true'
+      - 'traefik.http.middlewares.echangocrm-headers.headers.customFrameOptionsValue=SAMEORIGIN'
+      - 'traefik.http.middlewares.echangocrm-headers.headers.referrerPolicy=strict-origin-when-cross-origin'
+      # Un CRM interne n'a rien à faire dans un index : la page de connexion
+      # expose le nom de l'organisation et la version d'Odoo.
+      - 'traefik.http.middlewares.echangocrm-headers.headers.customResponseHeaders.X-Robots-Tag=noindex, nofollow, noarchive'
+      - 'traefik.http.middlewares.echangocrm-headers.headers.customResponseHeaders.X-Powered-By='
+      - 'traefik.http.middlewares.echangocrm-headers.headers.customResponseHeaders.Server='
+
+      # Compression. `text/event-stream` DOIT rester exclu : comprimer un flux
+      # d'événements le fait mettre en tampon, et les notifications n'arrivent
+      # plus qu'au vidage du tampon — panne intermittente, difficile à
+      # rattacher au proxy. Les images du filestore sont déjà comprimées.
+      - 'traefik.http.middlewares.echangocrm-compress.compress.excludedcontenttypes=text/event-stream,image/png,image/jpeg,image/webp,image/avif'
+
+      # --- Routeur HTTP principal -----------------------------------------
+      # priority=20 > 5 : le routeur `storefront-vendor` de la stack Vendure
+      # est un catch-all HostRegexp sur *.echango.com à la priorité 5. Cette
+      # priorité suffit à passer devant, donc AUCUNE modification n'est
+      # nécessaire dans le dépôt vendure pour déployer ce CRM.
+      - 'traefik.http.routers.echangocrm.rule=Host(`echangocrm.${BASE_DOMAIN:-echango.com}`)'
+      - 'traefik.http.routers.echangocrm.entrypoints=websecure'
+      - 'traefik.http.routers.echangocrm.priority=20'
+      - 'traefik.http.routers.echangocrm.middlewares=echangocrm-headers,echangocrm-compress'
+      - 'traefik.http.routers.echangocrm.service=echangocrm-svc'
+
+      # --- Routeur websocket (chat, notifications, activités) -------------
+      # priority=25 pour passer devant le routeur principal, dont la règle
+      # (Host seul) couvre aussi /websocket. Sans compression : comprimer une
+      # connexion maintenue ouverte n'a aucun sens et introduit du tampon.
+      - 'traefik.http.routers.echangocrm-ws.rule=Host(`echangocrm.${BASE_DOMAIN:-echango.com}`) && PathPrefix(`/websocket`)'
+      - 'traefik.http.routers.echangocrm-ws.entrypoints=websecure'
+      - 'traefik.http.routers.echangocrm-ws.priority=25'
+      - 'traefik.http.routers.echangocrm-ws.middlewares=echangocrm-headers'
+      - 'traefik.http.routers.echangocrm-ws.service=echangocrm-ws-svc'
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+          cpus: '1.5'
+
+networks:
+  internal:
+  echango_network:
+    external: true
+
+volumes:
+  postgres_data:
+  odoo_data:
