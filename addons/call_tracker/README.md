@@ -158,16 +158,33 @@ rattachés (`child_of`) : les appels sont journalisés au nom de
 l'interlocuteur, et un compteur limité à la société elle-même afficherait zéro
 là où il y a le plus à voir.
 
-## Note prise après l'appel
+## Trace au fil, et note prise après l'appel
 
-Champ `note` facultatif dans la charge utile de `log_call`, plafonné à 1000
-caractères. Quand elle est présente et qu'une piste ou un contact est
-rattaché, la note est **publiée dans le fil de discussion** — type `comment`,
-sous-type `mail.mt_note`, attribuée au commercial.
+**Tout appel rattaché est publié dans le fil** de la piste — ou à défaut du
+contact — entrant comme sortant, avec ou sans note. Ouvrir une fiche client
+suffit à voir qu'on l'a appelé mardi. Sous-type `mail.mt_note` dans tous les
+cas : une note interne, jamais un message envoyé au client.
 
-Ce report n'est pas décoratif, il **referme une boucle** : c'est ce même fil
-que lit `fiche_contact` pour alimenter le Caller ID. La note écrite après un
-appel s'affiche donc au suivant.
+Le champ `note` reste facultatif dans la charge utile de `log_call`, plafonné
+à 1000 caractères.
+
+⚠️ **Deux types de message, et la distinction est structurante.** Ce même fil
+est relu par `fiche_contact` pour alimenter le Caller ID, qui affiche le
+dernier `comment`.
+
+| Appel | Type | Corps | Vu au Caller ID |
+|---|---|---|---|
+| avec note | `comment` | en-tête + note | oui |
+| sans note | `notification` | en-tête + « 45 s · répondu » | non |
+
+Sans cette distinction, chaque appel muet écraserait au Caller ID la dernière
+note utile par un « Appel sortant — +213… » qui n'apprend rien. La fiche
+resterait pleine et deviendrait inutile, sans la moindre erreur pour le
+signaler. Élargir le filtre de `_derniere_note` au-delà de `comment` rouvre
+exactement ce défaut ; deux tests le verrouillent.
+
+Le report referme une boucle : la note écrite après un appel s'affiche au
+suivant.
 
 ⚠️ Sous-type `mt_note` et non un commentaire public : se tromper ici
 enverrait la note au client par courriel.
@@ -350,7 +367,7 @@ relancés par un seul appel.
 
 ## Tests
 
-131 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
+136 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
 révocation, le rapprochement téléphonique, la qualification manuelle,
 la note post-appel, les liens depuis les fiches CRM, la rétention, le
 journal d'audit, les champs dérivés, le cloisonnement, la

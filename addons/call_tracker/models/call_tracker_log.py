@@ -236,20 +236,32 @@ class CallTrackerLog(models.Model):
         return appels
 
     def _publier_note(self):
-        """Reporte la note de l'appel dans le fil de discussion du CRM.
+        """Trace l'appel dans le fil de discussion du CRM.
 
-        Sans cela, la note resterait enfermée dans un modèle technique que
-        personne n'ouvre. Publiée sur la piste — ou à défaut sur le contact —
-        elle apparaît là où le commercial travaille, et **elle revient à
-        l'app** : c'est ce même fil que lit ``fiche_contact`` pour alimenter
-        le Caller ID. La note écrite après un appel s'affiche donc au suivant.
+        **Tout appel rattaché est tracé**, entrant comme sortant, avec ou sans
+        note. C'est là que le commercial et son responsable travaillent : un
+        appel qui n'existe que dans un modèle technique que personne n'ouvre
+        n'a, en pratique, pas eu lieu. Ouvrir une fiche client doit suffire à
+        voir qu'on l'a appelé mardi.
 
-        Type ``comment`` et sous-type ``mt_note`` : une note interne, pas un
-        message envoyé au client. Se tromper ici notifierait le contact.
+        Publiée sur la piste — ou à défaut sur le contact. Sous-type
+        ``mt_note`` dans les deux cas : une note **interne**, jamais un message
+        envoyé au client. Se tromper ici notifierait le contact.
+
+        ⚠️ **Deux types de message, et la distinction est le cœur de cette
+        méthode.** Ce même fil est relu par ``_derniere_note`` pour alimenter
+        le Caller ID : ce que le commercial voit s'afficher à la sonnerie
+        suivante, c'est le dernier ``comment`` de ce fil.
+
+        - Appel **avec note** → ``comment``. Ce sont les mots d'un humain, ce
+          qu'on veut relire avant de décrocher.
+        - Appel **sans note** → ``notification``. Une trace automatique, au
+          même titre qu'un changement d'étape. Sans cette distinction, chaque
+          appel muet écraserait au Caller ID la dernière note utile par un
+          « Appel sortant — +213… » qui n'apprend rien à personne. Le défaut
+          serait discret : la fiche resterait remplie, mais vide de sens.
         """
         for appel in self:
-            if not appel.note:
-                continue
             cible = appel.lead_id or appel.partner_id
             if not cible:
                 continue
@@ -265,13 +277,30 @@ class CallTrackerLog(models.Model):
             # milieu de la note. Le lecteur final compte plus que l'emphase
             # dans le fil.
             cible.sudo().message_post(
-                body=Markup('<p>%s</p><p>%s</p>') % (entete, appel.note),
-                message_type='comment',
+                body=Markup('<p>%s</p><p>%s</p>') % (
+                    entete, appel.note or appel._resume_sans_note(),
+                ),
+                message_type='comment' if appel.note else 'notification',
                 subtype_xmlid='mail.mt_note',
                 # Attribuée au commercial, pas au compte technique : le fil
                 # doit dire QUI a passé l'appel.
                 author_id=appel.user_id.partner_id.id or False,
             )
+
+    def _resume_sans_note(self):
+        """Corps du message pour un appel sans note : durée et issue.
+
+        « 45 s · répondu » plutôt qu'un message vide. Le fil doit répondre à
+        « l'a-t-on eu au téléphone ? » sans ouvrir l'appel.
+        """
+        self.ensure_one()
+        issues = dict(self._fields['outcome'].selection)
+        if self.duration_seconds:
+            return _("%(duree)s s · %(issue)s") % {
+                'duree': self.duration_seconds,
+                'issue': (issues.get(self.outcome) or '').lower(),
+            }
+        return (issues.get(self.outcome) or '').capitalize()
 
     def _rattacher(self):
         """Associe chaque appel au contact et à la piste correspondants.
@@ -542,7 +571,12 @@ class CallTrackerLog(models.Model):
 
         - seuls les messages de type ``comment`` sont lus. Les notifications
           automatiques (changement d'étape, courriel envoyé) rempliraient
-          l'écran de bruit à chaque sonnerie ;
+          l'écran de bruit à chaque sonnerie. ⚠️ **Ce filtre porte plus qu'il
+          n'y paraît depuis que tout appel est tracé au fil** : les appels sans
+          note y sont publiés en ``notification`` précisément pour ne pas
+          passer ici. L'élargir ferait afficher « Appel sortant — +213… » à la
+          place de la dernière note utile, et le Caller ID perdrait sa raison
+          d'être sans qu'aucune erreur ne se produise ;
         - le HTML est converti en texte : un fil Odoo est du HTML, et l'envoyer
           tel quel ferait afficher des balises sur un téléphone ;
         - la troncature à 200 caractères borne ce qui sort du CRM. Un

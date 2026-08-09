@@ -50,6 +50,9 @@ class ContactCache(context: Context) {
      * Sans cela, les numéros inconnus — démarchage, taxi, famille — feraient
      * un appel réseau à chaque sonnerie, précisément ceux pour lesquels il n'y
      * a rien à afficher.
+     *
+     * ⚠️ Retenu **deux minutes**, pas trente comme une fiche trouvée. Voir
+     * [DUREE_INCONNU_MILLIS] : c'est le correctif d'un défaut observé.
      */
     fun marquerInconnu(numero: String) {
         prefs.edit()
@@ -60,8 +63,8 @@ class ContactCache(context: Context) {
 
     fun estConnuInconnu(numero: String): Boolean {
         val cle = cle(numero)
-        if (System.currentTimeMillis() - prefs.getLong(cle + AGE, 0L) > DUREE_MILLIS) return false
-        return prefs.getString(cle, null) == INCONNU
+        if (prefs.getString(cle, null) != INCONNU) return false
+        return System.currentTimeMillis() - prefs.getLong(cle + AGE, 0L) <= DUREE_INCONNU_MILLIS
     }
 
     fun vider() = prefs.edit().clear().apply()
@@ -73,5 +76,23 @@ class ContactCache(context: Context) {
         const val AGE = "_t"
         const val INCONNU = "-"
         const val DUREE_MILLIS = 30 * 60 * 1000L
+
+        /**
+         * Durée de rétention d'un **inconnu**, bien plus courte que celle
+         * d'une fiche trouvée.
+         *
+         * Constaté le 2026-08-10 sur émulateur : un numéro appelé avant d'être
+         * saisi dans le CRM restait « inconnu » à l'écran pendant trente
+         * minutes, alors que la fiche existait depuis cinq. Le Caller ID ne
+         * s'affichait pas, et rien ne le signalait — l'application n'appelait
+         * même plus le serveur.
+         *
+         * Ce n'est pas un cas de laboratoire : la qualification est manuelle
+         * ici, donc « un inconnu appelle → je crée le client → il rappelle »
+         * est la séquence NORMALE. Deux minutes suffisent à couvrir le rappel
+         * immédiat d'un démarcheur, qui est le seul cas que ce cache devait
+         * éviter.
+         */
+        const val DUREE_INCONNU_MILLIS = 2 * 60 * 1000L
     }
 }

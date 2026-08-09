@@ -127,3 +127,93 @@ class TestNote(HttpCase, BancCallTracker):
         appel = self.Appel.search([('client_event_id', '=', 'evt-note-orpheline')])
         self.assertEqual(appel.note, 'Numéro incomplet')
         self.assertFalse(appel.lead_id)
+
+    # ── Tout appel est tracé au fil, note ou pas ─────────────────────────────
+
+    def test_un_appel_sans_note_est_quand_meme_trace(self):
+        """Le défaut signalé le 2026-08-10.
+
+        Seuls les appels portant une note apparaissaient dans la fiche. Un
+        commercial ouvrant un client voyait donc ses appels entrants notés,
+        et rien de ses appels sortants — dont personne ne note la plupart.
+        Ouvrir une fiche doit suffire à voir qu'on a appelé.
+        """
+        self.poster(ChargeUtile.valide(
+            client_event_id='evt-trace-muette',
+            phone_number='+213555920001',
+            direction='outbound',
+            duration_seconds=45,
+        ))
+        message = self.env['mail.message'].search(
+            [('model', '=', 'crm.lead'), ('res_id', '=', self.piste.id)],
+            order='id desc', limit=1,
+        )
+        self.assertIn('+213555920001', message.body)
+        self.assertIn('sortant', message.body)
+        self.assertIn('45', message.body, "la durée renseigne sans ouvrir l'appel")
+
+    def test_une_trace_muette_n_ecrase_pas_la_note_au_caller_id(self):
+        """LE test de ce correctif, et le défaut qu'il aurait introduit.
+
+        Le Caller ID affiche le dernier commentaire du fil. Si les appels sans
+        note y étaient publiés comme des commentaires ordinaires, chaque appel
+        muet remplacerait la dernière note utile par « Appel sortant — +213… ».
+        La fiche resterait pleine et deviendrait inutile, sans la moindre
+        erreur pour le signaler.
+        """
+        self.poster_avec_note('Veut un devis sous huitaine', 'evt-avant-muet')
+        self.poster(ChargeUtile.valide(
+            client_event_id='evt-apres-muet',
+            phone_number='+213555920001',
+            direction='outbound',
+            duration_seconds=45,
+        ))
+
+        fiche = self.Appel.fiche_contact('+213555920001')
+        self.assertIn('Veut un devis sous huitaine', fiche['last_notes'])
+        # Le résumé de l'appel muet — « 45 s · répondu » — est ce qui aurait
+        # pris la place de la note. L'en-tête, lui, est commun aux deux
+        # messages : le chercher ne prouverait rien.
+        self.assertNotIn('45 s', fiche['last_notes'])
+
+    def test_la_trace_muette_est_une_notification_pas_un_commentaire(self):
+        # C'est le type de message qui l'exclut du Caller ID. Le test
+        # précédent constate l'effet ; celui-ci nomme le mécanisme, pour que
+        # la cause soit lisible quand il cassera.
+        self.poster(ChargeUtile.valide(
+            client_event_id='evt-type-muet',
+            phone_number='+213555920001',
+            direction='outbound',
+        ))
+        message = self.env['mail.message'].search(
+            [('model', '=', 'crm.lead'), ('res_id', '=', self.piste.id)],
+            order='id desc', limit=1,
+        )
+        self.assertEqual(message.message_type, 'notification')
+        self.assertEqual(message.subtype_id, self.env.ref('mail.mt_note'),
+                         "interne dans tous les cas : jamais un envoi client")
+
+    def test_un_appel_sortant_note_reste_un_commentaire(self):
+        self.poster(ChargeUtile.valide(
+            client_event_id='evt-sortant-note',
+            phone_number='+213555920001',
+            direction='outbound',
+            note='Rappelé, commande confirmée',
+        ))
+        message = self.env['mail.message'].search(
+            [('model', '=', 'crm.lead'), ('res_id', '=', self.piste.id)],
+            order='id desc', limit=1,
+        )
+        self.assertEqual(message.message_type, 'comment')
+        self.assertIn('Rappelé, commande confirmée', message.body)
+
+    def test_un_appel_non_rattache_ne_trace_nulle_part(self):
+        # Rien à quoi rattacher : l'appel rejoint la file « à qualifier », il
+        # n'invente pas de destinataire.
+        avant = self.env['mail.message'].search_count([])
+        self.poster(ChargeUtile.valide(
+            client_event_id='evt-muet-orphelin',
+            phone_number='+213555999888',
+            direction='outbound',
+        ))
+        self.assertEqual(self.env['mail.message'].search_count([]), avant)

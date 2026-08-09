@@ -22,6 +22,21 @@ class HomeShell extends ConsumerStatefulWidget {
 class _HomeShellState extends ConsumerState<HomeShell> {
   int _onglet = 0;
 
+  /// Change d'onglet, et **relit les appels en revenant sur leur liste**.
+  ///
+  /// Un `IndexedStack` garde les trois onglets montés : revenir sur les appels
+  /// ne reconstruit rien et n'invalide aucun provider. La liste affichait donc
+  /// « En attente » sur des appels déjà remis à Odoo, jusqu'au prochain retour
+  /// dans l'application ou à un tiré-pour-rafraîchir.
+  ///
+  /// Le défaut est cosmétique mais il se lit comme une panne : le commercial
+  /// voit une file qui ne se vide pas et conclut que rien ne part. Constaté le
+  /// 2026-08-10.
+  void _allerA(int index) {
+    setState(() => _onglet = index);
+    if (index == 0) ref.invalidate(appelsProvider);
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -73,7 +88,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _onglet,
-        onDestinationSelected: (i) => setState(() => _onglet = i),
+        onDestinationSelected: _allerA,
         destinations: [
           NavigationDestination(
             icon: const Icon(Icons.call_outlined),

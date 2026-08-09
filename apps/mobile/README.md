@@ -123,6 +123,22 @@ Trois choix qui ne se devinent pas :
 Côté Odoo, la note est publiée dans le fil de la piste, et **revient au
 Caller ID de l'appel suivant**.
 
+## Le cache des fiches contact
+
+Une fiche trouvée est gardée **30 minutes**, un numéro inconnu **2 minutes
+seulement** (`ContactCache.DUREE_INCONNU_MILLIS`). Les deux durées n'ont rien
+à voir et il ne faut pas les réunifier.
+
+Constaté le 2026-08-10 : avec 30 minutes pour les deux, un numéro appelé avant
+d'être saisi dans le CRM restait « inconnu » à l'écran une demi-heure durant,
+alors que la fiche existait depuis cinq minutes. Le Caller ID ne s'affichait
+pas et rien ne le signalait — l'application n'appelait même plus le serveur.
+
+Ce n'est pas un cas de laboratoire : la qualification est manuelle côté Odoo,
+donc « un inconnu appelle → je crée le client → il rappelle » est la séquence
+**normale**. Deux minutes couvrent le rappel immédiat d'un démarcheur, seul
+cas que ce cache devait éviter.
+
 ## L'avis d'information
 
 Un écran barre l'accès aux onglets au premier lancement : ce qui est
