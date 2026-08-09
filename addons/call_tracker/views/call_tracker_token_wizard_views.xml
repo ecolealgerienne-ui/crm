@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_call_tracker_token_wizard_form" model="ir.ui.view">
+        <field name="name">call.tracker.token.wizard.form</field>
+        <field name="model">call.tracker.token.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Jeton de l'appareil">
+                <div class="alert alert-warning" role="alert">
+                    <strong>Copiez ce jeton maintenant.</strong>
+                    Il ne sera plus jamais affiché : seule son empreinte est
+                    conservée. En cas de perte, générez-en un nouveau — ce qui
+                    révoque immédiatement celui-ci.
+                </div>
+                <group>
+                    <field name="device_id"/>
+                    <field name="token_clear" widget="CopyClipboardChar"/>
+                </group>
+                <footer>
+                    <button string="J'ai copié le jeton" class="btn-primary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

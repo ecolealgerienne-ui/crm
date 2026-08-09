@@ -1,0 +1,114 @@
+# -*- coding: utf-8 -*-
+import hashlib
+import secrets
+
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
+
+
+def hacher_jeton(jeton):
+    """Empreinte SHA-256 d'un jeton, en hexadécimal.
+
+    Un SHA-256 nu suffit ici, et ce n'est pas un raccourci. Les fonctions
+    lentes (pbkdf2, bcrypt) servent à rendre coûteuse l'énumération de secrets
+    à faible entropie — les mots de passe choisis par des humains. Un jeton
+    produit par ``secrets.token_urlsafe(32)`` porte 256 bits d'aléa : il n'y a
+    rien à énumérer, et un KDF lent ne ferait que ralentir chaque appel de
+    l'app sans rien protéger de plus.
+    """
+    return hashlib.sha256(jeton.encode('utf-8')).hexdigest()
+
+
+class CallTrackerDevice(models.Model):
+    _name = 'call.tracker.device'
+    _description = "Appareil mobile relié au Call Tracker"
+    _order = 'name'
+
+    name = fields.Char(
+        string="Libellé",
+        required=True,
+        help="Pour identifier l'appareil d'un coup d'œil, ex. « Samsung d'Amar ».",
+    )
+    # Un appareil = un commercial. Décision du 2026-08-09 : pas de session
+    # utilisateur au MVP, le jeton porte l'identité. La spec (§10.3) jugeait
+    # elle-même le multi-commercial par appareil peu probable. Le jour où il
+    # faudrait des sessions, ce champ deviendrait le défaut plutôt que la
+    # seule source — le schéma des journaux n'a pas à changer.
+    user_id = fields.Many2one(
+        'res.users',
+        string="Commercial",
+        required=True,
+        ondelete='restrict',
+        help="Utilisateur Odoo auquel les appels de cet appareil sont attribués.",
+    )
+    # Seule l'empreinte est conservée. Le jeton en clair n'existe qu'une fois,
+    # dans l'assistant affiché juste après sa génération.
+    token_hash = fields.Char(
+        string="Empreinte du jeton",
+        readonly=True,
+        copy=False,
+        index=True,
+        groups='base.group_system',
+    )
+    active = fields.Boolean(
+        default=True,
+        help="Décocher révoque l'appareil : ses appels sont refusés, sans "
+             "toucher au compte du commercial ni aux appels déjà journalisés.",
+    )
+    last_seen = fields.Datetime(
+        string="Dernier appel reçu",
+        readonly=True,
+        copy=False,
+    )
+    log_count = fields.Integer(
+        string="Appels journalisés",
+        compute='_compute_log_count',
+    )
+
+    def _compute_log_count(self):
+        # read_group en un seul appel : un search_count par ligne ferait une
+        # requête par appareil dans la vue liste.
+        comptes = dict(self.env['call.tracker.log']._read_group(
+            [('device_id', 'in', self.ids)],
+            groupby=['device_id'],
+            aggregates=['__count'],
+        ))
+        for appareil in self:
+            appareil.log_count = comptes.get(appareil, 0)
+
+    @api.model
+    def _resoudre_par_jeton(self, jeton):
+        """Retourne l'appareil actif correspondant au jeton, ou un recordset vide.
+
+        Recherche par empreinte : le jeton en clair n'est jamais comparé à
+        quoi que ce soit de stocké, et une fuite de la base ne livre pas de
+        jeton utilisable.
+        """
+        if not jeton:
+            return self.browse()
+        return self.sudo().search(
+            [('token_hash', '=', hacher_jeton(jeton))],
+            limit=1,
+        )
+
+    def action_generer_jeton(self):
+        """Génère un jeton, n'en garde que l'empreinte, et l'affiche une fois."""
+        self.ensure_one()
+        if not self.env.user.has_group('base.group_system'):
+            raise UserError(_("Seul un administrateur peut générer un jeton d'appareil."))
+
+        jeton = secrets.token_urlsafe(32)
+        self.sudo().write({'token_hash': hacher_jeton(jeton)})
+
+        assistant = self.env['call.tracker.token.wizard'].create({
+            'device_id': self.id,
+            'token_clear': jeton,
+        })
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _("Jeton de l'appareil"),
+            'res_model': 'call.tracker.token.wizard',
+            'res_id': assistant.id,
+            'view_mode': 'form',
+            'target': 'new',
+        }

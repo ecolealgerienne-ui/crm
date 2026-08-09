@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_call_tracker_device_list" model="ir.ui.view">
+        <field name="name">call.tracker.device.list</field>
+        <field name="model">call.tracker.device</field>
+        <field name="arch" type="xml">
+            <list string="Appareils">
+                <field name="name"/>
+                <field name="user_id"/>
+                <field name="log_count" string="Appels"/>
+                <field name="last_seen"/>
+                <field name="active" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_call_tracker_device_form" model="ir.ui.view">
+        <field name="name">call.tracker.device.form</field>
+        <field name="model">call.tracker.device</field>
+        <field name="arch" type="xml">
+            <form string="Appareil">
+                <header>
+                    <button name="action_generer_jeton" type="object"
+                            string="Générer un jeton" class="btn-primary"
+                            invisible="not id"
+                            confirm="Générer un nouveau jeton révoque immédiatement le précédent : l'appareil ne pourra plus remonter d'appel tant que le nouveau jeton n'y est pas saisi. Continuer ?"/>
+                </header>
+                <sheet>
+                    <widget name="web_ribbon" title="Révoqué" bg_color="text-bg-danger"
+                            invisible="active"/>
+                    <group>
+                        <group>
+                            <field name="name" placeholder="Samsung d'Amar"/>
+                            <field name="user_id"/>
+                        </group>
+                        <group>
+                            <field name="active"/>
+                            <field name="last_seen"/>
+                            <field name="log_count"/>
+                        </group>
+                    </group>
+                    <div class="text-muted" invisible="id">
+                        Enregistrez l'appareil, puis générez son jeton. Le jeton
+                        n'est affiché qu'une seule fois.
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_call_tracker_device" model="ir.actions.act_window">
+        <field name="name">Appareils</field>
+        <field name="res_model">call.tracker.device</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Déclarer un appareil</p>
+            <p>
+                Un appareil correspond à un commercial. Son jeton, généré ici,
+                est le seul identifiant que l'application mobile transmet — il
+                ne porte aucun droit Odoo et se révoque sans toucher au compte
+                du commercial.
+            </p>
+        </field>
+    </record>
+
+</odoo>

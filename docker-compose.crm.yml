@@ -146,10 +146,15 @@ services:
       # echangocrm_bootstrap applique le mot de passe administrateur ; voir
       # addons/echangocrm_bootstrap/.
       - --init=crm,contacts,calendar,echangocrm_bootstrap
-      # `=True` et pas `=all` : depuis Odoo 19 cette option est un booleen, elle
+      # `=True` et pas `=all` : depuis Odoo 19 cette option est un booléen, elle
       # ne prend plus une liste de modules. `all` passe encore — Odoo avertit
       # « invalid boolean value: 'all', assume True » et fait ce qu'on veut —
-      # mais autant ne pas dependre d'un repli.
+      # mais autant ne pas dépendre d'un repli.
+      #
+      # Redondant en Odoo 19, qui n'installe plus les données de démonstration
+      # par défaut, et gardé quand même : la valeur par défaut de cette option
+      # a déjà été inversée une fois. Écrite ici, l'intention ne dépend pas de
+      # ce que décidera la prochaine version.
       - --without-demo=True
       - --stop-after-init
       - --log-level=${ODOO_LOG_LEVEL:-warn}

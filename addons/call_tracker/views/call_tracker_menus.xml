@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <menuitem id="menu_call_tracker_root"
+              name="Call Tracker"
+              parent="crm.crm_menu_root"
+              sequence="45"/>
+
+    <menuitem id="menu_call_tracker_log"
+              name="Appels"
+              parent="menu_call_tracker_root"
+              action="action_call_tracker_log"
+              sequence="10"/>
+
+    <!-- Réservé aux administrateurs : c'est d'ici que se génèrent et se
+         révoquent les jetons. -->
+    <menuitem id="menu_call_tracker_device"
+              name="Appareils"
+              parent="menu_call_tracker_root"
+              action="action_call_tracker_device"
+              groups="base.group_system"
+              sequence="20"/>
+
+</odoo>

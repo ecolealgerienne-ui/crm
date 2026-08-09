@@ -71,11 +71,21 @@ services:
     command:
       - odoo
       - --database=echango_crm
-      - --init=crm,contacts,calendar,echangocrm_bootstrap
-      # Pas de --without-demo ici, contrairement à la production : les données
-      # de démonstration rendent le pipeline CRM lisible dès le premier
-      # lancement, ce qu'on veut pour développer. Ajouter `--without-demo=True`
-      # pour reproduire une base vierge comme en production.
+      # call_tracker en plus de la production : c'est le module en cours de
+      # développement, cette instance est son banc d'essai. Il n'est pas encore
+      # dans la liste de docker-compose.crm.yml, et ne doit pas y entrer avant
+      # d'être éprouvé ici.
+      - --init=crm,contacts,calendar,echangocrm_bootstrap,call_tracker
+      # Données de démonstration : elles rendent le pipeline CRM lisible dès le
+      # premier lancement, ce qu'on veut pour développer, et fournissent des
+      # contacts avec numéro pour éprouver le rapprochement du Call Tracker.
+      #
+      # ⚠️ Le drapeau est OBLIGATOIRE depuis Odoo 19, qui a inversé le défaut :
+      # `--without-demo` est désormais le comportement par défaut. Sans
+      # `--with-demo`, la base sort vide et on croit à tort avoir des données
+      # de démo. Vérifié le 2026-08-09 (`odoo server --help` : « --without-demo
+      # don't install demo data in new databases (default) »).
+      - --with-demo
       - --stop-after-init
       - --log-level=info
 
