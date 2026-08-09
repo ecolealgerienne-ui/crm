@@ -6,6 +6,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../../data/capture_models.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/core_providers.dart';
+import '../notice/notice_screen.dart';
 
 /// Permissions sans lesquelles rien ne peut être capturé.
 ///
@@ -173,6 +174,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const _BlocSurimpression(),
             const SizedBox(height: 12),
             const _BlocBatterie(),
+            const SizedBox(height: 24),
+
+            _Section(titre: l10n.noticeSection),
+            const _BlocAvis(),
             const SizedBox(height: 32),
 
             FilledButton(
@@ -368,6 +373,30 @@ class _BlocBatterie extends ConsumerWidget {
             )
           : const SizedBox.shrink(),
       orElse: () => const SizedBox.shrink(),
+    );
+  }
+}
+
+/// Accès permanent à l'avis d'information.
+///
+/// Un avis qu'on ne peut plus relire après le premier lancement n'informe
+/// personne — il fait signer. Celui qui veut vérifier six mois plus tard ce
+/// qui remonte de son téléphone doit pouvoir le retrouver sans demander à
+/// quiconque.
+class _BlocAvis extends StatelessWidget {
+  const _BlocAvis();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return _Encart(
+      icone: Icons.privacy_tip_outlined,
+      titre: l10n.noticeReadAgain,
+      corps: l10n.noticeReadAgainBody,
+      action: l10n.noticeReadAgainAction,
+      onAction: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => const NoticeScreen()),
+      ),
     );
   }
 }

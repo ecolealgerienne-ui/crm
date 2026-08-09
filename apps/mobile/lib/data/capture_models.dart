@@ -74,6 +74,8 @@ class CaptureSettings {
     required this.captureEnabled,
     required this.fromHour,
     required this.toHour,
+    this.retentionDays = 0,
+    this.retentionKnown = false,
   });
 
   final String serverUrl;
@@ -90,6 +92,20 @@ class CaptureSettings {
   final int fromHour;
   final int toHour;
 
+  /// Durée de conservation des appels côté Odoo, annoncée par le serveur à
+  /// chaque envoi accepté.
+  ///
+  /// Elle n'est pas codée en dur dans l'application : elle est fixée par le
+  /// `.env` du serveur, et une valeur recopiée ici finirait par mentir à
+  /// l'écran d'information le jour où l'exploitant la change. `0` avec
+  /// [retentionKnown] à vrai signifie « aucune purge configurée » — ce qui se
+  /// dit, et se dit différemment de « pas encore connue ».
+  final int retentionDays;
+
+  /// Le serveur a-t-il déjà annoncé sa politique ? Faux tant qu'aucun appel
+  /// n'a été accepté.
+  final bool retentionKnown;
+
   static const vide = CaptureSettings(
     serverUrl: '',
     hasToken: false,
@@ -105,6 +121,8 @@ class CaptureSettings {
       captureEnabled: map['captureEnabled'] as bool? ?? false,
       fromHour: map['fromHour'] as int? ?? 8,
       toHour: map['toHour'] as int? ?? 19,
+      retentionDays: map['retentionDays'] as int? ?? 0,
+      retentionKnown: map['retentionKnown'] as bool? ?? false,
     );
   }
 
@@ -114,6 +132,8 @@ class CaptureSettings {
     bool? captureEnabled,
     int? fromHour,
     int? toHour,
+    int? retentionDays,
+    bool? retentionKnown,
   }) {
     return CaptureSettings(
       serverUrl: serverUrl ?? this.serverUrl,
@@ -121,6 +141,8 @@ class CaptureSettings {
       captureEnabled: captureEnabled ?? this.captureEnabled,
       fromHour: fromHour ?? this.fromHour,
       toHour: toHour ?? this.toHour,
+      retentionDays: retentionDays ?? this.retentionDays,
+      retentionKnown: retentionKnown ?? this.retentionKnown,
     );
   }
 }

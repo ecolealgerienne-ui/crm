@@ -47,12 +47,21 @@ l'appareil, et l'appareil porte le commercial.
 
 | Réponse | Code | Sens |
 |---|---|---|
-| `{"status":"logged","call_id":1,"linked_record":"crm.lead,26"}` | 201 | appel journalisé |
-| `{"status":"duplicate","call_id":1,...}` | 200 | déjà reçu — voir ci-dessous |
+| `{"status":"logged","call_id":1,"linked_record":"crm.lead,26","retention_days":1095}` | 201 | appel journalisé |
+| `{"status":"duplicate","call_id":1,...,"retention_days":1095}` | 200 | déjà reçu — voir ci-dessous |
 | `{"status":"unauthorized"}` | 401 | jeton absent, inconnu ou révoqué |
 | `{"status":"invalid","detail":"..."}` | 400 | charge utile refusée |
 
 `linked_record` vaut `null` si le numéro ne correspond à rien.
+
+`retention_days` est la politique de conservation de l'instance, telle que la
+lit le serveur dans son `.env`. Elle est renvoyée pour que l'application
+mobile puisse l'annoncer sur son écran d'information : une durée recopiée en
+dur dans le téléphone finirait par afficher trois ans quand le serveur en
+garde cinq. Le **rejeu** la porte aussi, sinon un téléphone déjà à jour ne
+recevrait plus que des `duplicate` et n'apprendrait jamais la politique. Ce
+n'est pas une donnée personnelle : c'est ce que la personne enregistrée a le
+droit de savoir.
 
 ### `GET /call_tracker/contact/<numero>`
 
@@ -210,6 +219,11 @@ La limite se compte sur la **date de l'appel**, pas sur celle de son
 enregistrement : un appel remonté avec trois semaines de retard, parce que le
 téléphone est resté hors réseau, doit être daté de l'appel.
 
+La durée est **annoncée à l'application mobile** dans la réponse de
+`log_call`, qui l'affiche sur son écran d'information. Changer
+`CALL_TRACKER_RETENTION_DAYS` change donc aussi ce que lisent les commerciaux,
+sans rien à redéployer côté téléphone.
+
 ## Journal d'audit
 
 `call.tracker.audit` — *CRM > Call Tracker > Journal d'audit*, réservé aux
@@ -336,7 +350,7 @@ relancés par un seul appel.
 
 ## Tests
 
-128 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
+131 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
 révocation, le rapprochement téléphonique, la qualification manuelle,
 la note post-appel, les liens depuis les fiches CRM, la rétention, le
 journal d'audit, les champs dérivés, le cloisonnement, la

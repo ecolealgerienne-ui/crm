@@ -48,6 +48,28 @@ class SecureSettings(context: Context) {
         get() = prefs.getLong(CLE_DERNIER_SCAN, 0L)
         set(value) = prefs.edit().putLong(CLE_DERNIER_SCAN, value).apply()
 
+    /**
+     * Durée de conservation des appels côté Odoo, telle que le serveur
+     * l'annonce à chaque envoi accepté.
+     *
+     * Lue et non codée en dur : elle est fixée par le `.env` du serveur, et
+     * une valeur recopiée dans l'application finirait par mentir à l'écran
+     * d'information le jour où l'exploitant la change.
+     *
+     * `0` signifie « pas encore connue » — aucun appel n'a encore été accepté.
+     * L'écran d'information dit alors que la durée est fixée par l'employeur,
+     * sans avancer de chiffre. Zéro côté serveur veut dire « aucune purge »,
+     * ce qui se dit aussi, et différemment.
+     */
+    var retentionDays: Int
+        get() = prefs.getInt(CLE_RETENTION, 0)
+        set(value) = prefs.edit().putInt(CLE_RETENTION, value).apply()
+
+    /** Le serveur a-t-il déjà annoncé sa politique de conservation ? */
+    var retentionKnown: Boolean
+        get() = prefs.getBoolean(CLE_RETENTION_CONNUE, false)
+        set(value) = prefs.edit().putBoolean(CLE_RETENTION_CONNUE, value).apply()
+
     val configured: Boolean
         get() = serverUrl.isNotBlank() && token.isNotBlank()
 
@@ -76,6 +98,8 @@ class SecureSettings(context: Context) {
         const val CLE_DE = "from_hour"
         const val CLE_A = "to_hour"
         const val CLE_DERNIER_SCAN = "last_scan_millis"
+        const val CLE_RETENTION = "retention_days"
+        const val CLE_RETENTION_CONNUE = "retention_known"
 
         /**
          * Repli assumé sur des SharedPreferences ordinaires.

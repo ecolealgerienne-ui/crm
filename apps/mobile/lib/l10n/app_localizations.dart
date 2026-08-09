@@ -603,6 +603,168 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Numéro entrant accessible'**
   String get screeningGranted;
+
+  /// No description provided for @noticeTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ce que cette application enregistre'**
+  String get noticeTitle;
+
+  /// No description provided for @noticeIntro.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ce téléphone est un outil de travail : l\'application transmet vos appels professionnels au CRM de l\'entreprise. Voici exactement quoi, pour qui, et pendant combien de temps.'**
+  String get noticeIntro;
+
+  /// No description provided for @noticeRecordedTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ce qui est enregistré'**
+  String get noticeRecordedTitle;
+
+  /// No description provided for @noticeRecordedNumber.
+  ///
+  /// In fr, this message translates to:
+  /// **'Le numéro appelé, ou celui qui vous appelle.'**
+  String get noticeRecordedNumber;
+
+  /// No description provided for @noticeRecordedWhen.
+  ///
+  /// In fr, this message translates to:
+  /// **'La date, l\'heure et la durée de l\'appel.'**
+  String get noticeRecordedWhen;
+
+  /// No description provided for @noticeRecordedDirection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Le sens de l\'appel : entrant, sortant ou manqué.'**
+  String get noticeRecordedDirection;
+
+  /// No description provided for @noticeRecordedNote.
+  ///
+  /// In fr, this message translates to:
+  /// **'La note que vous écrivez vous-même après l\'appel, si vous en écrivez une.'**
+  String get noticeRecordedNote;
+
+  /// No description provided for @noticeNotRecordedTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ce qui n\'est pas enregistré'**
+  String get noticeNotRecordedTitle;
+
+  /// No description provided for @noticeNotRecordedContent.
+  ///
+  /// In fr, this message translates to:
+  /// **'Le contenu de vos conversations. Rien n\'est écouté, enregistré ni transcrit — l\'application n\'accède pas au microphone.'**
+  String get noticeNotRecordedContent;
+
+  /// No description provided for @noticeNotRecordedPersonal.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ni vos messages, ni vos contacts personnels, ni votre position.'**
+  String get noticeNotRecordedPersonal;
+
+  /// No description provided for @noticeNotRecordedHours.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rien en dehors de la plage horaire indiquée dans les réglages.'**
+  String get noticeNotRecordedHours;
+
+  /// No description provided for @noticeWhoTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Qui peut les lire'**
+  String get noticeWhoTitle;
+
+  /// No description provided for @noticeWhoYou.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vous, sur vos propres appels.'**
+  String get noticeWhoYou;
+
+  /// No description provided for @noticeWhoManager.
+  ///
+  /// In fr, this message translates to:
+  /// **'Votre responsable, sur ceux de son équipe.'**
+  String get noticeWhoManager;
+
+  /// No description provided for @noticeWhoAudited.
+  ///
+  /// In fr, this message translates to:
+  /// **'Chaque consultation est elle-même journalisée, y compris celles de votre responsable.'**
+  String get noticeWhoAudited;
+
+  /// No description provided for @noticeHowLongTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Combien de temps'**
+  String get noticeHowLongTitle;
+
+  /// No description provided for @noticeRetentionDays.
+  ///
+  /// In fr, this message translates to:
+  /// **'Les appels sont effacés automatiquement au bout de {days, plural, =1{un jour} other{{days} jours}}'**
+  String noticeRetentionDays(int days);
+
+  /// No description provided for @noticeRetentionApprox.
+  ///
+  /// In fr, this message translates to:
+  /// **'— soit environ {years, plural, =1{un an} other{{years} ans}}.'**
+  String noticeRetentionApprox(int years);
+
+  /// No description provided for @noticeRetentionUnknown.
+  ///
+  /// In fr, this message translates to:
+  /// **'La durée est fixée par votre employeur sur le serveur. Elle s\'affichera ici dès le premier appel transmis.'**
+  String get noticeRetentionUnknown;
+
+  /// No description provided for @noticeRetentionNone.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune suppression automatique n\'est configurée sur ce serveur : les appels sont conservés jusqu\'à suppression manuelle.'**
+  String get noticeRetentionNone;
+
+  /// No description provided for @noticeRightsTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vos droits'**
+  String get noticeRightsTitle;
+
+  /// No description provided for @noticeRightsBody.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vous pouvez demander à consulter ce qui vous concerne, à le faire corriger ou effacer. Adressez-vous à votre responsable ou à l\'administrateur du CRM.'**
+  String get noticeRightsBody;
+
+  /// No description provided for @noticeAcknowledge.
+  ///
+  /// In fr, this message translates to:
+  /// **'J\'ai lu et compris'**
+  String get noticeAcknowledge;
+
+  /// No description provided for @noticeSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Information'**
+  String get noticeSection;
+
+  /// No description provided for @noticeReadAgain.
+  ///
+  /// In fr, this message translates to:
+  /// **'Avis d\'information'**
+  String get noticeReadAgain;
+
+  /// No description provided for @noticeReadAgainBody.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ce que l\'application enregistre, qui peut le lire, et combien de temps c\'est conservé.'**
+  String get noticeReadAgainBody;
+
+  /// No description provided for @noticeReadAgainAction.
+  ///
+  /// In fr, this message translates to:
+  /// **'Relire l\'avis'**
+  String get noticeReadAgainAction;
 }
 
 class _AppLocalizationsDelegate

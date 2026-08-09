@@ -306,4 +306,121 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get screeningGranted => 'رقم المتصل متاح';
+
+  @override
+  String get noticeTitle => 'ما الذي يسجّله هذا التطبيق';
+
+  @override
+  String get noticeIntro =>
+      'هذا الهاتف أداة عمل: يرسل التطبيق مكالماتك المهنية إلى نظام إدارة العملاء الخاص بالشركة. وفيما يلي بالضبط ماذا يُرسل، ولمن، ولأي مدة.';
+
+  @override
+  String get noticeRecordedTitle => 'ما الذي يُسجَّل';
+
+  @override
+  String get noticeRecordedNumber =>
+      'الرقم الذي اتصلت به، أو الرقم الذي اتصل بك.';
+
+  @override
+  String get noticeRecordedWhen => 'تاريخ المكالمة ووقتها ومدتها.';
+
+  @override
+  String get noticeRecordedDirection =>
+      'اتجاه المكالمة: واردة أو صادرة أو فائتة.';
+
+  @override
+  String get noticeRecordedNote =>
+      'الملاحظة التي تكتبها بنفسك بعد المكالمة، إن كتبتها.';
+
+  @override
+  String get noticeNotRecordedTitle => 'ما لا يُسجَّل';
+
+  @override
+  String get noticeNotRecordedContent =>
+      'محتوى محادثاتك. لا شيء يُسمع ولا يُسجَّل ولا يُفرَّغ نصًّا — التطبيق لا يصل إلى الميكروفون.';
+
+  @override
+  String get noticeNotRecordedPersonal =>
+      'ولا رسائلك، ولا جهات اتصالك الشخصية، ولا موقعك.';
+
+  @override
+  String get noticeNotRecordedHours =>
+      'ولا شيء خارج النطاق الزمني المبيَّن في الإعدادات.';
+
+  @override
+  String get noticeWhoTitle => 'من يمكنه الاطّلاع عليها';
+
+  @override
+  String get noticeWhoYou => 'أنت، على مكالماتك وحدها.';
+
+  @override
+  String get noticeWhoManager => 'مسؤولك، على مكالمات فريقه.';
+
+  @override
+  String get noticeWhoAudited =>
+      'كل عملية اطّلاع تُسجَّل بدورها، بما في ذلك اطّلاع مسؤولك.';
+
+  @override
+  String get noticeHowLongTitle => 'لأي مدة';
+
+  @override
+  String noticeRetentionDays(int days) {
+    final intl.NumberFormat daysNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String daysString = daysNumberFormat.format(days);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$daysString يومًا',
+      one: 'يوم واحد',
+    );
+    return 'تُحذف المكالمات تلقائيًّا بعد $_temp0';
+  }
+
+  @override
+  String noticeRetentionApprox(int years) {
+    final intl.NumberFormat yearsNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String yearsString = yearsNumberFormat.format(years);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      years,
+      locale: localeName,
+      other: '$yearsString سنوات',
+      one: 'سنة واحدة',
+    );
+    return '— أي نحو $_temp0.';
+  }
+
+  @override
+  String get noticeRetentionUnknown =>
+      'المدة يحدّدها صاحب العمل على الخادم. وستظهر هنا فور إرسال أول مكالمة.';
+
+  @override
+  String get noticeRetentionNone =>
+      'لا يوجد حذف تلقائي مُعدّ على هذا الخادم: تُحفظ المكالمات إلى أن تُحذف يدويًّا.';
+
+  @override
+  String get noticeRightsTitle => 'حقوقك';
+
+  @override
+  String get noticeRightsBody =>
+      'يمكنك طلب الاطّلاع على ما يخصّك، وتصحيحه أو محوه. توجّه إلى مسؤولك أو إلى مدير نظام إدارة العملاء.';
+
+  @override
+  String get noticeAcknowledge => 'قرأتُ وفهمت';
+
+  @override
+  String get noticeSection => 'معلومات';
+
+  @override
+  String get noticeReadAgain => 'إشعار المعلومات';
+
+  @override
+  String get noticeReadAgainBody =>
+      'ما يسجّله التطبيق، ومن يمكنه الاطّلاع عليه، ومدة الاحتفاظ به.';
+
+  @override
+  String get noticeReadAgainAction => 'إعادة القراءة';
 }

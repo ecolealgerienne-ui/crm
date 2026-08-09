@@ -61,7 +61,7 @@ class SyncWorker(
         var aReessayer = false
 
         for (appel in aEnvoyer) {
-            when (val issue = envoyer(cible, reglages.token, appel.toJson())) {
+            when (val issue = envoyer(cible, reglages.token, appel.toJson(), reglages)) {
                 is Issue.Accepte -> {
                     store.marquerEnvoye(appel.id)
                     // L'invite de note d'un appel déjà remis n'a plus d'objet.
@@ -84,7 +84,12 @@ class SyncWorker(
         if (aReessayer) Result.retry() else Result.success()
     }
 
-    private fun envoyer(cible: URL, jeton: String, corps: JSONObject): Issue {
+    private fun envoyer(
+        cible: URL,
+        jeton: String,
+        corps: JSONObject,
+        reglages: SecureSettings,
+    ): Issue {
         var connexion: HttpURLConnection? = null
         return try {
             connexion = (cible.openConnection() as HttpURLConnection).apply {
@@ -101,7 +106,10 @@ class SyncWorker(
                 // 200 couvre le rejeu d'un appel déjà reçu : l'addon Odoo
                 // répond « duplicate » avec un succès, précisément pour que la
                 // file locale puisse se vider au lieu de réessayer sans fin.
-                200, 201 -> Issue.Accepte
+                200, 201 -> {
+                    releverRetention(connexion, reglages)
+                    Issue.Accepte
+                }
                 400 -> Issue.RefusDefinitif(lireErreur(connexion) ?: "Charge utile refusee (400)")
                 401 -> Issue.Temporaire("Jeton refuse (401)")
                 else -> Issue.Temporaire("Reponse serveur $code")
@@ -111,6 +119,30 @@ class SyncWorker(
             Issue.Temporaire(erreur.message ?: erreur.javaClass.simpleName)
         } finally {
             connexion?.disconnect()
+        }
+    }
+
+    /**
+     * Relève la durée de conservation annoncée par le serveur.
+     *
+     * C'est elle qu'affiche l'écran d'information de l'application. La coder
+     * en dur ici garantirait qu'un jour l'écran annonce trois ans quand le
+     * serveur en garde cinq, et un avis de confidentialité faux est pire que
+     * pas d'avis du tout.
+     *
+     * Silencieuse en cas d'échec, et **volontairement** : un serveur d'une
+     * version antérieure ne renvoie pas ce champ. Faire échouer l'envoi pour
+     * une information d'affichage arrêterait la capture sur un détail.
+     */
+    private fun releverRetention(connexion: HttpURLConnection, reglages: SecureSettings) {
+        try {
+            val corps = connexion.inputStream.bufferedReader().use { it.readText() }
+            val reponse = JSONObject(corps)
+            if (!reponse.has(CHAMP_RETENTION)) return
+            reglages.retentionDays = reponse.getInt(CHAMP_RETENTION)
+            reglages.retentionKnown = true
+        } catch (erreur: Exception) {
+            Log.d(TAG, "Duree de conservation non lisible dans la reponse", erreur)
         }
     }
 
@@ -131,6 +163,7 @@ class SyncWorker(
     companion object {
         private const val TAG = "CallTracker"
         private const val CHEMIN = "/call_tracker/log_call"
+        private const val CHAMP_RETENTION = "retention_days"
         private const val TRAVAIL = "call_tracker_sync"
 
         /**

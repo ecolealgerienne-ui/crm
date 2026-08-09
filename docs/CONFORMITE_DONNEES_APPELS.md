@@ -132,23 +132,80 @@ Tout accès, en lecture comme en écriture, laisse une trace dans
 
 ---
 
-## 6. Ce qui reste à faire
+## 6. L'information des commerciaux — fait
+
+Un écran d'avis s'ouvre au **premier lancement** de l'application et barre
+l'accès aux onglets tant qu'il n'a pas été lu. Il dit, dans cet ordre : ce qui
+est enregistré, **ce qui ne l'est pas**, qui peut le lire, combien de temps,
+et à qui s'adresser. Il reste consultable à tout moment depuis
+*Réglages > Information*.
+
+C'était le dernier maillon manquant : toute la chaîne technique fonctionnait
+sans que la personne enregistrée en soit informée.
+
+### Trois choix qui font la différence entre informer et faire signer
+
+**« Ce qui n'est pas enregistré » vient en deuxième, pas en dernier.** Le
+contenu des conversations, les messages, les contacts personnels, la
+position : c'est la question que se pose réellement quelqu'un à qui on annonce
+que ses appels sont suivis. La repousser en bas de page laisse la crainte
+s'installer pendant toute la lecture.
+
+**Le sélecteur de langue est sur l'écran lui-même.** En porte, c'est le seul
+écran accessible. Un avis rédigé dans une langue que le lecteur ne pratique
+pas n'est pas une information, et l'accusé de lecture qui suit ne vaudrait
+rien. Français, anglais, arabe.
+
+**L'accusé de lecture porte un numéro de version, pas un booléen.** Le jour où
+l'entreprise se met à capturer autre chose, `noticeVersion` est incrémenté et
+chacun revoit l'avis. Avec un simple « déjà vu », le premier accord serait
+définitif et porterait sur un texte qui n'existe plus — un défaut totalement
+silencieux. Un test le verrouille.
+
+### La durée affichée vient du serveur
+
+L'écran n'annonce pas une durée codée en dur : le serveur renvoie
+`retention_days` à chaque appel accepté, l'application le retient et l'affiche.
+Une valeur recopiée dans le téléphone finirait par annoncer trois ans quand le
+serveur en garde cinq — et un avis faux est pire que pas d'avis.
+
+Trois états, distingués à l'écran parce qu'ils disent des choses différentes :
+
+| État | Ce que voit le commercial |
+|---|---|
+| Durée connue, > 0 | « effacés au bout de 1 095 jours — soit environ 3 ans » |
+| Durée connue, = 0 | « aucune suppression automatique n'est configurée » |
+| Pas encore reçue | « fixée par votre employeur ; s'affichera au premier appel transmis » |
+
+Le rejeu d'un appel déjà remis porte la durée lui aussi : sans cela, un
+téléphone à jour ne recevrait plus que des `duplicate` et n'apprendrait jamais
+la politique de l'instance.
+
+### ⚠️ Ce que l'écran ne peut pas garantir
+
+La capture vit côté natif et ne dépend pas de l'application Flutter. **Un
+téléphone configuré par quelqu'un d'autre puis remis en main propre capture dès
+le premier appel, que le titulaire ait vu cet écran ou non.** Aucun code ne
+peut distinguer qui tient le téléphone.
+
+La remise en main propre reste donc une étape humaine : faire ouvrir
+l'application devant la personne, la laisser lire, et seulement ensuite activer
+la capture dans les réglages.
+
+---
+
+## 7. Ce qui reste à faire
 
 Par ordre de ce qui bloquerait un usage réel :
 
-1. **Informer les personnes concernées.** Les commerciaux doivent savoir que
-   leurs appels sont journalisés ; c'est un point de droit du travail autant
-   que de protection des données. L'application n'affiche rien à ce jour. Un
-   écran au premier lancement — ce qui est capturé, ce qui ne l'est pas, où
-   cela va — coûte une page ; si l'information est déjà donnée par écrit à
-   l'embauche, ce point tombe.
-2. **Procédure d'effacement**, aujourd'hui manuelle et sur trois modèles.
-3. **Purge de la file locale** des appels déjà remis, côté téléphone.
-4. **Qualification en cas de vente à un tiers** : l'éditeur deviendrait
+1. **Procédure d'effacement**, aujourd'hui manuelle et sur trois modèles.
+2. **Purge de la file locale** des appels déjà remis, côté téléphone.
+3. **Qualification en cas de vente à un tiers** : l'éditeur deviendrait
    sous-traitant, ce qui appelle un contrat de sous-traitance et une revue
    juridique complète. Hors sujet tant que l'usage reste interne, bloquant dès
    le premier client.
 
-**Réglé depuis la première version de ce document** : la durée de rétention
-(1095 jours), la suppression de la création automatique de pistes, et le
-marquage « appel privé », écarté parce que la ligne est professionnelle.
+**Réglé depuis la première version de ce document** : l'information des
+commerciaux (§6), la durée de rétention (1095 jours), la suppression de la
+création automatique de pistes, et le marquage « appel privé », écarté parce
+que la ligne est professionnelle.

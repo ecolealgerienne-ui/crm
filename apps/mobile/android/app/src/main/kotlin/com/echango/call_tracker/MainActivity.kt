@@ -73,6 +73,13 @@ class MainActivity : FlutterActivity() {
                     "captureEnabled" to reglages.captureEnabled,
                     "fromHour" to reglages.fromHour,
                     "toHour" to reglages.toHour,
+                    // Politique de conservation annoncée par le serveur, pour
+                    // l'écran d'information. `retentionKnown` à faux tant
+                    // qu'aucun appel n'a été accepté : l'écran dit alors que
+                    // la durée est fixée par l'employeur, sans avancer un
+                    // chiffre qu'il ne tient de personne.
+                    "retentionDays" to reglages.retentionDays,
+                    "retentionKnown" to reglages.retentionKnown,
                 )
             )
 

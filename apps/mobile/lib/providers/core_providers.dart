@@ -66,6 +66,50 @@ final themeModeProvider = StateNotifierProvider<ThemeModeNotifier, ThemeMode>(
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Avis d'information
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Version de l'avis affiché au premier lancement.
+///
+/// **À incrémenter dès que le fond change** : ce qui est capturé, qui peut le
+/// lire, combien de temps c'est gardé. Chacun revoit alors l'avis et
+/// l'accuse à nouveau.
+///
+/// ⚠️ C'est un entier, et pas un booléen « déjà vu », précisément pour cela.
+/// Un booléen rendrait le premier accusé de lecture définitif : le jour où
+/// l'entreprise se met à capturer autre chose, plus personne ne reverrait
+/// l'écran, et l'accord obtenu porterait sur un texte qui n'existe plus. Le
+/// défaut serait invisible — tout continuerait de fonctionner.
+///
+/// Une reformulation, une faute corrigée, une traduction : on ne touche à
+/// rien.
+const noticeVersion = 1;
+
+const _cleAvisLu = 'notice.acknowledgedVersion';
+
+class AvisLuNotifier extends StateNotifier<bool> {
+  AvisLuNotifier(this._prefs)
+      : super((_prefs.getInt(_cleAvisLu) ?? 0) >= noticeVersion);
+
+  final SharedPreferences _prefs;
+
+  void accuser() {
+    _prefs.setInt(_cleAvisLu, noticeVersion);
+    state = true;
+  }
+
+  /// Réservé aux tests et au dépannage : refait apparaître l'avis en porte.
+  void reinitialiser() {
+    _prefs.remove(_cleAvisLu);
+    state = false;
+  }
+}
+
+final avisLuProvider = StateNotifierProvider<AvisLuNotifier, bool>(
+  (ref) => AvisLuNotifier(ref.watch(sharedPreferencesProvider)),
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
 // État lu depuis la couche native
 // ─────────────────────────────────────────────────────────────────────────────
 

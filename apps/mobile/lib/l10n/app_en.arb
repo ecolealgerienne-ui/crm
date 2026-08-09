@@ -83,5 +83,48 @@
   "screeningTitle": "Allow reading the incoming number",
   "screeningBody": "Without this role, Android does not pass the number to the app and the card cannot be shown. It does NOT make the app your default phone app, and no call is screened or blocked.",
   "screeningAction": "Grant the role",
-  "screeningGranted": "Incoming number accessible"
+  "screeningGranted": "Incoming number accessible",
+  "noticeTitle": "What this app records",
+  "noticeIntro": "This phone is a work tool: the app sends your business calls to the company CRM. Here is exactly what, for whom, and for how long.",
+  "noticeRecordedTitle": "What is recorded",
+  "noticeRecordedNumber": "The number you called, or the number calling you.",
+  "noticeRecordedWhen": "The date, time and length of the call.",
+  "noticeRecordedDirection": "The direction: incoming, outgoing or missed.",
+  "noticeRecordedNote": "The note you write yourself after the call, if you write one.",
+  "noticeNotRecordedTitle": "What is not recorded",
+  "noticeNotRecordedContent": "The content of your conversations. Nothing is listened to, recorded or transcribed — the app has no access to the microphone.",
+  "noticeNotRecordedPersonal": "Not your messages, not your personal contacts, not your location.",
+  "noticeNotRecordedHours": "Nothing outside the time range shown in the settings.",
+  "noticeWhoTitle": "Who can read them",
+  "noticeWhoYou": "You, for your own calls.",
+  "noticeWhoManager": "Your manager, for their team's calls.",
+  "noticeWhoAudited": "Every lookup is itself logged, your manager's included.",
+  "noticeHowLongTitle": "For how long",
+  "noticeRetentionDays": "Calls are deleted automatically after {days, plural, =1{one day} other{{days} days}}",
+  "@noticeRetentionDays": {
+    "placeholders": {
+      "days": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "noticeRetentionApprox": "— about {years, plural, =1{one year} other{{years} years}}.",
+  "@noticeRetentionApprox": {
+    "placeholders": {
+      "years": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "noticeRetentionUnknown": "The duration is set by your employer on the server. It will appear here as soon as the first call is sent.",
+  "noticeRetentionNone": "No automatic deletion is configured on this server: calls are kept until deleted manually.",
+  "noticeRightsTitle": "Your rights",
+  "noticeRightsBody": "You may ask to see what concerns you, and to have it corrected or erased. Speak to your manager or to the CRM administrator.",
+  "noticeAcknowledge": "I have read and understood",
+  "noticeSection": "Information",
+  "noticeReadAgain": "Privacy notice",
+  "noticeReadAgainBody": "What the app records, who can read it, and how long it is kept.",
+  "noticeReadAgainAction": "Read again"
 }

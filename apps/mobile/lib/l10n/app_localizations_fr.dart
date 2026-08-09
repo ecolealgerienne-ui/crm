@@ -305,4 +305,121 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get screeningGranted => 'Numéro entrant accessible';
+
+  @override
+  String get noticeTitle => 'Ce que cette application enregistre';
+
+  @override
+  String get noticeIntro =>
+      'Ce téléphone est un outil de travail : l\'application transmet vos appels professionnels au CRM de l\'entreprise. Voici exactement quoi, pour qui, et pendant combien de temps.';
+
+  @override
+  String get noticeRecordedTitle => 'Ce qui est enregistré';
+
+  @override
+  String get noticeRecordedNumber =>
+      'Le numéro appelé, ou celui qui vous appelle.';
+
+  @override
+  String get noticeRecordedWhen => 'La date, l\'heure et la durée de l\'appel.';
+
+  @override
+  String get noticeRecordedDirection =>
+      'Le sens de l\'appel : entrant, sortant ou manqué.';
+
+  @override
+  String get noticeRecordedNote =>
+      'La note que vous écrivez vous-même après l\'appel, si vous en écrivez une.';
+
+  @override
+  String get noticeNotRecordedTitle => 'Ce qui n\'est pas enregistré';
+
+  @override
+  String get noticeNotRecordedContent =>
+      'Le contenu de vos conversations. Rien n\'est écouté, enregistré ni transcrit — l\'application n\'accède pas au microphone.';
+
+  @override
+  String get noticeNotRecordedPersonal =>
+      'Ni vos messages, ni vos contacts personnels, ni votre position.';
+
+  @override
+  String get noticeNotRecordedHours =>
+      'Rien en dehors de la plage horaire indiquée dans les réglages.';
+
+  @override
+  String get noticeWhoTitle => 'Qui peut les lire';
+
+  @override
+  String get noticeWhoYou => 'Vous, sur vos propres appels.';
+
+  @override
+  String get noticeWhoManager => 'Votre responsable, sur ceux de son équipe.';
+
+  @override
+  String get noticeWhoAudited =>
+      'Chaque consultation est elle-même journalisée, y compris celles de votre responsable.';
+
+  @override
+  String get noticeHowLongTitle => 'Combien de temps';
+
+  @override
+  String noticeRetentionDays(int days) {
+    final intl.NumberFormat daysNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String daysString = daysNumberFormat.format(days);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$daysString jours',
+      one: 'un jour',
+    );
+    return 'Les appels sont effacés automatiquement au bout de $_temp0';
+  }
+
+  @override
+  String noticeRetentionApprox(int years) {
+    final intl.NumberFormat yearsNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String yearsString = yearsNumberFormat.format(years);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      years,
+      locale: localeName,
+      other: '$yearsString ans',
+      one: 'un an',
+    );
+    return '— soit environ $_temp0.';
+  }
+
+  @override
+  String get noticeRetentionUnknown =>
+      'La durée est fixée par votre employeur sur le serveur. Elle s\'affichera ici dès le premier appel transmis.';
+
+  @override
+  String get noticeRetentionNone =>
+      'Aucune suppression automatique n\'est configurée sur ce serveur : les appels sont conservés jusqu\'à suppression manuelle.';
+
+  @override
+  String get noticeRightsTitle => 'Vos droits';
+
+  @override
+  String get noticeRightsBody =>
+      'Vous pouvez demander à consulter ce qui vous concerne, à le faire corriger ou effacer. Adressez-vous à votre responsable ou à l\'administrateur du CRM.';
+
+  @override
+  String get noticeAcknowledge => 'J\'ai lu et compris';
+
+  @override
+  String get noticeSection => 'Information';
+
+  @override
+  String get noticeReadAgain => 'Avis d\'information';
+
+  @override
+  String get noticeReadAgainBody =>
+      'Ce que l\'application enregistre, qui peut le lire, et combien de temps c\'est conservé.';
+
+  @override
+  String get noticeReadAgainAction => 'Relire l\'avis';
 }

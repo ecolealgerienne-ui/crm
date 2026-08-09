@@ -83,5 +83,48 @@
   "screeningTitle": "السماح بقراءة رقم المتصل",
   "screeningBody": "بدون هذا الدور، لا يمرّر أندرويد الرقم إلى التطبيق ولا يمكن عرض البطاقة. وهو لا يجعل التطبيق تطبيق الهاتف الافتراضي، ولا يتم حجب أي مكالمة.",
   "screeningAction": "منح الدور",
-  "screeningGranted": "رقم المتصل متاح"
+  "screeningGranted": "رقم المتصل متاح",
+  "noticeTitle": "ما الذي يسجّله هذا التطبيق",
+  "noticeIntro": "هذا الهاتف أداة عمل: يرسل التطبيق مكالماتك المهنية إلى نظام إدارة العملاء الخاص بالشركة. وفيما يلي بالضبط ماذا يُرسل، ولمن، ولأي مدة.",
+  "noticeRecordedTitle": "ما الذي يُسجَّل",
+  "noticeRecordedNumber": "الرقم الذي اتصلت به، أو الرقم الذي اتصل بك.",
+  "noticeRecordedWhen": "تاريخ المكالمة ووقتها ومدتها.",
+  "noticeRecordedDirection": "اتجاه المكالمة: واردة أو صادرة أو فائتة.",
+  "noticeRecordedNote": "الملاحظة التي تكتبها بنفسك بعد المكالمة، إن كتبتها.",
+  "noticeNotRecordedTitle": "ما لا يُسجَّل",
+  "noticeNotRecordedContent": "محتوى محادثاتك. لا شيء يُسمع ولا يُسجَّل ولا يُفرَّغ نصًّا — التطبيق لا يصل إلى الميكروفون.",
+  "noticeNotRecordedPersonal": "ولا رسائلك، ولا جهات اتصالك الشخصية، ولا موقعك.",
+  "noticeNotRecordedHours": "ولا شيء خارج النطاق الزمني المبيَّن في الإعدادات.",
+  "noticeWhoTitle": "من يمكنه الاطّلاع عليها",
+  "noticeWhoYou": "أنت، على مكالماتك وحدها.",
+  "noticeWhoManager": "مسؤولك، على مكالمات فريقه.",
+  "noticeWhoAudited": "كل عملية اطّلاع تُسجَّل بدورها، بما في ذلك اطّلاع مسؤولك.",
+  "noticeHowLongTitle": "لأي مدة",
+  "noticeRetentionDays": "تُحذف المكالمات تلقائيًّا بعد {days, plural, =1{يوم واحد} other{{days} يومًا}}",
+  "@noticeRetentionDays": {
+    "placeholders": {
+      "days": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "noticeRetentionApprox": "— أي نحو {years, plural, =1{سنة واحدة} other{{years} سنوات}}.",
+  "@noticeRetentionApprox": {
+    "placeholders": {
+      "years": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "noticeRetentionUnknown": "المدة يحدّدها صاحب العمل على الخادم. وستظهر هنا فور إرسال أول مكالمة.",
+  "noticeRetentionNone": "لا يوجد حذف تلقائي مُعدّ على هذا الخادم: تُحفظ المكالمات إلى أن تُحذف يدويًّا.",
+  "noticeRightsTitle": "حقوقك",
+  "noticeRightsBody": "يمكنك طلب الاطّلاع على ما يخصّك، وتصحيحه أو محوه. توجّه إلى مسؤولك أو إلى مدير نظام إدارة العملاء.",
+  "noticeAcknowledge": "قرأتُ وفهمت",
+  "noticeSection": "معلومات",
+  "noticeReadAgain": "إشعار المعلومات",
+  "noticeReadAgainBody": "ما يسجّله التطبيق، ومن يمكنه الاطّلاع عليه، ومدة الاحتفاظ به.",
+  "noticeReadAgainAction": "إعادة القراءة"
 }

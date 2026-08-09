@@ -123,6 +123,31 @@ Trois choix qui ne se devinent pas :
 Côté Odoo, la note est publiée dans le fil de la piste, et **revient au
 Caller ID de l'appel suivant**.
 
+## L'avis d'information
+
+Un écran barre l'accès aux onglets au premier lancement : ce qui est
+enregistré, ce qui ne l'est pas, qui peut le lire, combien de temps. Il reste
+consultable depuis *Réglages > Information*.
+
+Le fond et le raisonnement sont dans `docs/CONFORMITE_DONNEES_APPELS.md` §6.
+Côté code, trois points valent d'être connus avant d'y toucher :
+
+- **`noticeVersion` dans `core_providers.dart`.** L'accusé de lecture est un
+  entier, pas un booléen. À incrémenter dès que le **fond** change — ce qui
+  est capturé, qui le lit, combien de temps — pour que chacun revoie l'avis.
+  Une reformulation ou une traduction ne le change pas.
+- **La durée de conservation vient du serveur**, jamais d'une constante :
+  Odoo renvoie `retention_days` à chaque appel accepté, `SyncWorker` la range
+  dans `SecureSettings`. « Pas encore reçue » et « aucune purge » valent zéro
+  toutes les deux dans le code et disent l'inverse au lecteur — l'écran les
+  distingue, `retentionKnown` sert à cela.
+- **Le sélecteur de langue est sur l'écran**, parce qu'en porte c'est le seul
+  écran atteignable.
+
+⚠️ La capture est native : un téléphone configuré par un tiers capture avant
+que quiconque ait vu cet écran. Aucun code ne peut y remédier — la remise en
+main propre reste une étape humaine.
+
 ## Phase 2 — pas commencé
 
 Caller ID en surimpression (`SYSTEM_ALERT_WINDOW`), recherche de contact,

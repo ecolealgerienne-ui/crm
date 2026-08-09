@@ -265,6 +265,15 @@ class CallTrackerController(http.Controller):
         Pas de nom de contact ni de libellé de piste — l'app n'en a pas besoin
         pour accuser réception, et une route d'écriture n'a pas à devenir une
         fuite de lecture.
+
+        Une exception à cette économie : ``retention_days``. L'application doit
+        pouvoir annoncer au commercial combien de temps ses appels sont
+        conservés, or cette durée est fixée par le ``.env`` du serveur. La
+        recopier en dur dans l'app serait la garantie qu'un jour l'écran
+        d'information dira trois ans quand le serveur en garde cinq — et un
+        avis de confidentialité faux est pire que pas d'avis du tout. Ce n'est
+        pas une donnée personnelle : c'est la politique de l'instance, que
+        celui qui est enregistré a le droit de connaître.
         """
         if appel.lead_id:
             rattachement = 'crm.lead,%d' % appel.lead_id.id
@@ -276,4 +285,5 @@ class CallTrackerController(http.Controller):
             'status': statut,
             'call_id': appel.id,
             'linked_record': rattachement,
+            'retention_days': request.env['call.tracker.log']._jours_de_retention(),
         }

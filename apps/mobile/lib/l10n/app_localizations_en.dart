@@ -303,4 +303,121 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get screeningGranted => 'Incoming number accessible';
+
+  @override
+  String get noticeTitle => 'What this app records';
+
+  @override
+  String get noticeIntro =>
+      'This phone is a work tool: the app sends your business calls to the company CRM. Here is exactly what, for whom, and for how long.';
+
+  @override
+  String get noticeRecordedTitle => 'What is recorded';
+
+  @override
+  String get noticeRecordedNumber =>
+      'The number you called, or the number calling you.';
+
+  @override
+  String get noticeRecordedWhen => 'The date, time and length of the call.';
+
+  @override
+  String get noticeRecordedDirection =>
+      'The direction: incoming, outgoing or missed.';
+
+  @override
+  String get noticeRecordedNote =>
+      'The note you write yourself after the call, if you write one.';
+
+  @override
+  String get noticeNotRecordedTitle => 'What is not recorded';
+
+  @override
+  String get noticeNotRecordedContent =>
+      'The content of your conversations. Nothing is listened to, recorded or transcribed — the app has no access to the microphone.';
+
+  @override
+  String get noticeNotRecordedPersonal =>
+      'Not your messages, not your personal contacts, not your location.';
+
+  @override
+  String get noticeNotRecordedHours =>
+      'Nothing outside the time range shown in the settings.';
+
+  @override
+  String get noticeWhoTitle => 'Who can read them';
+
+  @override
+  String get noticeWhoYou => 'You, for your own calls.';
+
+  @override
+  String get noticeWhoManager => 'Your manager, for their team\'s calls.';
+
+  @override
+  String get noticeWhoAudited =>
+      'Every lookup is itself logged, your manager\'s included.';
+
+  @override
+  String get noticeHowLongTitle => 'For how long';
+
+  @override
+  String noticeRetentionDays(int days) {
+    final intl.NumberFormat daysNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String daysString = daysNumberFormat.format(days);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$daysString days',
+      one: 'one day',
+    );
+    return 'Calls are deleted automatically after $_temp0';
+  }
+
+  @override
+  String noticeRetentionApprox(int years) {
+    final intl.NumberFormat yearsNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String yearsString = yearsNumberFormat.format(years);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      years,
+      locale: localeName,
+      other: '$yearsString years',
+      one: 'one year',
+    );
+    return '— about $_temp0.';
+  }
+
+  @override
+  String get noticeRetentionUnknown =>
+      'The duration is set by your employer on the server. It will appear here as soon as the first call is sent.';
+
+  @override
+  String get noticeRetentionNone =>
+      'No automatic deletion is configured on this server: calls are kept until deleted manually.';
+
+  @override
+  String get noticeRightsTitle => 'Your rights';
+
+  @override
+  String get noticeRightsBody =>
+      'You may ask to see what concerns you, and to have it corrected or erased. Speak to your manager or to the CRM administrator.';
+
+  @override
+  String get noticeAcknowledge => 'I have read and understood';
+
+  @override
+  String get noticeSection => 'Information';
+
+  @override
+  String get noticeReadAgain => 'Privacy notice';
+
+  @override
+  String get noticeReadAgainBody =>
+      'What the app records, who can read it, and how long it is kept.';
+
+  @override
+  String get noticeReadAgainAction => 'Read again';
 }

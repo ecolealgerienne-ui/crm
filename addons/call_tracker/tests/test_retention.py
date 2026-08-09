@@ -3,7 +3,9 @@ from datetime import timedelta
 from unittest.mock import patch
 
 from odoo import fields
-from odoo.tests import TransactionCase, tagged
+from odoo.tests import HttpCase, TransactionCase, tagged
+
+from .common import BancCallTracker, ChargeUtile
 
 
 @tagged('post_install', '-at_install')
@@ -117,3 +119,52 @@ class TestRetention(TransactionCase):
         self.assertTrue(cron.active)
         self.assertEqual(cron.model_id.model, 'call.tracker.log')
         self.assertIn('_purger', cron.code)
+
+
+@tagged('post_install', '-at_install')
+class TestRetentionAnnoncee(HttpCase, BancCallTracker):
+    """La durée de conservation annoncée à l'application mobile.
+
+    C'est elle qu'affiche l'écran d'information du téléphone. La recopier en
+    dur dans l'application serait la garantie qu'un jour elle annonce trois ans
+    quand le serveur en garde cinq — et un avis de confidentialité faux est
+    pire que pas d'avis du tout.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.appareil = self.creer_appareil()
+
+    def test_la_reponse_annonce_la_duree_du_serveur(self):
+        with patch.dict('os.environ', {'CALL_TRACKER_RETENTION_DAYS': '1095'}):
+            reponse = self.poster(ChargeUtile.valide(client_event_id='evt-ret-http-1'))
+
+        self.assertEqual(reponse.status_code, 201)
+        self.assertEqual(reponse.json()['retention_days'], 1095)
+
+    def test_zero_veut_dire_aucune_purge_et_se_dit(self):
+        # Zéro n'est pas une absence de réponse : c'est une politique, « on ne
+        # supprime rien ». L'application la présente autrement que « durée
+        # encore inconnue », et ne peut le faire que si le champ est là.
+        with patch.dict('os.environ', {'CALL_TRACKER_RETENTION_DAYS': '0'}):
+            reponse = self.poster(ChargeUtile.valide(client_event_id='evt-ret-http-2'))
+
+        self.assertIn('retention_days', reponse.json())
+        self.assertEqual(reponse.json()['retention_days'], 0)
+
+    def test_le_rejeu_annonce_la_duree_lui_aussi(self):
+        """Le cas qui casserait en silence.
+
+        Un téléphone qui a déjà tout remis ne reçoit plus que des `duplicate`.
+        Si seule la création portait la durée, ces appareils-là n'apprendraient
+        jamais la politique de l'instance — et leur écran d'information
+        resterait vide sans que rien ne le signale.
+        """
+        charge = ChargeUtile.valide(client_event_id='evt-ret-http-3')
+        with patch.dict('os.environ', {'CALL_TRACKER_RETENTION_DAYS': '365'}):
+            self.poster(charge)
+            rejeu = self.poster(charge)
+
+        self.assertEqual(rejeu.status_code, 200)
+        self.assertEqual(rejeu.json()['status'], 'duplicate')
+        self.assertEqual(rejeu.json()['retention_days'], 365)

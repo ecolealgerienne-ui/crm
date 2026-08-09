@@ -136,5 +136,48 @@
   "screeningTitle": "Autoriser la lecture du numéro entrant",
   "screeningBody": "Sans ce rôle, Android ne communique pas le numéro à l'application et la fiche ne peut pas s'afficher. Il ne fait PAS de l'application votre téléphone par défaut, et aucun appel n'est filtré ni bloqué.",
   "screeningAction": "Accorder le rôle",
-  "screeningGranted": "Numéro entrant accessible"
+  "screeningGranted": "Numéro entrant accessible",
+  "noticeTitle": "Ce que cette application enregistre",
+  "noticeIntro": "Ce téléphone est un outil de travail : l'application transmet vos appels professionnels au CRM de l'entreprise. Voici exactement quoi, pour qui, et pendant combien de temps.",
+  "noticeRecordedTitle": "Ce qui est enregistré",
+  "noticeRecordedNumber": "Le numéro appelé, ou celui qui vous appelle.",
+  "noticeRecordedWhen": "La date, l'heure et la durée de l'appel.",
+  "noticeRecordedDirection": "Le sens de l'appel : entrant, sortant ou manqué.",
+  "noticeRecordedNote": "La note que vous écrivez vous-même après l'appel, si vous en écrivez une.",
+  "noticeNotRecordedTitle": "Ce qui n'est pas enregistré",
+  "noticeNotRecordedContent": "Le contenu de vos conversations. Rien n'est écouté, enregistré ni transcrit — l'application n'accède pas au microphone.",
+  "noticeNotRecordedPersonal": "Ni vos messages, ni vos contacts personnels, ni votre position.",
+  "noticeNotRecordedHours": "Rien en dehors de la plage horaire indiquée dans les réglages.",
+  "noticeWhoTitle": "Qui peut les lire",
+  "noticeWhoYou": "Vous, sur vos propres appels.",
+  "noticeWhoManager": "Votre responsable, sur ceux de son équipe.",
+  "noticeWhoAudited": "Chaque consultation est elle-même journalisée, y compris celles de votre responsable.",
+  "noticeHowLongTitle": "Combien de temps",
+  "noticeRetentionDays": "Les appels sont effacés automatiquement au bout de {days, plural, =1{un jour} other{{days} jours}}",
+  "@noticeRetentionDays": {
+    "placeholders": {
+      "days": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "noticeRetentionApprox": "— soit environ {years, plural, =1{un an} other{{years} ans}}.",
+  "@noticeRetentionApprox": {
+    "placeholders": {
+      "years": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "noticeRetentionUnknown": "La durée est fixée par votre employeur sur le serveur. Elle s'affichera ici dès le premier appel transmis.",
+  "noticeRetentionNone": "Aucune suppression automatique n'est configurée sur ce serveur : les appels sont conservés jusqu'à suppression manuelle.",
+  "noticeRightsTitle": "Vos droits",
+  "noticeRightsBody": "Vous pouvez demander à consulter ce qui vous concerne, à le faire corriger ou effacer. Adressez-vous à votre responsable ou à l'administrateur du CRM.",
+  "noticeAcknowledge": "J'ai lu et compris",
+  "noticeSection": "Information",
+  "noticeReadAgain": "Avis d'information",
+  "noticeReadAgainBody": "Ce que l'application enregistre, qui peut le lire, et combien de temps c'est conservé.",
+  "noticeReadAgainAction": "Relire l'avis"
 }
