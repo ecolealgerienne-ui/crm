@@ -49,8 +49,14 @@ CHAMPS_ATTENDUS = {
     'direction',
     'duration_seconds',
     'started_at',
+    'note',
 }
-CHAMPS_OBLIGATOIRES = CHAMPS_ATTENDUS - {'duration_seconds'}
+CHAMPS_OBLIGATOIRES = CHAMPS_ATTENDUS - {'duration_seconds', 'note'}
+
+# Une note prise au pouce sur un téléphone, pas un compte rendu. Au-delà, c'est
+# un collage accidentel ou une app qui déraille — mieux vaut refuser que
+# stocker.
+NOTE_MAX = 1000
 
 # Durée au-delà de laquelle un appel est considéré comme une erreur de saisie
 # plutôt qu'une communication (24 h).
@@ -100,12 +106,20 @@ def _lire_charge(corps):
     if not isinstance(duree, int) or isinstance(duree, bool) or not 0 <= duree <= DUREE_MAX:
         raise ErreurCharge("duration_seconds doit être un entier entre 0 et %d" % DUREE_MAX)
 
+    note = charge.get('note')
+    if note is not None:
+        if not isinstance(note, str):
+            raise ErreurCharge("note doit être une chaîne")
+        if len(note) > NOTE_MAX:
+            raise ErreurCharge("note trop longue (%d caractères maximum)" % NOTE_MAX)
+
     return {
         'client_event_id': identifiant.strip(),
         'phone_number': numero.strip(),
         'direction': direction,
         'duration_seconds': duree,
         'started_at': _lire_horodatage(charge['started_at']),
+        'note': (note or '').strip() or False,
     }
 
 

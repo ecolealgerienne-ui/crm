@@ -8,12 +8,51 @@ import '../../app/theme.dart';
 import '../../data/capture_models.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/core_providers.dart';
+import 'note_dialog.dart';
 
-class CallsScreen extends ConsumerWidget {
+class CallsScreen extends ConsumerStatefulWidget {
   const CallsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CallsScreen> createState() => _CallsScreenState();
+}
+
+class _CallsScreenState extends ConsumerState<CallsScreen>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    // L'observateur sert au retour d'arrière-plan : toucher la notification
+    // alors que l'app tourne déjà ne reconstruit pas l'écran, et l'invite ne
+    // s'ouvrirait jamais dans ce cas — qui est pourtant le plus fréquent.
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _ouvrirInviteEnAttente());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState etat) {
+    if (etat == AppLifecycleState.resumed) _ouvrirInviteEnAttente();
+  }
+
+  Future<void> _ouvrirInviteEnAttente() async {
+    final id = await ref.read(captureChannelProvider).noteEnAttente();
+    if (id == null || !mounted) return;
+
+    final appels = await ref.read(captureChannelProvider).listerAppels();
+    final appel = appels.where((a) => a.id == id).firstOrNull;
+    if (appel == null || !mounted) return;
+
+    await ouvrirDialogueNote(context, ref, appel);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final appels = ref.watch(appelsProvider);
 
@@ -100,13 +139,13 @@ class _BandeauSynchro extends ConsumerWidget {
   }
 }
 
-class _LigneAppel extends StatelessWidget {
+class _LigneAppel extends ConsumerWidget {
   const _LigneAppel({required this.appel});
 
   final CallEntry appel;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     final couleurs = Theme.of(context).extension<AppSemanticColors>()!;
     final locale = Localizations.localeOf(context).toLanguageTag();
@@ -155,9 +194,28 @@ class _LigneAppel extends StatelessWidget {
         // droite en mise en page RTL.
         textDirection: TextDirection.ltr,
       ),
-      subtitle: Text('$libelle · $duree · $heure'),
-      trailing: _PastilleSynchro(appel: appel),
-      isThreeLine: false,
+      subtitle: Text(
+        [
+          '$libelle · $duree · $heure',
+          if (appel.note?.isNotEmpty == true) appel.note!,
+        ].join('\n'),
+      ),
+      isThreeLine: appel.note?.isNotEmpty == true,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Rattrapage manuel : la notification a pu être balayée, ou
+          // l'autorisation de notifier refusée. Sans ce bouton, la note
+          // deviendrait inaccessible dans les deux cas.
+          if (appel.awaitingNote)
+            IconButton(
+              tooltip: l10n.noteAdd,
+              icon: const Icon(Icons.edit_note),
+              onPressed: () => ouvrirDialogueNote(context, ref, appel),
+            ),
+          _PastilleSynchro(appel: appel),
+        ],
+      ),
     );
   }
 }

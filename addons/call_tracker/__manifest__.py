@@ -30,6 +30,8 @@ qui est écrit et de ce qui est renvoyé.
         'views/call_tracker_device_views.xml',
         'views/call_tracker_log_views.xml',
         'views/call_tracker_audit_views.xml',
+        'views/res_partner_views.xml',
+        'views/crm_lead_views.xml',
         'views/call_tracker_menus.xml',
     ],
     'installable': True,

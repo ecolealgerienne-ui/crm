@@ -101,8 +101,29 @@ survie du service aux optimisations de batterie des surcouches constructeur
 d'application. C'est la raison de la carte d'avertissement dans les réglages,
 et cela reste à éprouver sur un vrai téléphone, sur plusieurs jours.
 
+## La note après l'appel
+
+Une notification propose de noter ce qui vient d'être dit. L'appel est
+**retenu deux minutes** dans la file locale, le temps de la saisie, puis part —
+avec la note si elle a été écrite, sans elle sinon.
+
+Trois choix qui ne se devinent pas :
+
+- **Une notification, pas un écran qui s'impose.** L'app n'est presque jamais
+  au premier plan quand un appel se termine ; surgir par-dessus l'écran
+  d'accueil juste après un raccrochage serait une intrusion.
+- **La retenue est bornée.** Si le commercial ne répond pas, l'appel part sans
+  note. Une fonctionnalité de confort ne doit pas pouvoir retenir la donnée
+  principale. Un rendez-vous WorkManager est posé à l'échéance, sinon l'appel
+  attendrait le suivant pour remonter.
+- **Un bouton de rattrapage dans la liste**, parce que la notification a pu
+  être balayée ou l'autorisation de notifier refusée — sans lui la note
+  deviendrait inaccessible dans les deux cas.
+
+Côté Odoo, la note est publiée dans le fil de la piste, et **revient au
+Caller ID de l'appel suivant**.
+
 ## Phase 2 — pas commencé
 
 Caller ID en surimpression (`SYSTEM_ALERT_WINDOW`), recherche de contact,
-note après appel, tableau de bord. La route de lecture Odoo correspondante
-n'existe pas encore non plus.
+tableau de bord.

@@ -1,17 +1,18 @@
 {
   "@@locale": "fr",
-
   "appTitle": "Call Tracker",
-
   "commonCancel": "Annuler",
   "commonSave": "Enregistrer",
   "commonRetry": "Réessayer",
   "commonClose": "Fermer",
   "commonError": "Erreur : {error}",
   "@commonError": {
-    "placeholders": { "error": { "type": "String" } }
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
   },
-
   "languageSwitchTooltip": "Changer de langue",
   "languageFrench": "Français",
   "languageEnglish": "English",
@@ -19,44 +20,58 @@
   "themeSwitchTooltip": "Changer de thème",
   "themeLight": "Clair",
   "themeDark": "Sombre",
-
   "navCalls": "Appels",
   "navSettings": "Réglages",
-
   "callsTitle": "Appels capturés",
   "callsEmptyTitle": "Aucun appel capturé",
   "callsEmptyBody": "Les appels apparaîtront ici automatiquement, dès qu'un appel sera passé ou reçu.",
   "callsPendingCount": "{count, plural, =0{Tout est synchronisé} =1{1 appel en attente} other{{count} appels en attente}}",
   "@callsPendingCount": {
-    "placeholders": { "count": { "type": "int", "format": "decimalPattern" } }
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
   },
   "callsSyncNow": "Synchroniser maintenant",
-
   "directionInbound": "Entrant",
   "directionOutbound": "Sortant",
   "directionMissed": "Manqué",
-
   "syncPending": "En attente",
   "syncSent": "Synchronisé",
   "syncFailed": "Échec",
   "syncFailedWithReason": "Échec : {reason}",
   "@syncFailedWithReason": {
-    "placeholders": { "reason": { "type": "String" } }
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
   },
-
   "durationSeconds": "{seconds} s",
   "@durationSeconds": {
     "description": "⚠️ `format: decimalPattern` est indispensable, pas décoratif. Sans lui, intl rend l'entier par toString() : l'arabe affiche « 8 ث » en chiffres latins juste à côté d'une date en chiffres arabes (٩ أغسطس ٢٠٢٦), que DateFormat localise, lui. Constaté à l'écran le 2026-08-09.",
-    "placeholders": { "seconds": { "type": "int", "format": "decimalPattern" } }
+    "placeholders": {
+      "seconds": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
   },
   "durationMinutesSeconds": "{minutes} min {seconds} s",
   "@durationMinutesSeconds": {
     "placeholders": {
-      "minutes": { "type": "int", "format": "decimalPattern" },
-      "seconds": { "type": "int", "format": "decimalPattern" }
+      "minutes": {
+        "type": "int",
+        "format": "decimalPattern"
+      },
+      "seconds": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
     }
   },
-
   "settingsTitle": "Réglages",
   "settingsConnectionSection": "Connexion à Odoo",
   "settingsServerUrl": "Adresse du serveur",
@@ -67,7 +82,6 @@
   "settingsTokenSet": "Jeton enregistré",
   "settingsTokenMissing": "Aucun jeton — les appels ne seront pas envoyés",
   "settingsTokenHelp": "Le jeton se génère dans Odoo, dans CRM puis Call Tracker puis Appareils. Il n'est affiché qu'une seule fois.",
-
   "settingsCaptureSection": "Capture",
   "settingsCaptureEnabled": "Capturer les appels",
   "settingsCaptureEnabledHelp": "Désactiver suspend toute capture, sans effacer ce qui est déjà en attente.",
@@ -77,9 +91,15 @@
   "settingsHoursTo": "Jusqu'à",
   "settingsHoursRange": "De {from} à {to}",
   "@settingsHoursRange": {
-    "placeholders": { "from": { "type": "String" }, "to": { "type": "String" } }
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
   },
-
   "permissionsSection": "Autorisations",
   "permissionsMissingTitle": "Autorisations manquantes",
   "permissionsMissingBody": "Sans l'accès au journal d'appels et à l'état du téléphone, aucun appel ne peut être capturé.",
@@ -87,8 +107,16 @@
   "permissionsGranted": "Accordées",
   "permissionsOpenSettings": "Ouvrir les réglages du système",
   "permissionsPermanentlyDenied": "Refusées définitivement — à réactiver dans les réglages du système.",
-
   "batteryWarningTitle": "Économiseur de batterie",
   "batteryWarningBody": "Le système peut arrêter la capture en arrière-plan. Exclure l'application de l'optimisation de batterie fiabilise le suivi.",
-  "batteryWarningAction": "Exclure l'application"
+  "batteryWarningAction": "Exclure l'application",
+  "noteDialogTitle": "Note après l'appel",
+  "noteDialogHint": "Ce qui s'est dit, en une phrase",
+  "noteSave": "Enregistrer la note",
+  "noteSkip": "Sans note",
+  "noteAdd": "Ajouter une note",
+  "noteSaved": "Note enregistrée",
+  "noteAwaiting": "En attente de note",
+  "permissionsNotifications": "Notifications",
+  "permissionsNotificationsBody": "Sans autorisation de notifier, l'application ne peut pas proposer d'écrire une note après un appel. La capture, elle, continue."
 }

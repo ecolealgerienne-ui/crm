@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        Bouton de raccourci sur la fiche contact.
+
+        C'est la moitié manquante du rattachement : les appels portaient déjà
+        `partner_id`, mais rien ne permettait de partir d'un client pour voir
+        ses appels. Un lien qui n'existe que dans la base ne sert qu'à celui
+        qui écrit du SQL.
+    -->
+    <record id="view_partner_form_call_tracker" model="ir.ui.view">
+        <field name="name">res.partner.form.call.tracker</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <div name="button_box" position="inside">
+                <button name="action_voir_appels" type="object"
+                        class="oe_stat_button" icon="fa-phone"
+                        invisible="call_tracker_count == 0">
+                    <field name="call_tracker_count" widget="statinfo" string="Appels"/>
+                </button>
+            </div>
+        </field>
+    </record>
+
+</odoo>

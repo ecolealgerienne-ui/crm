@@ -18,6 +18,8 @@ class CallEntry {
     required this.syncStatus,
     this.lastError,
     this.attempts = 0,
+    this.note,
+    this.awaitingNote = false,
   });
 
   final int id;
@@ -33,6 +35,13 @@ class CallEntry {
   final SyncStatus syncStatus;
   final String? lastError;
   final int attempts;
+
+  /// Note prise après l'appel, si le commercial en a saisi une.
+  final String? note;
+
+  /// L'appel est retenu, le temps que la note soit saisie. Il ne partira pas
+  /// tant que ce drapeau est levé — ou que l'échéance native n'est pas passée.
+  final bool awaitingNote;
 
   factory CallEntry.fromMap(Map<dynamic, dynamic> map) {
     return CallEntry(
@@ -51,6 +60,8 @@ class CallEntry {
       syncStatus: SyncStatus.values.byName(map['syncStatus'] as String),
       lastError: map['lastError'] as String?,
       attempts: map['attempts'] as int? ?? 0,
+      note: map['note'] as String?,
+      awaitingNote: map['awaitingNote'] as bool? ?? false,
     );
   }
 }

@@ -21,6 +21,13 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!--
+        Invite à noter ce qui vient d'être dit, juste après un appel. Permission
+        demandée à l'exécution depuis Android 13 ; refusée, l'appel est
+        journalisé quand même et part sans note.
+    -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!--
         Demande d'exclusion de l'optimisation de batterie. Google restreint
         cette permission sur le Play Store public ; elle est acceptée pour une
         distribution interne, et c'est précisément ce qui empêche le système de

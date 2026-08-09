@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.PowerManager
 import android.provider.Settings
+import com.echango.call_tracker.capture.InviteNote
 import com.echango.call_tracker.data.CallStore
 import com.echango.call_tracker.data.SecureSettings
 import com.echango.call_tracker.sync.SyncWorker
@@ -22,6 +23,30 @@ import io.flutter.plugin.common.MethodChannel
  * activité n'existe pas.
  */
 class MainActivity : FlutterActivity() {
+
+    /** Appel dont la notification vient d'être touchée, en attente de lecture. */
+    private var idAppelEnAttente: Long? = null
+
+    override fun onCreate(etat: android.os.Bundle?) {
+        super.onCreate(etat)
+        recupererIdAppel(intent)
+    }
+
+    /**
+     * L'activité est en `singleTop` : touchée une seconde fois, elle est
+     * réutilisée et `onCreate` n'est PAS rappelé. Sans cette surcharge, seule
+     * la première notification ouvrirait une invite de note.
+     */
+    override fun onNewIntent(intention: Intent) {
+        super.onNewIntent(intention)
+        setIntent(intention)
+        recupererIdAppel(intention)
+    }
+
+    private fun recupererIdAppel(intention: Intent?) {
+        val id = intention?.getLongExtra(InviteNote.EXTRA_ID_APPEL, -1L) ?: -1L
+        if (id > 0) idAppelEnAttente = id
+    }
 
     override fun configureFlutterEngine(moteur: FlutterEngine) {
         super.configureFlutterEngine(moteur)
@@ -77,6 +102,8 @@ class MainActivity : FlutterActivity() {
                             "syncStatus" to it.syncStatus,
                             "lastError" to it.lastError,
                             "attempts" to it.attempts,
+                            "note" to it.note,
+                            "awaitingNote" to (it.awaitingNoteUntil > System.currentTimeMillis()),
                         )
                     }
                 )
@@ -84,6 +111,31 @@ class MainActivity : FlutterActivity() {
 
             "pendingCount" ->
                 reponse.success(CallStore(applicationContext).nombreEnAttente())
+
+            "saveNote" -> {
+                val id = (appel.argument<Number>("id") ?: 0).toLong()
+                CallStore(applicationContext)
+                    .enregistrerNote(id, appel.argument<String>("note"))
+                InviteNote.retirer(applicationContext, id)
+                SyncWorker.forcer(applicationContext)
+                reponse.success(null)
+            }
+
+            "skipNote" -> {
+                val id = (appel.argument<Number>("id") ?: 0).toLong()
+                CallStore(applicationContext).ignorerNote(id)
+                InviteNote.retirer(applicationContext, id)
+                SyncWorker.forcer(applicationContext)
+                reponse.success(null)
+            }
+
+            // Identifiant transmis par la notification, consommé UNE fois :
+            // sans cela, revenir sur l'application rouvrirait indéfiniment la
+            // même invite de note.
+            "consumePendingNoteCallId" -> {
+                reponse.success(idAppelEnAttente)
+                idAppelEnAttente = null
+            }
 
             "syncNow" -> {
                 SyncWorker.forcer(applicationContext)

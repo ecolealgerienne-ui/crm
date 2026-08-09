@@ -16,6 +16,9 @@ data class CallEvent(
     val syncStatus: String,
     val lastError: String?,
     val attempts: Int,
+    val note: String?,
+    /** Époque en millisecondes jusqu'à laquelle l'appel attend une note. */
+    val awaitingNoteUntil: Long,
 )
 
 /**
@@ -44,7 +47,9 @@ class CallStore(context: Context) : SQLiteOpenHelper(context, NOM, null, VERSION
                 started_at_millis INTEGER NOT NULL,
                 sync_status TEXT NOT NULL DEFAULT '$EN_ATTENTE',
                 last_error TEXT,
-                attempts INTEGER NOT NULL DEFAULT 0
+                attempts INTEGER NOT NULL DEFAULT 0,
+                note TEXT,
+                awaiting_note_until INTEGER NOT NULL DEFAULT 0
             )
             """.trimIndent()
         )
@@ -64,21 +69,33 @@ class CallStore(context: Context) : SQLiteOpenHelper(context, NOM, null, VERSION
     }
 
     override fun onUpgrade(db: SQLiteDatabase, ancienne: Int, nouvelle: Int) {
-        // Version 1 : rien à migrer. Une file d'attente n'est pas une archive —
-        // si un jour une migration est impossible, la reconstruire ne perd que
-        // les appels non encore remis, pas l'historique, qui vit dans Odoo.
+        // Migration plutôt que reconstruction : la file peut contenir des
+        // appels pas encore remis au moment d'une mise à jour de l'app, et les
+        // effacer perdrait précisément ce qu'elle sert à protéger.
+        if (ancienne < 2) {
+            db.execSQL("ALTER TABLE $TABLE ADD COLUMN note TEXT")
+            db.execSQL(
+                "ALTER TABLE $TABLE ADD COLUMN awaiting_note_until INTEGER NOT NULL DEFAULT 0"
+            )
+        }
     }
 
     /**
      * Insère un appel s'il n'est pas déjà en file.
-     * Retourne `true` si l'appel a bien été ajouté.
+     * Retourne l'identifiant local créé, ou `-1` si l'appel était déjà connu.
+     *
+     * `attenteNoteMillis` retient l'appel un court moment avant qu'il ne
+     * devienne éligible à l'envoi : le temps que le commercial saisisse sa
+     * note. Sans cette retenue, l'appel partirait dans les secondes suivant le
+     * raccrochage et la note n'aurait plus de véhicule.
      */
     fun inserer(
         phoneNumber: String,
         direction: String,
         durationSeconds: Int,
         startedAtMillis: Long,
-    ): Boolean {
+        attenteNoteMillis: Long = 0,
+    ): Long {
         val valeurs = ContentValues().apply {
             put("client_event_id", UUID.randomUUID().toString())
             put("phone_number", phoneNumber)
@@ -86,17 +103,58 @@ class CallStore(context: Context) : SQLiteOpenHelper(context, NOM, null, VERSION
             put("duration_seconds", durationSeconds)
             put("started_at_millis", startedAtMillis)
             put("sync_status", EN_ATTENTE)
+            put(
+                "awaiting_note_until",
+                if (attenteNoteMillis > 0) System.currentTimeMillis() + attenteNoteMillis else 0,
+            )
         }
         // CONFLICT_IGNORE : une insertion en double n'est pas une anomalie,
         // c'est le fonctionnement attendu d'un receveur diffusé plusieurs fois.
-        val ligne = writableDatabase.insertWithOnConflict(
+        return writableDatabase.insertWithOnConflict(
             TABLE, null, valeurs, SQLiteDatabase.CONFLICT_IGNORE
         )
-        return ligne != -1L
     }
 
-    fun aEnvoyer(limite: Int = 50): List<CallEvent> =
-        lire("sync_status = ?", arrayOf(EN_ATTENTE), "started_at_millis ASC", limite)
+    /**
+     * Appels prêts à partir.
+     *
+     * Exclut ceux qui attendent encore une note. La retenue est bornée dans le
+     * temps : si le commercial ne répond pas à l'invite, l'appel part sans
+     * note plutôt que de rester indéfiniment en file. Une fonctionnalité de
+     * confort ne doit pas pouvoir retenir la donnée principale.
+     */
+    fun aEnvoyer(limite: Int = 50): List<CallEvent> = lire(
+        "sync_status = ? AND awaiting_note_until <= ?",
+        arrayOf(EN_ATTENTE, System.currentTimeMillis().toString()),
+        "started_at_millis ASC",
+        limite,
+    )
+
+    /** Appels dont l'invite de note est encore ouverte. */
+    fun enAttenteDeNote(): List<CallEvent> = lire(
+        "sync_status = ? AND awaiting_note_until > ?",
+        arrayOf(EN_ATTENTE, System.currentTimeMillis().toString()),
+        "started_at_millis DESC",
+        20,
+    )
+
+    fun parId(id: Long): CallEvent? =
+        lire("id = ?", arrayOf(id.toString()), "id DESC", 1).firstOrNull()
+
+    /** Attache la note et libère l'appel : il part à la prochaine occasion. */
+    fun enregistrerNote(id: Long, note: String?) {
+        writableDatabase.execSQL(
+            "UPDATE $TABLE SET note = ?, awaiting_note_until = 0 WHERE id = ?",
+            arrayOf(note?.take(1000), id),
+        )
+    }
+
+    /** Renonce à la note : l'appel part tel quel, sans attendre l'échéance. */
+    fun ignorerNote(id: Long) {
+        writableDatabase.execSQL(
+            "UPDATE $TABLE SET awaiting_note_until = 0 WHERE id = ?", arrayOf(id)
+        )
+    }
 
     fun derniers(limite: Int = 200): List<CallEvent> =
         lire(null, null, "started_at_millis DESC", limite)
@@ -159,6 +217,8 @@ class CallStore(context: Context) : SQLiteOpenHelper(context, NOM, null, VERSION
             val iStatut = c.getColumnIndexOrThrow("sync_status")
             val iErr = c.getColumnIndexOrThrow("last_error")
             val iTent = c.getColumnIndexOrThrow("attempts")
+            val iNote = c.getColumnIndexOrThrow("note")
+            val iAttente = c.getColumnIndexOrThrow("awaiting_note_until")
             while (c.moveToNext()) {
                 resultats += CallEvent(
                     id = c.getLong(iId),
@@ -170,6 +230,8 @@ class CallStore(context: Context) : SQLiteOpenHelper(context, NOM, null, VERSION
                     syncStatus = c.getString(iStatut),
                     lastError = if (c.isNull(iErr)) null else c.getString(iErr),
                     attempts = c.getInt(iTent),
+                    note = if (c.isNull(iNote)) null else c.getString(iNote),
+                    awaitingNoteUntil = c.getLong(iAttente),
                 )
             }
         }
@@ -178,7 +240,7 @@ class CallStore(context: Context) : SQLiteOpenHelper(context, NOM, null, VERSION
 
     companion object {
         private const val NOM = "call_tracker.db"
-        private const val VERSION = 1
+        private const val VERSION = 2
         private const val TABLE = "call_event"
 
         const val EN_ATTENTE = "pending"

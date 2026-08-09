@@ -58,6 +58,24 @@ class CaptureChannel {
     return _canal.invokeMethod<void>('syncNow');
   }
 
+  /// Attache la note et libère l'appel : il part à la prochaine occasion.
+  Future<void> enregistrerNote(int id, String note) {
+    return _canal.invokeMethod<void>('saveNote', {'id': id, 'note': note});
+  }
+
+  /// Renonce à la note : l'appel part tel quel, sans attendre l'échéance.
+  Future<void> ignorerNote(int id) {
+    return _canal.invokeMethod<void>('skipNote', {'id': id});
+  }
+
+  /// Appel dont la notification vient d'être touchée, ou `null`.
+  ///
+  /// La lecture est destructrice côté natif : sans cela, chaque retour sur
+  /// l'application rouvrirait la même invite de note.
+  Future<int?> noteEnAttente() {
+    return _canal.invokeMethod<int>('consumePendingNoteCallId');
+  }
+
   Future<bool> batterieOptimisee() async {
     return await _canal.invokeMethod<bool>('isBatteryOptimised') ?? true;
   }

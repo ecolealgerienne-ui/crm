@@ -1,0 +1,31 @@
+# -*- coding: utf-8 -*-
+from odoo import _, fields, models
+
+
+class CrmLead(models.Model):
+    _inherit = 'crm.lead'
+
+    call_tracker_count = fields.Integer(
+        string="Appels",
+        compute='_compute_call_tracker_count',
+    )
+
+    def _compute_call_tracker_count(self):
+        comptes = dict(self.env['call.tracker.log']._read_group(
+            [('lead_id', 'in', self.ids)],
+            groupby=['lead_id'],
+            aggregates=['__count'],
+        )) if self.ids else {}
+        for piste in self:
+            piste.call_tracker_count = comptes.get(piste, 0)
+
+    def action_voir_appels(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _("Appels — %s", self.display_name),
+            'res_model': 'call.tracker.log',
+            'view_mode': 'list,form',
+            'domain': [('lead_id', '=', self.id)],
+            'context': {'create': False},
+        }

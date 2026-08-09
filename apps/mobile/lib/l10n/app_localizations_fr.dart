@@ -221,4 +221,32 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get batteryWarningAction => 'Exclure l\'application';
+
+  @override
+  String get noteDialogTitle => 'Note après l\'appel';
+
+  @override
+  String get noteDialogHint => 'Ce qui s\'est dit, en une phrase';
+
+  @override
+  String get noteSave => 'Enregistrer la note';
+
+  @override
+  String get noteSkip => 'Sans note';
+
+  @override
+  String get noteAdd => 'Ajouter une note';
+
+  @override
+  String get noteSaved => 'Note enregistrée';
+
+  @override
+  String get noteAwaiting => 'En attente de note';
+
+  @override
+  String get permissionsNotifications => 'Notifications';
+
+  @override
+  String get permissionsNotificationsBody =>
+      'Sans autorisation de notifier, l\'application ne peut pas proposer d\'écrire une note après un appel. La capture, elle, continue.';
 }

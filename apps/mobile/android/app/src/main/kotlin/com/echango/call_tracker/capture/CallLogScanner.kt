@@ -8,6 +8,7 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import com.echango.call_tracker.data.CallStore
 import com.echango.call_tracker.data.SecureSettings
+import com.echango.call_tracker.sync.SyncWorker
 import java.util.Calendar
 
 /**
@@ -82,7 +83,13 @@ object CallLogScanner {
 
                 if (!reglages.dansLaPlage(heureLocaleDe(date))) continue
 
-                if (store.inserer(numero, direction, c.getInt(iDur), date)) verses++
+                val id = store.inserer(
+                    numero, direction, c.getInt(iDur), date,
+                    attenteNoteMillis = InviteNote.DELAI_NOTE_MILLIS,
+                )
+                if (id == -1L) continue
+                verses++
+                InviteNote.proposer(context, id, numero)
             }
         }
 
@@ -91,7 +98,17 @@ object CallLogScanner {
         // chaque balayage ferait grossir le travail indéfiniment.
         if (plusRecent > depuis) reglages.lastScanMillis = plusRecent
 
-        if (verses > 0) Log.i(TAG, "$verses appel(s) verses dans la file")
+        if (verses > 0) {
+            Log.i(TAG, "$verses appel(s) verses dans la file")
+            // Les appels versés attendent une note : ils ne partiront pas au
+            // passage courant du worker. Sans ce rendez-vous, ils resteraient
+            // en file jusqu'au prochain appel — un commercial qui n'appelle
+            // plus de la journée ne verrait rien remonter.
+            SyncWorker.planifier(
+                context,
+                delaiSecondes = InviteNote.DELAI_NOTE_MILLIS / 1000 + 5,
+            )
+        }
         return verses
     }
 

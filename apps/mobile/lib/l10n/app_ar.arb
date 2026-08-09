@@ -1,14 +1,11 @@
 {
   "@@locale": "ar",
-
   "appTitle": "متتبّع المكالمات",
-
   "commonCancel": "إلغاء",
   "commonSave": "حفظ",
   "commonRetry": "إعادة المحاولة",
   "commonClose": "إغلاق",
   "commonError": "خطأ: {error}",
-
   "languageSwitchTooltip": "تغيير اللغة",
   "languageFrench": "Français",
   "languageEnglish": "English",
@@ -16,28 +13,22 @@
   "themeSwitchTooltip": "تغيير المظهر",
   "themeLight": "فاتح",
   "themeDark": "داكن",
-
   "navCalls": "المكالمات",
   "navSettings": "الإعدادات",
-
   "callsTitle": "المكالمات المسجَّلة",
   "callsEmptyTitle": "لا توجد مكالمات مسجَّلة",
   "callsEmptyBody": "ستظهر المكالمات هنا تلقائيًا بمجرّد إجراء مكالمة أو استقبالها.",
   "callsPendingCount": "{count, plural, =0{تمت المزامنة بالكامل} =1{مكالمة واحدة في الانتظار} =2{مكالمتان في الانتظار} few{{count} مكالمات في الانتظار} many{{count} مكالمة في الانتظار} other{{count} مكالمة في الانتظار}}",
   "callsSyncNow": "المزامنة الآن",
-
   "directionInbound": "واردة",
   "directionOutbound": "صادرة",
   "directionMissed": "فائتة",
-
   "syncPending": "في الانتظار",
   "syncSent": "تمت المزامنة",
   "syncFailed": "فشل",
   "syncFailedWithReason": "فشل: {reason}",
-
   "durationSeconds": "{seconds} ث",
   "durationMinutesSeconds": "{minutes} د {seconds} ث",
-
   "settingsTitle": "الإعدادات",
   "settingsConnectionSection": "الاتصال بأودو",
   "settingsServerUrl": "عنوان الخادم",
@@ -48,7 +39,6 @@
   "settingsTokenSet": "تم حفظ الرمز",
   "settingsTokenMissing": "لا يوجد رمز — لن تُرسَل المكالمات",
   "settingsTokenHelp": "يُنشَأ الرمز في أودو ضمن إدارة العلاقات ثم متتبّع المكالمات ثم الأجهزة. ويُعرض مرة واحدة فقط.",
-
   "settingsCaptureSection": "التسجيل",
   "settingsCaptureEnabled": "تسجيل المكالمات",
   "settingsCaptureEnabledHelp": "إيقاف هذا الخيار يوقف كل تسجيل، دون حذف ما هو في الانتظار.",
@@ -57,7 +47,6 @@
   "settingsHoursFrom": "من",
   "settingsHoursTo": "إلى",
   "settingsHoursRange": "من {from} إلى {to}",
-
   "permissionsSection": "الأذونات",
   "permissionsMissingTitle": "أذونات ناقصة",
   "permissionsMissingBody": "بدون الوصول إلى سجلّ المكالمات وحالة الهاتف، لا يمكن تسجيل أي مكالمة.",
@@ -65,8 +54,16 @@
   "permissionsGranted": "ممنوحة",
   "permissionsOpenSettings": "فتح إعدادات النظام",
   "permissionsPermanentlyDenied": "مرفوضة نهائيًا — أعِد تفعيلها من إعدادات النظام.",
-
   "batteryWarningTitle": "موفّر البطارية",
   "batteryWarningBody": "قد يوقف النظام التسجيل في الخلفية. استثناء التطبيق من تحسين البطارية يجعل التتبّع أكثر موثوقية.",
-  "batteryWarningAction": "استثناء التطبيق"
+  "batteryWarningAction": "استثناء التطبيق",
+  "noteDialogTitle": "ملاحظة بعد المكالمة",
+  "noteDialogHint": "ما قيل، في جملة واحدة",
+  "noteSave": "حفظ الملاحظة",
+  "noteSkip": "بدون ملاحظة",
+  "noteAdd": "إضافة ملاحظة",
+  "noteSaved": "تم حفظ الملاحظة",
+  "noteAwaiting": "بانتظار ملاحظة",
+  "permissionsNotifications": "الإشعارات",
+  "permissionsNotificationsBody": "بدون إذن الإشعارات، لا يمكن للتطبيق أن يقترح كتابة ملاحظة بعد المكالمة. أما التسجيل فيستمر."
 }

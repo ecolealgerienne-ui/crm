@@ -4,7 +4,9 @@ import os
 import re
 from datetime import timedelta
 
-from odoo import api, fields, models
+from markupsafe import Markup
+
+from odoo import _, api, fields, models
 from odoo.tools import html2plaintext
 
 _logger = logging.getLogger(__name__)
@@ -105,6 +107,12 @@ class CallTrackerLog(models.Model):
     partner_id = fields.Many2one('res.partner', string="Contact", index=True)
     lead_id = fields.Many2one('crm.lead', string="Piste", index=True)
 
+    # ── Note prise après l'appel ─────────────────────────────────────────────
+    # Saisie par le commercial sur son téléphone, juste après avoir raccroché.
+    # Facultative : l'immense majorité des appels n'en portera pas, et exiger
+    # une saisie ferait abandonner la fonctionnalité en une semaine.
+    note = fields.Text(string="Note")
+
     def init(self):
         """Contrainte d'unicité posée en SQL plutôt que via ``_sql_constraints``.
 
@@ -125,7 +133,40 @@ class CallTrackerLog(models.Model):
             valeurs['phone_key'] = chiffres_significatifs(valeurs.get('phone_number'))
         appels = super().create(liste_valeurs)
         appels._rattacher()
+        appels._publier_note()
         return appels
+
+    def _publier_note(self):
+        """Reporte la note de l'appel dans le fil de discussion du CRM.
+
+        Sans cela, la note resterait enfermée dans un modèle technique que
+        personne n'ouvre. Publiée sur la piste — ou à défaut sur le contact —
+        elle apparaît là où le commercial travaille, et **elle revient à
+        l'app** : c'est ce même fil que lit ``fiche_contact`` pour alimenter
+        le Caller ID. La note écrite après un appel s'affiche donc au suivant.
+
+        Type ``comment`` et sous-type ``mt_note`` : une note interne, pas un
+        message envoyé au client. Se tromper ici notifierait le contact.
+        """
+        for appel in self:
+            if not appel.note:
+                continue
+            cible = appel.lead_id or appel.partner_id
+            if not cible:
+                continue
+            libelles = dict(self._fields['direction'].selection)
+            entete = _("Appel %(sens)s — %(numero)s") % {
+                'sens': (libelles.get(appel.direction) or '').lower(),
+                'numero': appel.phone_number,
+            }
+            cible.sudo().message_post(
+                body=Markup('<p><b>%s</b></p><p>%s</p>') % (entete, appel.note),
+                message_type='comment',
+                subtype_xmlid='mail.mt_note',
+                # Attribuée au commercial, pas au compte technique : le fil
+                # doit dire QUI a passé l'appel.
+                author_id=appel.user_id.partner_id.id or False,
+            )
 
     def _rattacher(self):
         """Associe chaque appel au contact et à la piste correspondants.

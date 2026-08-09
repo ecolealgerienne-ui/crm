@@ -441,6 +441,60 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Exclure l\'application'**
   String get batteryWarningAction;
+
+  /// No description provided for @noteDialogTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Note après l\'appel'**
+  String get noteDialogTitle;
+
+  /// No description provided for @noteDialogHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ce qui s\'est dit, en une phrase'**
+  String get noteDialogHint;
+
+  /// No description provided for @noteSave.
+  ///
+  /// In fr, this message translates to:
+  /// **'Enregistrer la note'**
+  String get noteSave;
+
+  /// No description provided for @noteSkip.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sans note'**
+  String get noteSkip;
+
+  /// No description provided for @noteAdd.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ajouter une note'**
+  String get noteAdd;
+
+  /// No description provided for @noteSaved.
+  ///
+  /// In fr, this message translates to:
+  /// **'Note enregistrée'**
+  String get noteSaved;
+
+  /// No description provided for @noteAwaiting.
+  ///
+  /// In fr, this message translates to:
+  /// **'En attente de note'**
+  String get noteAwaiting;
+
+  /// No description provided for @permissionsNotifications.
+  ///
+  /// In fr, this message translates to:
+  /// **'Notifications'**
+  String get permissionsNotifications;
+
+  /// No description provided for @permissionsNotificationsBody.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sans autorisation de notifier, l\'application ne peut pas proposer d\'écrire une note après un appel. La capture, elle, continue.'**
+  String get permissionsNotificationsBody;
 }
 
 class _AppLocalizationsDelegate

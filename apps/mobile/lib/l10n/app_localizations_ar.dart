@@ -222,4 +222,32 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get batteryWarningAction => 'استثناء التطبيق';
+
+  @override
+  String get noteDialogTitle => 'ملاحظة بعد المكالمة';
+
+  @override
+  String get noteDialogHint => 'ما قيل، في جملة واحدة';
+
+  @override
+  String get noteSave => 'حفظ الملاحظة';
+
+  @override
+  String get noteSkip => 'بدون ملاحظة';
+
+  @override
+  String get noteAdd => 'إضافة ملاحظة';
+
+  @override
+  String get noteSaved => 'تم حفظ الملاحظة';
+
+  @override
+  String get noteAwaiting => 'بانتظار ملاحظة';
+
+  @override
+  String get permissionsNotifications => 'الإشعارات';
+
+  @override
+  String get permissionsNotificationsBody =>
+      'بدون إذن الإشعارات، لا يمكن للتطبيق أن يقترح كتابة ملاحظة بعد المكالمة. أما التسجيل فيستمر.';
 }

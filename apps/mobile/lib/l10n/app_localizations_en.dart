@@ -219,4 +219,32 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get batteryWarningAction => 'Exclude the app';
+
+  @override
+  String get noteDialogTitle => 'Post-call note';
+
+  @override
+  String get noteDialogHint => 'What was said, in one sentence';
+
+  @override
+  String get noteSave => 'Save note';
+
+  @override
+  String get noteSkip => 'No note';
+
+  @override
+  String get noteAdd => 'Add a note';
+
+  @override
+  String get noteSaved => 'Note saved';
+
+  @override
+  String get noteAwaiting => 'Awaiting note';
+
+  @override
+  String get permissionsNotifications => 'Notifications';
+
+  @override
+  String get permissionsNotificationsBody =>
+      'Without notification permission, the app cannot offer to write a note after a call. Capture itself continues.';
 }

@@ -62,7 +62,12 @@ class SyncWorker(
 
         for (appel in aEnvoyer) {
             when (val issue = envoyer(cible, reglages.token, appel.toJson())) {
-                is Issue.Accepte -> store.marquerEnvoye(appel.id)
+                is Issue.Accepte -> {
+                    store.marquerEnvoye(appel.id)
+                    // L'invite de note d'un appel déjà remis n'a plus d'objet.
+                    com.echango.call_tracker.capture.InviteNote
+                        .retirer(applicationContext, appel.id)
+                }
                 is Issue.RefusDefinitif -> store.marquerEchecDefinitif(appel.id, issue.raison)
                 is Issue.Temporaire -> {
                     store.noterEchecTemporaire(appel.id, issue.raison)
@@ -187,6 +192,9 @@ private fun com.echango.call_tracker.data.CallEvent.toJson(): JSONObject = JSONO
     put("direction", direction)
     put("duration_seconds", durationSeconds)
     put("started_at", iso8601Utc(startedAtMillis))
+    // Absente quand il n'y a pas de note : le serveur accepte le champ mais ne
+    // l'exige pas, et envoyer une chaîne vide ferait écrire une note vide.
+    if (!note.isNullOrBlank()) put("note", note)
 }
 
 /**

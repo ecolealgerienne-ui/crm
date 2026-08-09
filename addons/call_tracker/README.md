@@ -138,6 +138,31 @@ curl -i -X POST http://localhost:8169/call_tracker/log_call \
        "started_at":"2026-08-09T14:32:00Z"}'
 ```
 
+## Depuis une fiche client, voir ses appels
+
+Le rattachement `partner_id` / `lead_id` existait depuis le début, mais
+seulement en base. Un bouton sur la fiche contact et sur la piste ouvre
+désormais la liste de leurs appels.
+
+Sur une **société**, le compteur additionne les appels de ses contacts
+rattachés (`child_of`) : les appels sont journalisés au nom de
+l'interlocuteur, et un compteur limité à la société elle-même afficherait zéro
+là où il y a le plus à voir.
+
+## Note prise après l'appel
+
+Champ `note` facultatif dans la charge utile de `log_call`, plafonné à 1000
+caractères. Quand elle est présente et qu'une piste ou un contact est
+rattaché, la note est **publiée dans le fil de discussion** — type `comment`,
+sous-type `mail.mt_note`, attribuée au commercial.
+
+Ce report n'est pas décoratif, il **referme une boucle** : c'est ce même fil
+que lit `fiche_contact` pour alimenter le Caller ID. La note écrite après un
+appel s'affiche donc au suivant.
+
+⚠️ Sous-type `mt_note` et non un commentaire public : se tromper ici
+enverrait la note au client par courriel.
+
 ## Numéro inconnu — création automatique de piste
 
 Décision du 2026-08-09 (spec §10.2). Un appel dont le numéro n'est **ni** un
@@ -193,9 +218,10 @@ incident, et il n'y en a alors plus du tout.
 
 ## Tests
 
-77 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
+94 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
 révocation, le rapprochement téléphonique, la création automatique de piste,
-la rétention et le journal d'audit.
+la note post-appel, les liens depuis les fiches CRM, la rétention et le
+journal d'audit.
 
 ```bash
 docker compose run --rm -T odoo odoo \
