@@ -1,0 +1,72 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "Call Tracker",
+
+  "commonCancel": "Cancel",
+  "commonSave": "Save",
+  "commonRetry": "Retry",
+  "commonClose": "Close",
+  "commonError": "Error: {error}",
+
+  "languageSwitchTooltip": "Change language",
+  "languageFrench": "Français",
+  "languageEnglish": "English",
+  "languageArabic": "العربية",
+  "themeSwitchTooltip": "Change theme",
+  "themeLight": "Light",
+  "themeDark": "Dark",
+
+  "navCalls": "Calls",
+  "navSettings": "Settings",
+
+  "callsTitle": "Captured calls",
+  "callsEmptyTitle": "No calls captured yet",
+  "callsEmptyBody": "Calls will appear here automatically, as soon as one is made or received.",
+  "callsPendingCount": "{count, plural, =0{Everything is synced} =1{1 call pending} other{{count} calls pending}}",
+  "callsSyncNow": "Sync now",
+
+  "directionInbound": "Incoming",
+  "directionOutbound": "Outgoing",
+  "directionMissed": "Missed",
+
+  "syncPending": "Pending",
+  "syncSent": "Synced",
+  "syncFailed": "Failed",
+  "syncFailedWithReason": "Failed: {reason}",
+
+  "durationSeconds": "{seconds}s",
+  "durationMinutesSeconds": "{minutes}m {seconds}s",
+
+  "settingsTitle": "Settings",
+  "settingsConnectionSection": "Odoo connection",
+  "settingsServerUrl": "Server address",
+  "settingsServerUrlHint": "https://echangocrm.echango.com",
+  "settingsServerUrlInvalid": "Invalid address — it must start with https://",
+  "settingsToken": "Device token",
+  "settingsTokenHint": "Paste the token generated in Odoo",
+  "settingsTokenSet": "Token saved",
+  "settingsTokenMissing": "No token — calls will not be sent",
+  "settingsTokenHelp": "Generate the token in Odoo, under CRM then Call Tracker then Devices. It is shown only once.",
+
+  "settingsCaptureSection": "Capture",
+  "settingsCaptureEnabled": "Capture calls",
+  "settingsCaptureEnabledHelp": "Turning this off suspends all capture, without clearing what is already pending.",
+  "settingsHoursTitle": "Time range",
+  "settingsHoursHelp": "Outside this range, calls are not captured.",
+  "settingsHoursFrom": "From",
+  "settingsHoursTo": "To",
+  "settingsHoursRange": "From {from} to {to}",
+
+  "permissionsSection": "Permissions",
+  "permissionsMissingTitle": "Missing permissions",
+  "permissionsMissingBody": "Without access to the call log and the phone state, no call can be captured.",
+  "permissionsGrant": "Grant",
+  "permissionsGranted": "Granted",
+  "permissionsOpenSettings": "Open system settings",
+  "permissionsPermanentlyDenied": "Permanently denied — re-enable them in the system settings.",
+
+  "batteryWarningTitle": "Battery saver",
+  "batteryWarningBody": "The system may stop background capture. Excluding the app from battery optimisation makes tracking more reliable.",
+  "batteryWarningAction": "Exclude the app"
+}

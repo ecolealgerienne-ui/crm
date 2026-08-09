@@ -1,0 +1,62 @@
+name: call_tracker
+description: "Call Tracker — capture des appels commerciaux vers Odoo CRM"
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # Gestion d'état — même choix que l'app echango Promo.
+  flutter_riverpod: ^2.5.0
+
+  # Pas de go_router, contrairement à Promo : deux écrans, aucun lien profond,
+  # aucune redirection conditionnelle. L'ajouter ici ne serait pas respecter
+  # une norme, ce serait la recopier là où elle ne sert à rien. À reprendre en
+  # phase 2, quand la recherche de contact et le tableau de bord arriveront.
+
+  # Typographie du design system : Cairo (titres) + IBM Plex Sans Arabic
+  # (corps). Ce couple est repris tel quel de Promo parce qu'il couvre
+  # nativement FR/EN/AR — l'arabe est une des trois langues de l'app, et une
+  # police sans jeu arabe complet y produit des rectangles vides.
+  google_fonts: ^6.2.1
+
+  # Demande des permissions runtime (READ_CALL_LOG, READ_PHONE_STATE,
+  # POST_NOTIFICATIONS).
+  permission_handler: ^11.3.0
+
+  # Préférences d'interface uniquement — langue et thème, comme dans Promo.
+  # Surtout PAS les secrets : l'URL et le jeton vivent côté natif, voir plus
+  # bas.
+  shared_preferences: ^2.3.0
+
+  # ⚠️ Ni client HTTP ni base de données côté Dart, et c'est délibéré.
+  # La capture, la file d'attente et l'envoi vers Odoo vivent entièrement du
+  # côté Android natif : un appel peut arriver alors que l'application est
+  # fermée et que le moteur Flutter n'existe pas. Une file en Dart ne serait
+  # jamais alimentée dans ce cas — c'est-à-dire dans le cas normal. Voir
+  # android/app/src/main/kotlin/.../capture/ et le README.
+  #
+  # Pour la même raison, pas de flutter_secure_storage : la configuration
+  # (URL Odoo, jeton) doit être lisible par le worker natif, elle est donc
+  # rangée dans un EncryptedSharedPreferences côté Kotlin et exposée à Dart
+  # par le canal de plateforme.
+
+  # Version non épinglée en dur : flutter_localizations (SDK) impose sa propre
+  # contrainte sur intl, liée à la version exacte du SDK Flutter installé — un
+  # pin exact peut bloquer `flutter pub get` selon le SDK réellement utilisé.
+  intl: ">=0.19.0 <1.0.0"
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  generate: true

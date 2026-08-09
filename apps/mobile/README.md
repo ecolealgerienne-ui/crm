@@ -1,70 +1,108 @@
-# Call Tracker — application mobile Android
+# Call Tracker — application mobile
 
-Capture automatique des appels d'un commercial (numéro, durée, direction) et
-synchronisation vers Odoo CRM, sans saisie manuelle.
+Capture automatique des appels d'un commercial et remise à l'addon Odoo
+`call_tracker`, sans saisie manuelle.
 
-**État : rien n'est développé.** Ce dossier est la place réservée à l'app ; la
-spécification qui la décrit est [`docs/call_tracker_odoo_spec.md`](../../docs/call_tracker_odoo_spec.md).
+Spécification : [`docs/call_tracker_odoo_spec.md`](../../docs/call_tracker_odoo_spec.md).
+Contrat de l'API : [`addons/call_tracker/README.md`](../../addons/call_tracker/README.md).
 
-## Ce qui est déjà arrêté par la spec
+## Architecture — et pourquoi le métier est en Kotlin
+
+```
+┌─ Flutter (lib/) ─────────────┐   canal   ┌─ Android (android/…/kotlin) ─────┐
+│ thème, i18n fr/en/ar,        │◀─────────▶│ CallStateReceiver  → PHONE_STATE │
+│ liste des appels, réglages   │  lecture  │ CallLogScanner     → CallLog     │
+│                              │  d'état   │ CallStore (SQLite) → file locale │
+└──────────────────────────────┘           │ SyncWorker         → POST Odoo   │
+                                            └──────────────────────────────────┘
+```
+
+**Flutter ne voit jamais passer un appel.** La capture, la file et l'envoi
+vivent entièrement côté natif, parce qu'un appel arrive presque toujours alors
+que l'application est fermée et que le moteur Flutter n'existe pas. Une file
+écrite en Dart ne serait jamais alimentée — c'est-à-dire jamais dans le cas
+normal. Le canal de plateforme ne transporte que de la lecture d'état et des
+réglages.
+
+C'est aussi pourquoi la configuration (URL, jeton) est rangée en
+`EncryptedSharedPreferences` côté Kotlin et non en `flutter_secure_storage` :
+c'est le worker qui doit la lire.
+
+## Conventions reprises de l'app echango Promo
 
 | | |
 |---|---|
-| Plateforme | Android uniquement — iOS est hors scope (Apple n'expose pas l'historique d'appels) |
-| Techno | Kotlin natif : `CallLog` et `TelephonyManager` demandent l'API native, aucun framework multiplateforme ne les couvre de façon fiable |
-| Capture | `BroadcastReceiver` sur `PHONE_STATE`, puis lecture de `CallLog.Calls` après raccrochage |
-| Résilience | file locale persistante (Room) — l'app réessaie elle-même avant de compter sur un retry côté serveur |
-| Distribution | APK signé ou Managed Google Play privé. **Pas de publication publique au MVP** |
+| Socle | Flutter + Riverpod |
+| Thème | `ColorScheme` construit **à la main** — jamais `fromSeed`, qui teinte tous les neutres —, `ThemeExtension` pour les couleurs sémantiques, `AppRadii` 8/16/24, transition unique 180 ms |
+| Typo | Cairo (titres) + IBM Plex Sans Arabic (corps) : couple choisi pour son jeu arabe complet |
+| i18n | `.arb` fr / en / ar, `generate: true` |
+| Langue et thème | pilotés par l'utilisateur, **pas** par le réglage système |
 
-## Pourquoi pas le Play Store public
+Deux écarts assumés :
 
-`READ_CALL_LOG` est une permission restreinte. Pour l'obtenir en publication
-publique, Google exige que l'app soit gestionnaire par défaut (Téléphone / SMS /
-Assistant), avec un formulaire de déclaration à soumettre et à maintenir à
-chaque changement d'usage. C'est un chantier à part entière, écarté du MVP.
-Revenir dessus supposerait soit de devenir dialer par défaut
-(`InCallService` / `CallScreeningService`), soit de monter ce dossier en amont.
+- **Identité visuelle propre.** Bleu ardoise au lieu du terracotta de Promo :
+  celui-ci est une app grand public tournée vers la découverte, celle-ci un
+  outil interne qu'on ouvre pour vérifier que son suivi remonte. Le safran de
+  Promo est conservé en accent secondaire — c'est le fil qui rattache les deux
+  applications à la même suite.
+- **Pas de go_router.** Deux écrans, aucun lien profond, aucune redirection
+  conditionnelle. À reprendre en phase 2.
 
-## Architecture retenue — écart assumé avec la spec
+## Développer
 
-**Décidé le 2026-08-09 : l'app parle directement à l'addon Odoo.**
-
+```bash
+flutter pub get
+flutter analyze && flutter test
+flutter run                       # ou : flutter build apk --debug
 ```
-[App Android]  ──HTTPS + token du module──▶  [Addon Odoo]  ──▶  [Base Odoo]
+
+### Éprouver la capture sur émulateur
+
+Un émulateur sait simuler un appel : `PHONE_STATE` est réellement diffusé et
+`CallLog` réellement écrit. Aucun téléphone ni carte SIM n'est nécessaire pour
+valider la mécanique.
+
+```bash
+adb install -r -g build/app/outputs/flutter-apk/app-debug.apk
+
+# Provisionnement — receveur de DÉBOGAGE uniquement (src/debug/, absent des
+# APK de release). Voir DevProvisionReceiver.kt.
+adb shell am broadcast -a com.echango.call_tracker.DEV_PROVISION \
+  -n com.echango.call_tracker/.DevProvisionReceiver \
+  --es url "http://10.0.2.2:8169" --es token "<jeton>" \
+  --ez enabled true --ei fromHour 0 --ei toHour 24 --ez resetCursor true
+
+# Appel entrant simulé
+adb emu gsm call 6039963829
+adb emu gsm accept 6039963829
+adb emu gsm cancel 6039963829
+
+adb logcat -s CallTracker
 ```
 
-La spec (§2) intercale une API d'ingestion multi-tenant, une file Redis Streams,
-un worker et un Postgres d'état. Tout cela est **écarté du premier jet** : on
-cherche d'abord à établir la faisabilité, et cette chaîne ne se justifie qu'à
-partir du moment où il y a plusieurs tenants à router. La spec reste la cible
-d'industrialisation, ce n'est pas un abandon.
+`10.0.2.2` est l'hôte vu depuis l'émulateur. Le trafic en clair n'est autorisé
+que dans la variante de débogage : un APK de release ne peut pas parler en
+`http`, quelle que soit l'adresse saisie.
 
-Ce que ce raccourci déplace, et qu'il ne faut pas perdre de vue :
+⚠️ La plage horaire par défaut est 8 h – 19 h. Un essai en soirée ne capture
+rien tant qu'on ne l'a pas élargie — d'où `fromHour 0 / toHour 24` ci-dessus.
 
-- **L'idempotence remonte dans l'addon.** C'est l'API d'ingestion qui portait le
-  dédoublonnage par `client_event_id`. Sans elle, c'est l'addon Odoo qui doit
-  refuser un `client_event_id` déjà vu — sinon chaque réessai depuis la file
-  locale de l'app crée un doublon d'appel. **C'est le point à ne pas oublier :
-  la file locale rend les réessais certains, pas hypothétiques.**
-- **Le cache de contacts passe côté app.** Le Redis à TTL 5 min qui protégeait
-  l'Odoo client disparaît ; c'est l'app qui doit mettre en cache, sous peine
-  d'une requête Odoo à chaque sonnerie.
-- **L'URL Odoo et le token vivent sur l'appareil**, au lieu d'être une ligne de
-  la table `tenants`. À stocker dans le Keystore Android, pas en clair.
+## Ce qui est éprouvé, et ce qui ne peut pas l'être ici
 
-## Reste à trancher avant la première ligne de code
+Validé de bout en bout sur émulateur (Android 16, 2026-08-09) : appel entrant
+simulé → `PHONE_STATE` → lecture de `CallLog` → file locale → `POST` vers Odoo
+→ enregistrement rattaché au bon contact et à la bonne piste. Interface
+vérifiée en français, en mode sombre, et en arabe (mise en page RTL, numéro
+maintenu en LTR).
 
-- **Identification du commercial** (§10.3) — mapping fixe appareil ↔ commercial
-  au MVP, ou plusieurs commerciaux par appareil ? Détermine s'il faut un écran
-  de connexion et une notion de session.
-- **Modèle Odoo cible** (§10.1) — `call.tracker.log` dédié ou activité sur
-  `crm.lead`. La spec recommande le modèle dédié, et le besoin d'idempotence
-  ci-dessus va dans le même sens : un modèle propre peut porter une contrainte
-  d'unicité sur `client_event_id`, une activité sur `crm.lead` beaucoup moins
-  naturellement.
+**L'émulateur valide le mécanisme, pas la durabilité.** Il ne dira rien de la
+survie du service aux optimisations de batterie des surcouches constructeur
+(Samsung, Xiaomi), qui est le mode de défaillance le plus courant de ce type
+d'application. C'est la raison de la carte d'avertissement dans les réglages,
+et cela reste à éprouver sur un vrai téléphone, sur plusieurs jours.
 
-## Le reste du système
+## Phase 2 — pas commencé
 
-L'addon Odoo qui reçoit les appels ira dans [`addons/`](../../addons/), à côté
-de `echangocrm_bootstrap`, et se testera contre l'instance Odoo 19 locale
-montée par `docker-compose.yml` à la racine.
+Caller ID en surimpression (`SYSTEM_ALERT_WINDOW`), recherche de contact,
+note après appel, tableau de bord. La route de lecture Odoo correspondante
+n'existe pas encore non plus.

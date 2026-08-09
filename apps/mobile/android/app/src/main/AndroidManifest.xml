@@ -1,0 +1,99 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+        Capture des appels.
+
+        ⚠️ READ_CALL_LOG est une permission RESTREINTE chez Google. Elle
+        s'accorde normalement sur un APK installé à la main ou distribué par
+        Managed Google Play, mais une publication publique sur le Play Store
+        exigerait que l'application soit gestionnaire d'appels par défaut, plus
+        un formulaire de déclaration à maintenir. C'est la raison pour laquelle
+        la distribution reste interne (spec §6).
+    -->
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+
+    <!-- Envoi vers Odoo -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Réarmer la capture après un redémarrage du téléphone -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!--
+        Demande d'exclusion de l'optimisation de batterie. Google restreint
+        cette permission sur le Play Store public ; elle est acceptée pour une
+        distribution interne, et c'est précisément ce qui empêche le système de
+        suspendre la capture en arrière-plan sur les surcouches Samsung ou
+        Xiaomi.
+    -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <application
+        android:label="Call Tracker"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher"
+        android:enableOnBackInvokedCallback="true"
+        android:usesCleartextTraffic="false"
+        android:allowBackup="false"
+        android:fullBackupContent="false">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+            <meta-data
+              android:name="io.flutter.embedding.android.NormalTheme"
+              android:resource="@style/NormalTheme"
+              />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+
+        <!--
+            Déclaré dans le manifeste et non enregistré à l'exécution : un
+            receveur enregistré par du code ne vit que le temps du processus,
+            et un appel arrive presque toujours alors que l'application est
+            fermée. C'est tout l'intérêt de la capture automatique.
+
+            exported="true" est nécessaire : c'est le système qui diffuse
+            PHONE_STATE.
+        -->
+        <receiver
+            android:name=".capture.CallStateReceiver"
+            android:exported="true"
+            android:enabled="true">
+            <intent-filter android:priority="1000">
+                <action android:name="android.intent.action.PHONE_STATE" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Relance l'envoi des appels restés en file après un redémarrage. -->
+        <receiver
+            android:name=".capture.BootReceiver"
+            android:exported="true"
+            android:enabled="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+    </application>
+
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT"/>
+            <data android:mimeType="text/plain"/>
+        </intent>
+    </queries>
+</manifest>
