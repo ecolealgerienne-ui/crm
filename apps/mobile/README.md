@@ -25,20 +25,43 @@ chaque changement d'usage. C'est un chantier à part entière, écarté du MVP.
 Revenir dessus supposerait soit de devenir dialer par défaut
 (`InCallService` / `CallScreeningService`), soit de monter ce dossier en amont.
 
-## À trancher avant la première ligne de code
+## Architecture retenue — écart assumé avec la spec
 
-Ces points de la spec conditionnent la structure de l'app, pas seulement son
-comportement :
+**Décidé le 2026-08-09 : l'app parle directement à l'addon Odoo.**
+
+```
+[App Android]  ──HTTPS + token du module──▶  [Addon Odoo]  ──▶  [Base Odoo]
+```
+
+La spec (§2) intercale une API d'ingestion multi-tenant, une file Redis Streams,
+un worker et un Postgres d'état. Tout cela est **écarté du premier jet** : on
+cherche d'abord à établir la faisabilité, et cette chaîne ne se justifie qu'à
+partir du moment où il y a plusieurs tenants à router. La spec reste la cible
+d'industrialisation, ce n'est pas un abandon.
+
+Ce que ce raccourci déplace, et qu'il ne faut pas perdre de vue :
+
+- **L'idempotence remonte dans l'addon.** C'est l'API d'ingestion qui portait le
+  dédoublonnage par `client_event_id`. Sans elle, c'est l'addon Odoo qui doit
+  refuser un `client_event_id` déjà vu — sinon chaque réessai depuis la file
+  locale de l'app crée un doublon d'appel. **C'est le point à ne pas oublier :
+  la file locale rend les réessais certains, pas hypothétiques.**
+- **Le cache de contacts passe côté app.** Le Redis à TTL 5 min qui protégeait
+  l'Odoo client disparaît ; c'est l'app qui doit mettre en cache, sous peine
+  d'une requête Odoo à chaque sonnerie.
+- **L'URL Odoo et le token vivent sur l'appareil**, au lieu d'être une ligne de
+  la table `tenants`. À stocker dans le Keystore Android, pas en clair.
+
+## Reste à trancher avant la première ligne de code
 
 - **Identification du commercial** (§10.3) — mapping fixe appareil ↔ commercial
   au MVP, ou plusieurs commerciaux par appareil ? Détermine s'il faut un écran
   de connexion et une notion de session.
-- **Destination des événements** (§2) — la spec fait passer l'app par une API
-  d'ingestion multi-tenant avec file Redis. Pour un MVP à 3-5 clients internes,
-  l'app pourrait parler directement à l'addon Odoo, la plateforme n'arrivant
-  qu'à l'industrialisation. Ce choix change le contrat réseau de l'app.
 - **Modèle Odoo cible** (§10.1) — `call.tracker.log` dédié ou activité sur
-  `crm.lead`. La spec recommande le modèle dédié.
+  `crm.lead`. La spec recommande le modèle dédié, et le besoin d'idempotence
+  ci-dessus va dans le même sens : un modèle propre peut porter une contrainte
+  d'unicité sur `client_event_id`, une activité sur `crm.lead` beaucoup moins
+  naturellement.
 
 ## Le reste du système
 
