@@ -7,19 +7,19 @@
 #   - le conteneur Traefik qui y est attaché, et son certificat wildcard
 #     *.echango.com (echangocrm.echango.com est donc déjà couvert, aucune
 #     configuration ACME à ajouter).
-# Aucun code partagé, aucune image partagée, aucune base partagée, et — choix
-# délibéré, voir la section « labels » plus bas — aucun middleware Traefik
+# Aucun code partagé, aucune image construite localement, aucune base partagée,
+# et — choix délibéré, voir la section « labels » — aucun middleware Traefik
 # emprunté à un autre dépôt.
 #
 # Prérequis : `echango_network` doit déjà exister (stack principale démarrée
 # au moins une fois). Vérifier : docker network inspect echango_network
 #
-# Usage — TOUJOURS avec --env-file, le fichier sert aussi à la substitution
-# ${...} de ce fichier-ci :
-#   docker compose --env-file .env.production -f docker-compose.crm.yml up -d --build
+# UNE SEULE COMMANDE, et le CRM est en ligne :
 #
-# Procédure complète (création de la base, modules, sauvegardes) :
-# docs/DEPLOIEMENT_VPS.md
+#   docker compose --env-file .env.production -f docker-compose.crm.yml up -d
+#
+# Le service `odoo-init` crée la base et installe les modules au premier
+# lancement ; il n'y a aucune étape manuelle. Détails : docs/DEPLOIEMENT_VPS.md
 #
 # `name:` explicite : sans lui, Compose dérive le nom de projet du nom du
 # dossier (`echangocrm`), donc le MÊME que docker-compose.yml (dev local) — les
@@ -28,32 +28,74 @@
 # répertoire de données corrompent le catalogue ; c'est arrivé sur le dépôt
 # echangopromo le 2026-07-12, ce préfixe distinct est la correction.
 name: echangocrm
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Base commune aux DEUX conteneurs Odoo (l'amorçage et le serveur).
+#
+# Ils exécutent le même Odoo sur la même base et le même filestore : leurs
+# environnements DOIVENT rester identiques. Les tenir à la main les ferait
+# diverger — c'est exactement ce qui est arrivé à l'ancre x-vendure-env de la
+# stack Vendure, dont le worker avait perdu une clé sans que rien ne le
+# signale. Seule la ligne de commande diffère, et elle est écrite à part.
+# ─────────────────────────────────────────────────────────────────────────────
+x-odoo-base: &odoo-base
+  # Image officielle, telle quelle. Rien n'est construit : pas de Dockerfile à
+  # maintenir, pas d'étape `--build`, et les correctifs Odoo arrivent par un
+  # simple `pull`.
+  image: odoo:${ODOO_IMAGE_TAG:-19}
+  environment:
+    # ⚠️ Ces quatre noms sont IMPOSÉS par l'entrypoint de l'image officielle,
+    # qui les traduit en --db_host / --db_port / --db_user / --db_password.
+    # Les renommer (DB_HOST, POSTGRES_USER…) ne produirait aucune erreur : Odoo
+    # retomberait silencieusement sur ses valeurs par défaut, et échouerait à
+    # se connecter pour une raison sans rapport apparent.
+    #
+    # `postgres_crm`, PAS `postgres` : le réseau echango_network est partagé
+    # avec la stack Vendure, qui a son propre service nommé `postgres`. Un
+    # conteneur attaché aux deux réseaux résout le nom générique vers LEUR
+    # conteneur — incident réel sur echango Promo, dont le symptôme
+    # (« password authentication failed » avec un mot de passe pourtant exact)
+    # n'oriente pas du tout vers un problème de résolution DNS. Voir §6 de
+    # docs/DEPLOIEMENT_VPS.md.
+    HOST: postgres_crm
+    PORT: 5432
+    USER: odoo
+    PASSWORD: ${POSTGRES_PASSWORD:?requis — voir .env.production.example}
+
+    # Lu par addons/echangocrm_bootstrap au moment de l'installation, pour
+    # remplacer le mot de passe `admin` par défaut d'Odoo. Le `:?` fait échouer
+    # `docker compose up` AVANT que quoi que ce soit démarre si la variable
+    # manque : c'est voulu, un CRM public avec admin/admin ne doit pas pouvoir
+    # exister, même quelques minutes.
+    ODOO_ADMIN_PASSWORD: ${ODOO_ADMIN_PASSWORD:?requis — voir .env.production.example}
+  volumes:
+    # Filestore : pièces jointes, images, documents, sessions.
+    # ⚠️ Aussi vital que la base — un dump SQL seul restaure un CRM dont toutes
+    # les pièces jointes sont cassées. Voir §7 de docs/DEPLOIEMENT_VPS.md.
+    - odoo_data:/var/lib/odoo
+    # Addons custom versionnés dans ce dépôt. En lecture seule : un module de
+    # production s'ajoute par commit + `git pull`, jamais par téléversement
+    # dans l'interface, sinon le code qui tourne n'existe nulle part.
+    - ./addons:/mnt/extra-addons:ro
 # =============================================================================
 
 services:
   # ---------------------------------------------------------------------------
   # PostgreSQL — dédié, jamais joignable depuis echango_network
   # ---------------------------------------------------------------------------
-  # Nommé `postgres_crm` et non `postgres` : la stack Vendure expose un service
-  # nommé `postgres` sur echango_network. Le conteneur odoo étant attaché aux
-  # deux réseaux, le nom générique se résoudrait silencieusement vers LEUR
-  # conteneur. Classe d'erreur constatée en vrai sur echango Promo — le
-  # symptôme (« password authentication failed ») n'oriente pas du tout vers un
-  # problème de résolution DNS. Détail dans docs/DEPLOIEMENT_VPS.md.
-  #
-  # Réseau `internal` uniquement : la base n'a aucune raison d'être atteignable
-  # depuis le réseau partagé avec les autres stacks, et aucun port n'est publié
-  # sur l'hôte.
+  # Réseau `internal` uniquement, aucun port publié sur l'hôte : la base n'a
+  # aucune raison d'être atteignable depuis le réseau partagé avec les autres
+  # stacks.
   postgres_crm:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: odoo
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?requis — voir .env.production.example}
-      # Base d'amorçage seulement. La base applicative (${ODOO_DB_NAME}) est
-      # créée par Odoo lui-même, cf. docs/DEPLOIEMENT_VPS.md. Le rôle `odoo`
-      # est superutilisateur du conteneur, il a donc bien le droit CREATEDB
-      # qu'Odoo exige.
+      # Base d'amorçage seulement. La base applicative est créée par Odoo
+      # lui-même au premier démarrage (voir odoo-init). Le rôle `odoo` est
+      # superutilisateur du conteneur, il a donc le droit CREATEDB qu'Odoo
+      # exige — sans lui, rien ne se crée.
       POSTGRES_DB: postgres
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -71,38 +113,110 @@ services:
           cpus: '1.0'
 
   # ---------------------------------------------------------------------------
-  # Odoo 19 — CRM
+  # Amorçage — crée la base et installe les modules, puis s'arrête
+  # ---------------------------------------------------------------------------
+  # C'est ce service qui rend le `up -d` suffisant : Odoo crée lui-même la base
+  # nommée par --database si elle n'existe pas, et --init y installe les
+  # modules. Sans lui il faudrait une commande manuelle après le premier
+  # démarrage, et le CRM répondrait « database does not exist » entre-temps.
+  #
+  # Il se relance à chaque `up`, ce qui est voulu et sans effet : réinstaller
+  # un module déjà installé ne fait rien. Cela vaut aussi pour les addons
+  # ajoutés plus tard dans addons/ — ils s'installent au redéploiement suivant.
+  #
+  # Pourquoi un conteneur séparé plutôt que --init sur le serveur lui-même :
+  # --init force Odoo à recharger le graphe des modules à CHAQUE démarrage,
+  # donc à chaque redémarrage automatique après un incident ou un reboot du
+  # VPS. Isolé ici, ce coût n'est payé qu'au déploiement.
+  #
+  # ⚠️ « Exited (0) » sur ce conteneur n'est pas une panne, c'est son travail
+  # terminé.
+  odoo-init:
+    <<: *odoo-base
+    # Surtout pas `unless-stopped` : le conteneur sort volontairement, une
+    # politique de redémarrage le relancerait en boucle.
+    restart: 'no'
+    depends_on:
+      postgres_crm:
+        condition: service_healthy
+    command:
+      - odoo
+      - --database=${ODOO_DB_NAME:-echango_crm}
+      # `base` est implicite (Odoo l'ajoute lui-même à la création de la base).
+      # echangocrm_bootstrap applique le mot de passe administrateur ; voir
+      # addons/echangocrm_bootstrap/.
+      - --init=crm,contacts,calendar,echangocrm_bootstrap
+      - --without-demo=all
+      - --stop-after-init
+      - --log-level=${ODOO_LOG_LEVEL:-warn}
+    networks:
+      - internal
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+          cpus: '2.0'
+
+  # ---------------------------------------------------------------------------
+  # Odoo 19 — le serveur
   # ---------------------------------------------------------------------------
   odoo:
-    build:
-      context: ./docker/odoo
-      dockerfile: Dockerfile
-      args:
-        ODOO_IMAGE_TAG: ${ODOO_IMAGE_TAG:-19}
+    <<: *odoo-base
     restart: unless-stopped
     depends_on:
       postgres_crm:
         condition: service_healthy
-    # Même fichier que --env-file : un seul endroit où le mot de passe
-    # Postgres est écrit, donc aucun risque de désynchronisation entre la
-    # valeur vue par le conteneur Postgres et celle vue par Odoo.
-    env_file:
-      - ./.env.production
-    volumes:
-      # Filestore, sessions, pièces jointes. À sauvegarder au même titre que
-      # la base : un dump SQL seul restaure un CRM aux pièces jointes cassées.
-      - odoo_data:/var/lib/odoo
-      # Addons custom versionnés dans ce dépôt. En lecture seule : les modules
-      # s'ajoutent par `git pull` + rebuild, pas par téléversement dans l'UI,
-      # pour qu'aucun code de production n'existe hors du dépôt.
-      - ./addons:/mnt/extra-addons:ro
+      # Ne démarre qu'une fois la base créée et les modules installés. Si
+      # l'amorçage échoue, le serveur ne démarre pas du tout — préférable à un
+      # CRM qui répond des erreurs 500 sur une base à moitié initialisée.
+      odoo-init:
+        condition: service_completed_successfully
+    # Tout est en ligne de commande, il n'y a donc aucun odoo.conf dans ce
+    # dépôt. Les valeurs non listées ici sont les défauts d'Odoo, et on s'appuie
+    # dessus volontairement : http_port 8069, gevent_port 8072,
+    # http_interface 0.0.0.0, plus addons_path et data_dir que l'image
+    # officielle fixe déjà à /mnt/extra-addons et /var/lib/odoo.
+    command:
+      - odoo
+      - --database=${ODOO_DB_NAME:-echango_crm}
+      # Ancré sur ^…$ : une seule base est visible, aucune autre n'est
+      # sélectionnable depuis le web.
+      - --db-filter=^${ODOO_DB_NAME:-echango_crm}$$
+      # Ferme le gestionnaire de bases : création, duplication, suppression,
+      # sauvegarde et restauration renvoient toutes 403, quel que soit le mot
+      # de passe maître. C'est ce qui rend inutile de configurer admin_passwd
+      # (le seul réglage d'Odoo qui ne peut vivre que dans un fichier, donc le
+      # seul qui obligerait à en générer un contenant un secret).
+      - --no-database-list
+      # Derrière Traefik : sans cela Odoo construit ses URLs absolues en http://
+      # et journalise l'IP du proxy au lieu de celle du client.
+      - --proxy-mode
+      # ⚠️ Garder >= 2. Avec 0, Odoo passe en mode threadé et le port gevent
+      # 8072 n'est PAS servi : le routeur `echangocrm-ws` répond 502 et le temps
+      # réel (chat, notifications, activités) tombe en panne silencieuse, sans
+      # que le reste du CRM ait l'air cassé.
+      - --workers=${ODOO_WORKERS:-2}
+      - --max-cron-threads=1
+      # 4 processus x 16 = 64 connexions, sous les 100 de max_connections par
+      # défaut de Postgres. Le défaut Odoo (64 par processus) saturerait la base.
+      - --db-maxconn=16
+      # Seuils de recyclage, pas des réservations : un worker qui dépasse la
+      # limite douce termine sa requête puis redémarre proprement. Volontairement
+      # bas, le VPS héberge plusieurs applications. À monter si les rapports PDF
+      # volumineux ou les imports se font tuer.
+      - --limit-memory-soft=671088640
+      - --limit-memory-hard=838860800
+      - --limit-time-cpu=600
+      - --limit-time-real=1200
+      - --limit-request=8192
+      - --log-level=${ODOO_LOG_LEVEL:-warn}
     networks:
       - internal
       - echango_network
     healthcheck:
-      # python3 plutôt que curl/wget : c'est l'interpréteur d'Odoo, il est
-      # forcément là, alors que la présence de curl dans l'image amont n'est
-      # pas un contrat.
+      # python3 plutôt que curl : c'est l'interpréteur d'Odoo, il est forcément
+      # présent, alors que la présence de curl dans l'image amont n'est pas un
+      # contrat.
       test:
         - CMD
         - python3
@@ -113,29 +227,27 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      # Premier démarrage après un build : chargement du registre de modules.
-      start_period: 180s
+      start_period: 120s
     labels:
       - 'traefik.enable=true'
       # Le conteneur est sur DEUX réseaux. Sans cette ligne, Traefik peut
-      # retenir l'IP du réseau `internal`, qu'il n'atteint pas — le routeur
-      # existe alors mais répond 502. La configuration Traefik de la stack
-      # principale fixe déjà un réseau par défaut, on ne s'y fie pas : ce
-      # dépôt ne dépend d'aucun réglage d'un autre dépôt.
+      # retenir son IP sur le réseau `internal`, qu'il n'atteint pas : le
+      # routeur apparaît dans le tableau de bord mais répond 502. La config
+      # Traefik de la stack principale fixe déjà un réseau par défaut ; on ne
+      # s'y fie pas, ce dépôt ne dépend d'aucun réglage d'un autre dépôt.
       - 'traefik.docker.network=echango_network'
 
-      # --- Services -----------------------------------------------------
+      # --- Services -------------------------------------------------------
       # Odoo écoute sur DEUX ports : 8069 (HTTP) et 8072 (gevent/websocket).
       - 'traefik.http.services.echangocrm-svc.loadbalancer.server.port=8069'
       - 'traefik.http.services.echangocrm-ws-svc.loadbalancer.server.port=8072'
 
-      # --- Middlewares, définis ICI et pas empruntés à la stack Vendure ---
-      # Deux raisons. D'abord l'autonomie : `security-headers@file` vit dans le
-      # dépôt vendure (infra/traefik/dynamic/middlewares.yml), le référencer
-      # rendrait ce déploiement dépendant d'un fichier d'un autre projet.
-      # Ensuite la correction : ce middleware-là pose `X-Frame-Options: DENY`,
-      # ce qui casse l'éditeur de site et les vues incorporées d'Odoo, qui
-      # fonctionnent en iframe de même origine. Il faut SAMEORIGIN.
+      # --- Middlewares, définis ICI et pas empruntés à la stack Vendure ----
+      # Deux raisons. L'autonomie d'abord : `security-headers@file` vit dans le
+      # dépôt vendure, le référencer rendrait ce déploiement dépendant d'un
+      # fichier d'un autre projet. La correction ensuite : ce middleware-là pose
+      # `X-Frame-Options: DENY`, ce qui casse l'éditeur de site et les vues
+      # incorporées d'Odoo, qui fonctionnent en iframe de même origine.
       - 'traefik.http.middlewares.echangocrm-headers.headers.stsSeconds=31536000'
       - 'traefik.http.middlewares.echangocrm-headers.headers.stsIncludeSubdomains=true'
       - 'traefik.http.middlewares.echangocrm-headers.headers.stsPreload=true'
@@ -150,14 +262,22 @@ services:
       - 'traefik.http.middlewares.echangocrm-headers.headers.customResponseHeaders.Server='
 
       # Compression. `text/event-stream` DOIT rester exclu : comprimer un flux
-      # d'événements le fait mettre en tampon, et les notifications n'arrivent
-      # plus qu'au vidage du tampon — panne intermittente, difficile à
-      # rattacher au proxy. Les images du filestore sont déjà comprimées.
+      # d'événements le met en tampon, et les notifications n'arrivent plus
+      # qu'au vidage du tampon — panne intermittente, difficile à rattacher au
+      # proxy. Les images du filestore sont déjà comprimées.
       - 'traefik.http.middlewares.echangocrm-compress.compress.excludedcontenttypes=text/event-stream,image/png,image/jpeg,image/webp,image/avif'
 
+      # Refus de /web/database depuis l'extérieur. `ipallowlist` restreint à la
+      # boucle locale est l'idiome Traefik pour « interdire ce chemin » : aucune
+      # requête entrante ne vient de 127.0.0.1, toutes reçoivent donc 403.
+      # Défense en profondeur — Odoo bloque déjà ces routes via
+      # --no-database-list ; ceci les rend inatteignables même si ce drapeau
+      # venait à sauter lors d'une modification.
+      - 'traefik.http.middlewares.echangocrm-no-db-manager.ipallowlist.sourcerange=127.0.0.1/32'
+
       # --- Routeur HTTP principal -----------------------------------------
-      # priority=20 > 5 : le routeur `storefront-vendor` de la stack Vendure
-      # est un catch-all HostRegexp sur *.echango.com à la priorité 5. Cette
+      # priority=20 > 5 : le routeur `storefront-vendor` de la stack Vendure est
+      # un catch-all HostRegexp sur *.echango.com à la priorité 5. Cette
       # priorité suffit à passer devant, donc AUCUNE modification n'est
       # nécessaire dans le dépôt vendure pour déployer ce CRM.
       - 'traefik.http.routers.echangocrm.rule=Host(`echangocrm.${BASE_DOMAIN:-echango.com}`)'
@@ -166,15 +286,23 @@ services:
       - 'traefik.http.routers.echangocrm.middlewares=echangocrm-headers,echangocrm-compress'
       - 'traefik.http.routers.echangocrm.service=echangocrm-svc'
 
-      # --- Routeur websocket (chat, notifications, activités) -------------
+      # --- Routeur websocket (chat, notifications, activités) --------------
       # priority=25 pour passer devant le routeur principal, dont la règle
-      # (Host seul) couvre aussi /websocket. Sans compression : comprimer une
-      # connexion maintenue ouverte n'a aucun sens et introduit du tampon.
+      # (Host seul) couvre aussi ce chemin. Sans compression : comprimer une
+      # connexion maintenue ouverte n'a pas de sens et introduit du tampon.
       - 'traefik.http.routers.echangocrm-ws.rule=Host(`echangocrm.${BASE_DOMAIN:-echango.com}`) && PathPrefix(`/websocket`)'
       - 'traefik.http.routers.echangocrm-ws.entrypoints=websecure'
       - 'traefik.http.routers.echangocrm-ws.priority=25'
       - 'traefik.http.routers.echangocrm-ws.middlewares=echangocrm-headers'
       - 'traefik.http.routers.echangocrm-ws.service=echangocrm-ws-svc'
+
+      # --- Routeur de refus du gestionnaire de bases -----------------------
+      # priority=30 pour passer devant le routeur principal.
+      - 'traefik.http.routers.echangocrm-no-db.rule=Host(`echangocrm.${BASE_DOMAIN:-echango.com}`) && PathPrefix(`/web/database`)'
+      - 'traefik.http.routers.echangocrm-no-db.entrypoints=websecure'
+      - 'traefik.http.routers.echangocrm-no-db.priority=30'
+      - 'traefik.http.routers.echangocrm-no-db.middlewares=echangocrm-no-db-manager'
+      - 'traefik.http.routers.echangocrm-no-db.service=echangocrm-svc'
     deploy:
       resources:
         limits:

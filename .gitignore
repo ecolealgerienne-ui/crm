@@ -11,6 +11,10 @@
 *.dump.gpg
 *.sql
 
+# Python — Odoo écrit ces caches en important les addons
+__pycache__/
+*.py[cod]
+
 # Divers
 *.log
 .DS_Store

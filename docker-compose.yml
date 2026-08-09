@@ -1,26 +1,39 @@
 # =============================================================================
 # Docker Compose — EchangoCrm (Odoo 19) — DÉVELOPPEMENT LOCAL
 # =============================================================================
-# Pour faire tourner le CRM sur un poste, sans Traefik ni réseau partagé :
-# les ports sont publiés sur l'hôte et joignables en clair.
+# Même structure que la production (docker-compose.crm.yml) : même image, même
+# amorçage automatique, mêmes options Odoo. Ne diffèrent que les ports, publiés
+# ici sur l'hôte, l'absence de Traefik, et les secrets.
 #
-#   docker compose up -d --build
+#   docker compose up -d
 #   → http://localhost:8069
 #
-# La production, c'est docker-compose.crm.yml (voir docs/DEPLOIEMENT_VPS.md).
-# Les deux partagent la MÊME image (docker/odoo/), donc le même Odoo, la même
-# configuration rendue, les mêmes modules. Ne divergent que : les ports
-# publiés, les secrets (ici en clair, sans valeur), et l'absence de Traefik.
+# Le premier lancement crée la base et installe les modules tout seul ; compter
+# quelques minutes, à suivre avec `docker compose logs -f odoo-init`.
 #
-# ⚠️ Les identifiants ci-dessous sont des valeurs de développement écrites en
-# clair dans un fichier versionné. Elles sont sans danger tant que rien n'est
-# exposé hors du poste — et elles n'ont RIEN à faire sur le VPS. La production
-# lit ses secrets depuis .env.production, qui est gitignoré.
+# ⚠️ Les identifiants ci-dessous sont des valeurs de développement, écrites en
+# clair dans un fichier versionné. Sans danger tant que rien n'est exposé hors
+# du poste — et elles n'ont RIEN à faire sur le VPS, dont les secrets vivent
+# dans .env.production (gitignoré).
 #
 # `name:` explicite : sans lui, Compose déduirait `echangocrm` du nom du
-# dossier, le même nom que la stack de production, et les deux partageraient
-# le volume Postgres physique. Voir l'en-tête de docker-compose.crm.yml.
+# dossier, le même nom que la stack de production, et les deux partageraient le
+# volume Postgres physique. Voir l'en-tête de docker-compose.crm.yml.
 name: echangocrm-dev
+
+x-odoo-base: &odoo-base
+  image: odoo:${ODOO_IMAGE_TAG:-19}
+  environment:
+    # Noms imposés par l'entrypoint de l'image officielle — voir le commentaire
+    # détaillé dans docker-compose.crm.yml.
+    HOST: postgres_crm
+    PORT: 5432
+    USER: odoo
+    PASSWORD: odoo
+    ODOO_ADMIN_PASSWORD: admin
+  volumes:
+    - odoo_data:/var/lib/odoo
+    - ./addons:/mnt/extra-addons:ro
 # =============================================================================
 
 services:
@@ -43,32 +56,48 @@ services:
       timeout: 5s
       retries: 10
 
+  # Crée la base et installe les modules, puis s'arrête. « Exited (0) » est le
+  # résultat normal, pas une panne.
+  odoo-init:
+    <<: *odoo-base
+    restart: 'no'
+    depends_on:
+      postgres_crm:
+        condition: service_healthy
+    command:
+      - odoo
+      - --database=echango_crm
+      - --init=crm,contacts,calendar,echangocrm_bootstrap
+      # Pas de --without-demo ici, contrairement à la production : les données
+      # de démonstration rendent le pipeline CRM lisible dès le premier
+      # lancement, ce qu'on veut pour développer. Ajouter `--without-demo=all`
+      # pour reproduire une base vierge comme en production.
+      - --stop-after-init
+      - --log-level=info
+
   odoo:
-    build:
-      context: ./docker/odoo
-      dockerfile: Dockerfile
-      args:
-        ODOO_IMAGE_TAG: ${ODOO_IMAGE_TAG:-19}
+    <<: *odoo-base
     restart: unless-stopped
     depends_on:
       postgres_crm:
         condition: service_healthy
-    environment:
-      POSTGRES_PASSWORD: odoo
-      ODOO_ADMIN_PASSWD: admin
-      ODOO_DB_NAME: echango_crm
+      odoo-init:
+        condition: service_completed_successfully
+    command:
+      - odoo
+      - --database=echango_crm
+      - --db-filter=^echango_crm$$
+      - --no-database-list
       # workers >= 2 même en développement : c'est la seule façon d'avoir le
       # port gevent (8072) actif, donc de reproduire le comportement du
       # websocket tel qu'il tourne derrière Traefik en production.
-      ODOO_WORKERS: 2
-      ODOO_MAX_CRON_THREADS: 1
-      ODOO_LOG_LEVEL: info
+      - --workers=2
+      - --max-cron-threads=1
+      - --db-maxconn=16
+      - --log-level=info
     ports:
       - '8069:8069'
       - '8072:8072'
-    volumes:
-      - odoo_data:/var/lib/odoo
-      - ./addons:/mnt/extra-addons:ro
 
 volumes:
   postgres_data:

@@ -39,12 +39,15 @@ dig +short echangocrm.echango.com
 
 Aucune modification dans le dépôt `vendure`. Son routeur catch-all
 `storefront-vendor` capture `*.echango.com` à la priorité 5 ; les routeurs de
-ce dépôt sont à 20 et 25, ils passent donc devant. L'exclusion explicite
+ce dépôt sont à 20, 25 et 30, ils passent donc devant. L'exclusion explicite
 `!Host(...)` ajoutée jadis pour `promo.echango.com` n'est pas nécessaire ici.
+
+Rien à construire non plus : la stack utilise l'image officielle `odoo:19`
+telle quelle, il n'y a aucun Dockerfile dans ce dépôt.
 
 ---
 
-## 2. Premier déploiement
+## 2. Déploiement
 
 ```bash
 sudo mkdir -p /opt/echangocrm
@@ -56,120 +59,95 @@ chmod 600 .env.production
 nano .env.production
 ```
 
-Trois valeurs à renseigner impérativement — les autres ont un défaut correct :
+Deux valeurs à renseigner, les autres ont un défaut correct :
 
-| Variable | Comment la produire |
-|---|---|
-| `POSTGRES_PASSWORD` | `openssl rand -hex 24` — **alphanumérique uniquement**, voir l'avertissement dans le fichier |
-| `ODOO_ADMIN_PASSWD` | `openssl rand -hex 24` — mot de passe **maître** (création/suppression de bases), à ranger dans le gestionnaire de mots de passe |
-| `BASE_DOMAIN` | `echango.com` |
+| Variable | Ce que c'est | Comment la produire |
+|---|---|---|
+| `POSTGRES_PASSWORD` | mot de passe de la base | `openssl rand -hex 24` |
+| `ODOO_ADMIN_PASSWORD` | mot de passe de connexion au CRM (`admin`) | `openssl rand -hex 24` |
 
-Puis construire et démarrer Postgres seul, la base applicative n'existant pas
-encore :
-
-```bash
-docker compose --env-file .env.production -f docker-compose.crm.yml build
-docker compose --env-file .env.production -f docker-compose.crm.yml up -d postgres_crm
-```
-
----
-
-## 3. Créer la base et installer le CRM
-
-Odoo ne crée **pas** la base tout seul : `list_db = False` ferme le
-gestionnaire de bases web, ce qui est voulu. La création se fait en ligne de
-commande, une seule fois.
-
-```bash
-cd /opt/echangocrm
-docker compose --env-file .env.production -f docker-compose.crm.yml run --rm odoo \
-  odoo -d echango_crm -i base,crm,contacts,calendar --stop-after-init
-```
-
-`-i` crée la base si elle n'existe pas, puis installe les modules. Compter
-quelques minutes. Aucune donnée de démonstration n'est chargée
-(`without_demo = all` dans la configuration).
-
-### Changer le mot de passe `admin` — AVANT d'exposer le service
-
-⚠️ **Odoo crée l'utilisateur `admin` avec le mot de passe `admin`.** Tant que
-ce n'est pas corrigé, quiconque atteint l'URL est administrateur du CRM. Le
-faire **maintenant**, pendant que rien n'est encore routé par Traefik :
-
-```bash
-read -rsp 'Nouveau mot de passe admin : ' MDP; echo
-
-docker compose --env-file .env.production -f docker-compose.crm.yml \
-  run --rm -T -e NOUVEAU_MDP="$MDP" odoo \
-  odoo shell -d echango_crm --no-http <<'PY'
-import os
-env.ref('base.user_admin').write({'password': os.environ['NOUVEAU_MDP']})
-env.cr.commit()
-PY
-
-unset MDP
-```
-
-`read -rsp` évite que le mot de passe atterrisse dans l'historique du shell, et
-il transite par une variable d'environnement plutôt que par le corps du script
-Python, pour qu'aucune apostrophe ou guillemet ne puisse casser la commande.
-`env.cr.commit()` est indispensable : `odoo shell` ne valide pas la
-transaction en sortant.
-
-### Démarrer
+Puis, **une seule commande** :
 
 ```bash
 docker compose --env-file .env.production -f docker-compose.crm.yml up -d
-docker compose --env-file .env.production -f docker-compose.crm.yml logs -f odoo
 ```
 
-Le CRM répond alors sur https://echangocrm.echango.com.
+C'est tout. Le premier lancement enchaîne tout seul : Postgres démarre, le
+conteneur `odoo-init` crée la base `echango_crm`, installe `crm`, `contacts`,
+`calendar` et l'addon d'amorçage, applique le mot de passe administrateur, puis
+s'arrête ; le serveur Odoo démarre ensuite. Compter quelques minutes.
+
+Suivre l'installation :
+
+```bash
+docker compose --env-file .env.production -f docker-compose.crm.yml logs -f odoo-init odoo
+```
+
+Se connecter sur **https://echangocrm.echango.com** avec le login `admin` et le
+mot de passe mis dans `ODOO_ADMIN_PASSWORD`.
+
+### Deux choses à savoir sur ce démarrage
+
+**`odoo-init` en « Exited (0) » n'est pas une panne** — c'est son travail
+terminé. Il se relance à chaque `up` et ne fait rien s'il n'y a rien à faire.
+
+**Oublier `--env-file` ne casse rien silencieusement.** Les `${VAR:?}` du
+fichier Compose font échouer la commande immédiatement en nommant la variable
+manquante, avant que le moindre conteneur démarre.
+
+### Changer le mot de passe administrateur plus tard
+
+`ODOO_ADMIN_PASSWORD` n'est lu **qu'une fois**, à la création de la base.
+Le modifier dans `.env.production` ensuite n'a aucun effet : le mot de passe se
+change depuis l'interface (menu utilisateur > *Préférences*), qui devient la
+référence. C'est délibéré — sinon un redéploiement écraserait un mot de passe
+changé entre-temps.
 
 ---
 
-## 4. Redéploiement (mise à jour du dépôt)
+## 3. Redéploiement (mise à jour du dépôt)
 
 ```bash
 cd /opt/echangocrm
 git pull origin main
-docker compose --env-file .env.production -f docker-compose.crm.yml up -d --build odoo
+docker compose --env-file .env.production -f docker-compose.crm.yml up -d
 ```
 
-Si le `git pull` a apporté des addons dans `addons/`, il faut en plus les faire
-prendre en compte par la base :
+Si le `git pull` a apporté de nouveaux addons dans `addons/`, ajouter leur nom
+à la ligne `--init=` du service `odoo-init` dans `docker-compose.crm.yml` : ils
+seront installés au `up` suivant.
+
+Pour **mettre à jour** un addon déjà installé dont le code a changé :
 
 ```bash
 docker compose --env-file .env.production -f docker-compose.crm.yml \
-  exec odoo odoo -d echango_crm -u nom_du_module --stop-after-init
+  run --rm odoo odoo --database=echango_crm --update=nom_du_module --stop-after-init
+docker compose --env-file .env.production -f docker-compose.crm.yml restart odoo
 ```
-
-ou, dans l'interface : *Applications > Mettre à jour la liste des
-applications*.
 
 ---
 
-## 5. Routage Traefik — ce qui est en place
+## 4. Routage Traefik — ce qui est en place
 
 Tout est déclaré en labels dans `docker-compose.crm.yml`. Les points qui ne se
 devinent pas :
 
-**Deux routeurs, deux ports.** Odoo écoute sur `8069` (HTTP) et `8072`
+**Trois routeurs, deux ports.** Odoo écoute sur `8069` (HTTP) et `8072`
 (gevent : websocket, donc chat, notifications, activités du CRM). Le routeur
 `echangocrm-ws` capte `PathPrefix(/websocket)` vers `8072` à la priorité 25,
 devant le routeur principal (priorité 20) dont la règle `Host(...)` couvre
-aussi ce chemin.
+aussi ce chemin. Un troisième, à la priorité 30, refuse `/web/database`.
 
-**`workers >= 2` est une dépendance de ce routage.** Avec `workers = 0` Odoo
-passe en mode threadé et **rien n'écoute sur 8072** : le routeur websocket
-répond 502 et le temps réel tombe en panne, sans que le reste du CRM ait l'air
-cassé.
+**`ODOO_WORKERS >= 2` est une dépendance de ce routage.** Avec `0` Odoo passe
+en mode threadé et **rien n'écoute sur 8072** : le routeur websocket répond 502
+et le temps réel tombe en panne, sans que le reste du CRM ait l'air cassé.
 
 **Middlewares définis localement, pas empruntés.** Ce dépôt ne référence aucun
 middleware `@file` de la stack Vendure — d'abord pour rester autonome, ensuite
 parce que leur `security-headers@file` impose `X-Frame-Options: DENY`, ce qui
 casserait l'éditeur de site et les vues incorporées d'Odoo. Le middleware local
-`echangocrm-headers` pose `SAMEORIGIN`, plus HSTS et
-`X-Robots-Tag: noindex` (un CRM interne n'a rien à faire dans un index).
+`echangocrm-headers` pose `SAMEORIGIN`, plus HSTS et `X-Robots-Tag: noindex`
+(un CRM interne n'a rien à faire dans un index).
 
 **`traefik.docker.network=echango_network` est obligatoire ici.** Le conteneur
 `odoo` est sur deux réseaux ; sans cette ligne, Traefik peut retenir son IP sur
@@ -178,6 +156,28 @@ tableau de bord mais répond 502.
 
 **Postgres n'est sur aucun réseau partagé.** Il vit sur le réseau `internal` de
 cette stack, sans port publié.
+
+---
+
+## 5. Ce qui protège le gestionnaire de bases
+
+Deux verrous indépendants, et il vaut mieux savoir que le second existe avant
+de chercher pourquoi une restauration par l'interface web renvoie 403.
+
+1. **`--no-database-list`** (Odoo) : création, duplication, suppression,
+   sauvegarde et restauration de bases renvoient 403, quel que soit le mot de
+   passe maître. C'est ce qui rend inutile de configurer `admin_passwd` — le
+   seul réglage d'Odoo qui ne peut vivre que dans un fichier de configuration,
+   donc le seul qui obligerait ce dépôt à porter un fichier contenant un
+   secret.
+2. **Le routeur `echangocrm-no-db`** (Traefik) : `/web/database` est restreint
+   à `127.0.0.1/32`, une plage dont aucune requête entrante ne peut venir. Le
+   chemin est donc inatteignable même si le drapeau ci-dessus venait à sauter
+   lors d'une modification.
+
+**Pour restaurer par l'interface web** il faudrait lever les deux
+volontairement. La procédure du §7 passe par `pg_restore`, elle ne les touche
+pas.
 
 ---
 
@@ -226,6 +226,7 @@ Procédure manuelle, en attendant :
 
 ```bash
 cd /opt/echangocrm
+mkdir -p /var/backups/echangocrm
 horodatage=$(date +%Y%m%d-%H%M%S)
 
 # Base
@@ -268,14 +269,14 @@ docker compose --env-file .env.production -f docker-compose.crm.yml \
 d'Odoo migre le schéma de la base ; l'édition Community ne fournit pas les
 scripts de migration (c'est un service payant d'Odoo SA, ou OpenUpgrade). Une
 montée de version se prépare sur une **copie** de la base, jamais en place, et
-commence par une sauvegarde vérifiée des deux éléments de la section 7.
+commence par une sauvegarde vérifiée des deux éléments du §7.
 
-Les mises à jour de correctifs à l'intérieur d'une majeure (`odoo:19` suit la
-branche 19) s'appliquent, elles, par un simple :
+Les correctifs à l'intérieur d'une majeure (`odoo:19` suit la branche 19)
+s'appliquent, eux, par :
 
 ```bash
-docker compose --env-file .env.production -f docker-compose.crm.yml build --pull odoo
-docker compose --env-file .env.production -f docker-compose.crm.yml up -d odoo
+docker compose --env-file .env.production -f docker-compose.crm.yml pull
+docker compose --env-file .env.production -f docker-compose.crm.yml up -d
 ```
 
 ---
@@ -284,7 +285,7 @@ docker compose --env-file .env.production -f docker-compose.crm.yml up -d odoo
 
 `docker-compose.yml` à la racine ne sert qu'au poste de développement : ports
 `8069`, `8072` et `5434` publiés sur l'hôte, secrets en clair et sans valeur,
-pas de Traefik ni de réseau externe. Les deux stacks partagent la **même
-image** (`docker/odoo/`), donc le même Odoo et la même configuration rendue.
-Leurs noms de projet Compose sont distincts (`echangocrm` / `echangocrm-dev`)
-pour qu'elles ne puissent jamais partager un volume Postgres.
+données de démonstration chargées, pas de Traefik ni de réseau externe. Les
+deux stacks partagent la **même image officielle** et le même amorçage
+automatique. Leurs noms de projet Compose sont distincts (`echangocrm` /
+`echangocrm-dev`) pour qu'elles ne puissent jamais partager un volume Postgres.
