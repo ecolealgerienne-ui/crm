@@ -70,14 +70,12 @@ class TestRapprochement(TransactionCase):
         appel = self.journaliser('+213555000000', 'evt-format')
         self.assertEqual(appel.partner_id, contact)
 
-    def test_numero_inconnu_ne_trouve_aucun_contact(self):
-        # Depuis la décision du 2026-08-09 (§10.2), une piste EST créée pour un
-        # numéro inconnu — c'est test_piste_auto.py qui le couvre. Ici on
-        # vérifie seulement qu'aucun contact existant n'a été capté au passage :
-        # un rapprochement trop large est plus grave qu'une absence de
-        # rapprochement, il attribue un appel au mauvais client.
+    def test_numero_inconnu_reste_sans_rattachement(self):
+        # Un rapprochement trop large est plus grave qu'une absence de
+        # rapprochement : il attribue un appel au mauvais client.
         appel = self.journaliser('+213555999888', 'evt-inconnu')
         self.assertFalse(appel.partner_id)
+        self.assertFalse(appel.lead_id)
 
     def test_numero_trop_court_ne_rattache_rien(self):
         self.env['res.partner'].create({'name': 'Court', 'phone': '123'})
@@ -119,14 +117,12 @@ class TestRapprochement(TransactionCase):
         self.assertEqual(appel.lead_id, piste)
 
     def test_piste_archivee_est_ignoree(self):
-        archivee = self.env['crm.lead'].create({
+        self.env['crm.lead'].create({
             'name': 'Piste perdue', 'phone': '+213555333000', 'active': False,
         })
         appel = self.journaliser('+213555333000', 'evt-piste-archivee')
-        # Une affaire perdue ne doit pas se rouvrir toute seule sur un appel :
-        # l'appel se rattache à une piste NEUVE, pas à celle qu'on a fermée.
-        self.assertNotEqual(appel.lead_id, archivee)
-        self.assertTrue(appel.lead_id.active)
+        # Une affaire perdue ne doit pas se rouvrir toute seule sur un appel.
+        self.assertFalse(appel.lead_id)
 
     # ── Unicité ──────────────────────────────────────────────────────────────
 

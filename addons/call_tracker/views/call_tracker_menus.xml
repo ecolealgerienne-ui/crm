@@ -12,6 +12,12 @@
               action="action_call_tracker_log"
               sequence="10"/>
 
+    <menuitem id="menu_call_tracker_a_qualifier"
+              name="Appels à qualifier"
+              parent="menu_call_tracker_root"
+              action="action_call_tracker_a_qualifier"
+              sequence="12"/>
+
     <!-- Ouvert à tous les utilisateurs internes : chacun doit pouvoir voir sa
          propre activité, l'action s'ouvrant groupée par commercial. -->
     <menuitem id="menu_call_tracker_dashboard"

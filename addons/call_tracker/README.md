@@ -163,30 +163,42 @@ appel s'affiche donc au suivant.
 ⚠️ Sous-type `mt_note` et non un commentaire public : se tromper ici
 enverrait la note au client par courriel.
 
-## Numéro inconnu — création automatique de piste
+## Numéro inconnu — qualification manuelle
 
-Décision du 2026-08-09 (spec §10.2). Un appel dont le numéro n'est **ni** un
-contact **ni** une piste crée une piste, attribuée au commercial qui a passé ou
-reçu l'appel.
+**Aucune piste n'est créée automatiquement.** Décision du 2026-08-09, qui
+revient sur le premier choix : une création automatique remplit le pipeline de
+taxis, de fournisseurs et de faux numéros, les rapports deviennent faux, et un
+pipeline qu'on ne croit plus, personne ne le regarde.
 
-Deux garde-fous, et ils comptent autant que la fonctionnalité :
+Un appel sans correspondance rejoint la file **CRM > Call Tracker > Appels à
+qualifier**. Le bouton *Créer une piste* — dans la liste comme sur la fiche —
+en crée une, attribuée au commercial qui a passé ou reçu l'appel, et l'ouvre.
 
-- **Un contact connu sans piste ouverte ne déclenche rien.** Ce n'est pas un
-  numéro inconnu ; lui créer une piste rouvrirait une affaire à chaque appel de
-  suivi.
-- **Le deuxième appel du même inconnu réutilise la piste.** Elle porte le
-  numéro, donc `_chercher_piste` la retrouve. Sans cela, chaque rappel d'un
-  prospect créerait une affaire de plus.
+Deux choix qui font que la file se vide vraiment :
 
-Le type créé (`lead` ou `opportunity`) suit la configuration CRM du commercial.
-Créer un `lead` sur une base où l'étape de qualification est désactivée le
-rendrait **invisible** : le menu correspondant est masqué.
+- **c'est un menu, pas un filtre.** Le risque de ne rien créer est de perdre un
+  prospect entrant, qui ne peut pas avoir été créé à l'avance. Ce risque se
+  traite par la visibilité de cette file — un filtre qu'il faut penser à cocher
+  ne serait regardé par personne ;
+- **qualifier un appel qualifie tous ceux du même numéro.** Sans cela, un
+  prospect qui a rappelé trois fois laisserait deux appels derrière lui, et il
+  faudrait recommencer le geste pour chacun.
+
+Le type créé (`lead` ou `opportunity`) suit la configuration CRM du commercial
+de l'appel — pas de celui qui clique. Créer un `lead` sur une base où l'étape
+de qualification est désactivée le rendrait **invisible** : le menu
+correspondant est masqué.
 
 ## Rétention
 
 `CALL_TRACKER_RETENTION_DAYS`, lue dans l'environnement du serveur (injectée
 par docker-compose depuis `.env.production`). Une tâche planifiée quotidienne
 purge les appels **et** leurs traces d'audit au-delà.
+
+Valeur retenue : **1095 jours (trois ans)**, durée habituellement admise pour
+des données de prospection commerciale — elle couvre les cycles de
+renouvellement et la comparaison d'une année sur l'autre, tout en restant
+proportionnée à la finalité.
 
 ⚠️ **`0`, absente ou illisible = aucune purge.** Le sens de l'erreur est
 choisi : un fichier d'environnement mal renseigné ne doit pas faire disparaître
@@ -232,8 +244,8 @@ cinq secondes ne valent pas dix conversations.
 
 ## Tests
 
-95 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
-révocation, le rapprochement téléphonique, la création automatique de piste,
+96 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
+révocation, le rapprochement téléphonique, la qualification manuelle,
 la note post-appel, les liens depuis les fiches CRM, la rétention et le
 journal d'audit.
 
@@ -268,11 +280,9 @@ en 17 et 18, mais ce n'est ni visé ni éprouvé.
 
 ## Pas encore fait
 
-- **Fixer `CALL_TRACKER_RETENTION_DAYS`** : le mécanisme existe, la durée
-  n'est pas arrêtée, et tant qu'elle vaut 0 il n'y a pas de politique de
-  rétention. Voir [docs/CONFORMITE_DONNEES_APPELS.md](../../docs/CONFORMITE_DONNEES_APPELS.md).
-- **Purge des pistes créées automatiquement et des notes recopiées dans le
-  fil** : la rétention supprime les appels et les traces, pas ce qu'ils ont
-  engendré. Volontaire — une piste est une donnée commerciale — mais cela
-  signifie qu'un numéro appelé une fois laisse une piste indéfiniment.
-- **Marquage « appel privé »** (spec §4.1), côté application.
+- **Purge des notes recopiées dans le fil de discussion** : la rétention
+  supprime les appels et les traces, pas la note reportée sur la piste.
+  Volontaire — c'est devenu une donnée commerciale — mais à connaître pour
+  répondre à une demande d'effacement. Voir
+  [docs/CONFORMITE_DONNEES_APPELS.md](../../docs/CONFORMITE_DONNEES_APPELS.md).
+- **Écran d'information au premier lancement** de l'application.

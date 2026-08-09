@@ -177,8 +177,20 @@ class CallTrackerLog(models.Model):
     def _rattacher(self):
         """Associe chaque appel au contact et à la piste correspondants.
 
-        Si le numéro n'est connu ni comme contact ni comme piste, une piste est
-        créée — décision du 2026-08-09 (spec §10.2).
+        ⚠️ **Aucune piste n'est créée automatiquement** — décision du
+        2026-08-09, qui revient sur le premier choix.
+
+        Une création automatique remplit le pipeline de taxis, de fournisseurs
+        et de faux numéros ; les rapports deviennent faux, et un pipeline qu'on
+        ne croit plus, personne ne le regarde. Un appel sans correspondance
+        reste donc non rattaché et rejoint la file « Appels à qualifier », où
+        un humain décide — c'est la troisième option de la spec §10.2, la
+        validation manuelle.
+
+        Le risque de cette approche est de perdre un prospect entrant, qui ne
+        peut pas avoir été créé à l'avance. Il est traité par la visibilité de
+        cette file, pas par une création aveugle : voir
+        ``action_call_tracker_a_qualifier``.
         """
         for appel in self:
             if not appel.phone_key:
@@ -186,23 +198,48 @@ class CallTrackerLog(models.Model):
             partenaire = self._chercher_partenaire(appel.phone_key)
             if partenaire:
                 appel.partner_id = partenaire
-            piste = self._chercher_piste(appel.phone_key, partenaire)
-            appel.lead_id = piste or appel._creer_piste()
+            appel.lead_id = self._chercher_piste(appel.phone_key, partenaire)
 
-    def _creer_piste(self):
-        """Crée une piste pour un numéro totalement inconnu.
+    # ── Qualification manuelle ───────────────────────────────────────────────
 
-        ⚠️ Uniquement quand il n'y a NI contact NI piste. Un contact connu sans
-        piste ouverte n'est pas un numéro inconnu : lui en créer une
-        rouvrirait une affaire à chaque appel de suivi.
+    def action_creer_piste(self):
+        """Crée une piste depuis un appel non rattaché, et l'ouvre.
 
-        Le doublon se règle tout seul : la piste porte le numéro, donc le
-        deuxième appel du même inconnu la retrouve par ``_chercher_piste``.
+        Le geste que remplace l'ancienne création automatique : un clic, mais
+        un clic humain.
         """
         self.ensure_one()
-        if self.partner_id:
-            return self.env['crm.lead']
+        if not self.lead_id:
+            self.lead_id = self._creer_piste()
+            self._rattacher_appels_du_meme_numero()
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'crm.lead',
+            'res_id': self.lead_id.id,
+            'view_mode': 'form',
+        }
 
+    def _rattacher_appels_du_meme_numero(self):
+        """Qualifier un appel qualifie tous ceux du même numéro.
+
+        Sans cela, un prospect qui a rappelé trois fois laisserait deux appels
+        dans la file après qualification, et il faudrait recommencer le geste
+        pour chacun — la file ne se viderait jamais vraiment.
+        """
+        self.ensure_one()
+        if not self.lead_id or not self.phone_key:
+            return
+        autres = self.search([
+            ('id', '!=', self.id),
+            ('phone_key', '=', self.phone_key),
+            ('lead_id', '=', False),
+            ('partner_id', '=', False),
+        ])
+        autres.write({'lead_id': self.lead_id.id})
+
+    def _creer_piste(self):
+        """Construit la piste correspondant à cet appel."""
+        self.ensure_one()
         libelles = dict(self._fields['direction'].selection)
         valeurs = {
             'name': "%s — %s" % (libelles.get(self.direction, ''), self.phone_number),
@@ -215,10 +252,9 @@ class CallTrackerLog(models.Model):
             # désactivée le rendrait INVISIBLE : le menu correspondant est
             # masqué, et la piste n'apparaîtrait dans aucun écran.
             #
-            # Le test porte sur le COMMERCIAL, pas sur `env.user` : l'appel
-            # arrive par une route sans session, où `env.user` est un compte
-            # technique dont l'appartenance aux groupes ne dit rien de ce que
-            # voit l'équipe commerciale.
+            # Le test porte sur le COMMERCIAL de l'appel, pas sur celui qui
+            # clique : la piste doit apparaître là où SON propriétaire la
+            # cherchera, pas là où la voit un administrateur de passage.
             'type': 'lead' if self.user_id.has_group('crm.group_use_lead')
                     else 'opportunity',
         }

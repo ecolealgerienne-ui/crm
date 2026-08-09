@@ -48,11 +48,15 @@ place, et ce sont les seules que l'application applique :
 3. **Types ignorés** : messagerie vocale, transferts et refus externes ne sont
    pas journalisés.
 
-⚠️ **Ce que ces filtres ne couvrent pas.** Un appel personnel reçu à 15 h est
-capturé comme les autres. La plage horaire est un instrument grossier ; elle
-protège la soirée, pas la vie privée dans la journée de travail. Si cela pose
-problème, la parade est un interrupteur « appel privé » avant ou pendant
-l'appel — **non implémenté à ce jour**, alors que la spec §4.1 le prévoyait.
+**Pas de marquage « appel privé »** — décision du 2026-08-09. La ligne est
+professionnelle : tous les appels qui y transitent le sont par définition, et
+il n'y a pas de vie privée du salarié à protéger dans ce flux. La spec §4.1 le
+prévoyait ; l'item est retiré.
+
+⚠️ **Ce que cette décision ne règle pas.** Le CORRESPONDANT, lui, peut être un
+particulier appelant depuis son mobile personnel. Ce n'est plus une question de
+vie privée du salarié, c'est celle de la conservation et de l'effacement —
+traitée au §3 et au §4.
 
 ---
 
@@ -65,23 +69,28 @@ l'appel — **non implémenté à ce jour**, alors que la spec §4.1 le prévoya
 | Odoo — `call.tracker.log` | l'appel et sa note | `CALL_TRACKER_RETENTION_DAYS` |
 | Odoo — `call.tracker.audit` | accès en lecture et en écriture | `CALL_TRACKER_RETENTION_DAYS` |
 | Odoo — fil de discussion CRM | la note, recopiée | **indéfinie** |
-| Odoo — pistes créées automatiquement | numéro et intitulé | **indéfinie** |
+| Odoo — pistes qualifiées à la main | numéro et intitulé | **indéfinie** |
 
 ### Ce qui n'est pas purgé, et pourquoi
 
-**Les notes recopiées dans le fil CRM et les pistes créées automatiquement
-survivent à la purge.** Ce n'est pas un oubli : une piste est une donnée
-commerciale, pas une trace technique, et l'effacer supprimerait l'historique
-d'une affaire en cours. Mais la conséquence doit être vue en face — **un
-numéro appelé une seule fois laisse une piste dans le CRM pour toujours**, et
-la note qui l'accompagne aussi.
+**Aucune piste n'est plus créée automatiquement** (décision du 2026-08-09) : un
+numéro inconnu n'entre dans le CRM que si un commercial le qualifie
+délibérément. Le volume de données personnelles conservées indéfiniment s'en
+trouve considérablement réduit — c'est le principal effet de cette décision au
+regard de la 18-07, au-delà de la propreté du pipeline.
 
-Une demande d'effacement portant sur un correspondant impose donc aujourd'hui
-**une intervention manuelle** sur trois modèles : `call.tracker.log`,
-`crm.lead`, et le fil `mail.message` associé.
+Restent hors purge : les **pistes qualifiées à la main**, et les **notes
+recopiées dans le fil CRM**. Ce n'est pas un oubli — ce sont des données
+commerciales, pas des traces techniques, et les effacer supprimerait
+l'historique d'une affaire en cours.
 
-**La file locale du téléphone n'est jamais purgée non plus.** Les appels
-remis y restent, en état `sent`. C'est le second manque connu.
+Une demande d'effacement portant sur un correspondant impose donc **une
+intervention manuelle** sur trois modèles : `call.tracker.log`, `crm.lead`, et
+le fil `mail.message` associé.
+
+**La file locale du téléphone n'est jamais purgée non plus.** Les appels déjà
+remis y restent indéfiniment, en état `sent` — une copie des mêmes données, sur
+un appareil qui se perd et se revend. Voir §6.
 
 ---
 
@@ -90,18 +99,18 @@ remis y restent, en état `sent`. C'est le second manque connu.
 `CALL_TRACKER_RETENTION_DAYS`, dans `.env.production` du serveur. Une tâche
 planifiée quotidienne supprime au-delà.
 
-> ⚠️ **La valeur par défaut est `0`, c'est-à-dire AUCUNE purge.** Ce défaut est
-> délibéré côté technique — un fichier d'environnement mal renseigné ne doit
-> pas faire disparaître des données — mais il est **inacceptable en
-> exploitation** : tant qu'il vaut 0, il n'y a pas de politique de rétention,
-> il y a une absence de politique.
->
-> **Renseigner une durée fait partie de la mise en production**, au même titre
-> que le mot de passe de la base.
+**Durée retenue le 2026-08-09 : 1095 jours, soit trois ans.** C'est la durée
+habituellement admise pour des données de prospection commerciale : elle couvre
+les cycles de renouvellement et la comparaison d'une année sur l'autre, tout en
+restant proportionnée à la finalité — ce qu'exige la 18-07. Elle est inscrite
+dans `.env.production.example`.
 
-Ordres de grandeur discutés : 365 jours pour conserver un exercice commercial
-complet, 90 jours pour un simple suivi d'activité. **Aucune valeur n'a été
-arrêtée à ce jour.**
+> ⚠️ **Si la variable est absente, la purge ne s'exécute pas.** Le repli
+> technique est `0`, c'est-à-dire conservation indéfinie : un fichier
+> d'environnement mal renseigné ne doit pas faire disparaître des données. La
+> conséquence est qu'une instance déployée sans cette variable n'a **aucune**
+> politique de rétention, sans que rien ne le signale. La tâche planifiée le
+> journalise à chaque passage : « aucune retention configuree, rien a purger ».
 
 ---
 
@@ -127,16 +136,19 @@ Tout accès, en lecture comme en écriture, laisse une trace dans
 
 Par ordre de ce qui bloquerait un usage réel :
 
-1. **Fixer `CALL_TRACKER_RETENTION_DAYS`.** Sans cela, rien de ce document ne
-   tient.
-2. **Informer les personnes concernées.** Les commerciaux doivent savoir que
+1. **Informer les personnes concernées.** Les commerciaux doivent savoir que
    leurs appels sont journalisés ; c'est un point de droit du travail autant
-   que de protection des données. Rien n'est prévu à ce jour — ni écran
-   d'information au premier lancement, ni mention.
-3. **Procédure d'effacement**, aujourd'hui manuelle et sur trois modèles.
-4. **Marquage « appel privé »** (spec §4.1), qui manque.
-5. **Purge de la file locale** des appels déjà remis.
-6. **Qualification en cas de vente à un tiers** : l'éditeur deviendrait
+   que de protection des données. L'application n'affiche rien à ce jour. Un
+   écran au premier lancement — ce qui est capturé, ce qui ne l'est pas, où
+   cela va — coûte une page ; si l'information est déjà donnée par écrit à
+   l'embauche, ce point tombe.
+2. **Procédure d'effacement**, aujourd'hui manuelle et sur trois modèles.
+3. **Purge de la file locale** des appels déjà remis, côté téléphone.
+4. **Qualification en cas de vente à un tiers** : l'éditeur deviendrait
    sous-traitant, ce qui appelle un contrat de sous-traitance et une revue
    juridique complète. Hors sujet tant que l'usage reste interne, bloquant dès
    le premier client.
+
+**Réglé depuis la première version de ce document** : la durée de rétention
+(1095 jours), la suppression de la création automatique de pistes, et le
+marquage « appel privé », écarté parce que la ligne est professionnelle.

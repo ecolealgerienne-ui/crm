@@ -14,6 +14,12 @@
                 <field name="partner_id"/>
                 <field name="lead_id"/>
                 <field name="device_id" optional="hide"/>
+                <!-- Qualifier depuis la liste, sans ouvrir chaque appel : la
+                     file « Appels à qualifier » se traite en série, et deux
+                     clics par ligne la rendraient pénible donc désertée. -->
+                <button name="action_creer_piste" type="object"
+                        icon="fa-plus-circle" title="Créer une piste"
+                        invisible="lead_id or partner_id"/>
             </list>
         </field>
     </record>
@@ -23,6 +29,11 @@
         <field name="model">call.tracker.log</field>
         <field name="arch" type="xml">
             <form string="Appel" create="false">
+                <header>
+                    <button name="action_creer_piste" type="object"
+                            string="Créer une piste" class="btn-primary"
+                            invisible="lead_id or partner_id"/>
+                </header>
                 <sheet>
                     <group>
                         <group string="Appel">
@@ -64,6 +75,8 @@
                 <separator/>
                 <filter name="sans_contact" string="Sans contact rattaché"
                         domain="[('partner_id','=',False)]"/>
+                <filter name="a_qualifier" string="À qualifier"
+                        domain="[('partner_id','=',False),('lead_id','=',False)]"/>
                 <separator/>
                 <filter name="semaine" string="7 derniers jours"
                         domain="[('started_at','&gt;=', (context_today() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
@@ -127,6 +140,31 @@
         <!-- Ouvre sur les sept derniers jours : « tous les appels depuis
              toujours » n'est une question que personne ne se pose. -->
         <field name="context">{'search_default_semaine': 1, 'search_default_par_commercial': 1}</field>
+    </record>
+
+    <!--
+        La file de travail des appels sans correspondance.
+        
+        C'est la contrepartie du retrait de la création automatique de pistes :
+        un prospect entrant ne peut pas avoir été créé à l'avance, et ne rien
+        créer le perdrait — sauf si quelqu'un regarde cette file. Elle est donc
+        un MENU, pas un filtre qu'il faut penser à cocher.
+    -->
+    <record id="action_call_tracker_a_qualifier" model="ir.actions.act_window">
+        <field name="name">Appels à qualifier</field>
+        <field name="res_model">call.tracker.log</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_call_tracker_log_search"/>
+        <field name="domain">[('partner_id','=',False),('lead_id','=',False)]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Rien à qualifier</p>
+            <p>
+                Les appels dont le numéro ne correspond à aucun contact ni à
+                aucune piste arrivent ici. Le bouton « Créer une piste » en
+                crée une, attribuée au commercial qui a passé ou reçu l'appel,
+                et rattache d'un coup tous les appels du même numéro.
+            </p>
+        </field>
     </record>
 
     <record id="action_call_tracker_log" model="ir.actions.act_window">
