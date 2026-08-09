@@ -291,12 +291,37 @@ rattrape au réveil suivant. Le risque n'est donc pas la perte, c'est le
 retard : un total mensuel reste juste, un chiffre journalier non. Voir
 [docs/REPORTING_KPI.md](../../docs/REPORTING_KPI.md).
 
+## Couverture du portefeuille
+
+*CRM > Call Tracker > Couverture du portefeuille* — une ligne par compte
+assigné, triée du plus délaissé au plus suivi. Le seul écran qui montre ce qui
+ne s'est **pas** passé : un client jamais appelé n'apparaît dans aucune liste
+d'appels.
+
+Modèle `call.tracker.coverage`, une **vue SQL** (`_auto = False`) : le
+dénominateur vit sur `res.partner`, et un modèle stocké devrait être réécrit à
+chaque affectation de client.
+
+⚠️ Deux pièges, commentés dans le modèle :
+
+- **L'ORM ne vide pas son cache avant d'interroger une vue SQL** — il n'a aucun
+  moyen de savoir de quelles tables elle dépend. Un client créé puis consulté
+  dans la même transaction reste invisible. `_search` force le vidage de
+  `res.partner` et `call.tracker.log`.
+- **`days_since_last_call` est vide, pas zéro**, quand il n'y a jamais eu
+  d'appel : zéro voudrait dire « appelé aujourd'hui », et un tri placerait les
+  comptes délaissés en tête des mieux suivis.
+
+Le portefeuille, c'est le champ *Commercial* de la fiche client. Non renseigné,
+l'écran est vide — c'est un préalable humain, pas technique.
+
 ## Tests
 
-109 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
+119 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
 révocation, le rapprochement téléphonique, la qualification manuelle,
 la note post-appel, les liens depuis les fiches CRM, la rétention, le
-journal d'audit, les champs dérivés et le cloisonnement.
+journal d'audit, les champs dérivés, le cloisonnement et la
+couverture du portefeuille.
 
 ```bash
 docker compose run --rm -T odoo odoo \

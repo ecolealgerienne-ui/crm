@@ -18,6 +18,12 @@
               action="action_call_tracker_a_qualifier"
               sequence="12"/>
 
+    <menuitem id="menu_call_tracker_coverage"
+              name="Couverture du portefeuille"
+              parent="menu_call_tracker_root"
+              action="action_call_tracker_coverage"
+              sequence="18"/>
+
     <!-- Ouvert à tous les utilisateurs internes : chacun doit pouvoir voir sa
          propre activité, l'action s'ouvrant groupée par commercial. -->
     <menuitem id="menu_call_tracker_dashboard"

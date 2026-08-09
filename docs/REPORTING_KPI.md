@@ -29,7 +29,8 @@ une instance Enterprise pour le produire, ou l'écrire à la main. Écarté.
 
 `res.partner.user_id` est stocké, `crm.lead.date_last_stage_update` et
 `date_conversion` existent. Le taux de couverture et le lien avec le pipeline
-sont donc calculables — ce qui n'était pas acquis. Ils restent coûteux, voir §4.
+sont donc calculables — ce qui n'était pas acquis. La couverture est faite
+(§5) ; le lien avec le pipeline reste le chantier le plus lourd (§4).
 
 ---
 
@@ -128,16 +129,6 @@ Les indicateurs **agrégés** et **personnels** ne posent aucun de ces problème
 et sont disponibles dès maintenant. C'est la comparaison **entre personnes**
 qui attend.
 
-### Le taux de couverture
-
-« Contacts distincts appelés » rapporté au « portefeuille assigné ». C'est
-probablement l'indicateur le plus révélateur pour un manager — un commercial
-peut passer beaucoup d'appels et toujours aux cinq mêmes clients.
-
-Ce n'est **pas** une colonne de tableau croisé : il croise `call.tracker.log`
-et `res.partner`, avec un dénominateur qui n'est pas dans le premier. Cela
-demande un modèle de reporting dédié ou une vue SQL. Chantier à part entière.
-
 ### Le lien avec le pipeline
 
 « Pistes appelées passées à l'étape suivante, contre pistes jamais appelées. »
@@ -150,12 +141,46 @@ pas glissé dans un lot « ajouter trois champs ».
 
 ---
 
-## 5. Ordre proposé
+## 5. La couverture du portefeuille — fait
+
+*CRM > Call Tracker > Couverture du portefeuille.* Une ligne par compte
+assigné, avec la date du dernier appel, l'ancienneté en jours, et le nombre
+d'appels.
+
+C'est **le seul écran qui montre ce qui ne s'est pas passé**. Un client jamais
+appelé n'apparaît dans aucune liste d'appels ; il n'existe que par différence
+avec le portefeuille.
+
+Trois choix de conception :
+
+- **Une vue SQL, pas un modèle stocké.** Le dénominateur vit sur
+  `res.partner` ; un modèle stocké devrait être réécrit à chaque affectation
+  de client et se désynchroniserait au premier oubli.
+- **Une ligne par compte, pas par contact.** Une société à cinq
+  interlocuteurs pèserait sinon cinq fois dans le dénominateur.
+- **Un appel à l'interlocuteur couvre sa société.** Les appels sont
+  journalisés au nom de la personne qu'on a eue au téléphone ; compter au
+  niveau du contact ferait apparaître comme « jamais appelée » une entreprise
+  qu'on appelle chaque semaine.
+
+`days_since_last_call` est **vide** — pas zéro — quand il n'y a jamais eu
+d'appel : zéro signifierait « appelé aujourd'hui », et un tri sur cette
+colonne placerait les comptes délaissés en tête des mieux suivis.
+
+⚠️ **Le portefeuille, c'est le champ « Commercial » de la fiche client.** S'il
+n'est renseigné nulle part, l'écran est vide et il n'y a pas de couverture à
+mesurer. C'est le préalable, et il est humain, pas technique.
+
+---
+
+## 6. Ordre proposé
 
 1. ✅ **Lot 1** — cloisonnement, champs dérivés, filtres, mesure du retard.
-2. **Mesurer** le délai de remise réel sur les téléphones du terrain, quelques
+2. ✅ **Couverture du portefeuille.**
+3. **Mesurer** le délai de remise réel sur les téléphones du terrain, quelques
    semaines.
-3. Selon le résultat : classement et alerte de seuil, calibrée sur jours
+4. Selon le résultat : classement et alerte de seuil, calibrée sur jours
    ouvrés.
-4. **Taux de couverture** — chantier séparé.
-5. **Lien avec le pipeline** — chantier séparé.
+5. **Lien avec le pipeline** — le dernier chantier, et le plus lourd : il faut
+   savoir *quand* une piste a changé d'étape et le corréler à *quand* elle a
+   été appelée.
