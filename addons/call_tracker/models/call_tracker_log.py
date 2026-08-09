@@ -159,8 +159,14 @@ class CallTrackerLog(models.Model):
                 'sens': (libelles.get(appel.direction) or '').lower(),
                 'numero': appel.phone_number,
             }
+            # ⚠️ Pas de <b> sur l'en-tête, et ce n'est pas un oubli de mise en
+            # forme. Ce message est relu par `_derniere_note` pour alimenter le
+            # Caller ID, et `html2plaintext` rend le gras en « *texte* » : la
+            # fiche affichée sur le téléphone montrait des astérisques au
+            # milieu de la note. Le lecteur final compte plus que l'emphase
+            # dans le fil.
             cible.sudo().message_post(
-                body=Markup('<p><b>%s</b></p><p>%s</p>') % (entete, appel.note),
+                body=Markup('<p>%s</p><p>%s</p>') % (entete, appel.note),
                 message_type='comment',
                 subtype_xmlid='mail.mt_note',
                 # Attribuée au commercial, pas au compte technique : le fil

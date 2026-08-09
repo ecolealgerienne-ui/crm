@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Bandeau affiché pendant la sonnerie.
+
+    Enveloppe transparente à marges : la fenêtre posée par WindowManager occupe
+    toute la largeur, et sans elle la carte arrondie collerait aux bords de
+    l'écran.
+
+    Positionné SOUS la notification d'appel entrant du système (voir l'offset
+    dans CallerIdOverlay) et jamais en bas : l'écran d'appel place « décrocher »
+    et « raccrocher » en bas, et une surimpression qui les recouvre ferait rater
+    des appels — le contraire du service rendu.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingHorizontal="12dp">
+
+    <LinearLayout
+        android:id="@+id/racine"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/overlay_fond"
+        android:padding="16dp"
+        android:elevation="8dp">
+
+        <TextView
+            android:id="@+id/etiquette"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/overlay_etiquette"
+            android:textSize="11sp"
+            android:letterSpacing="0.08"
+            android:textColor="#8FB6D9"
+            android:textAllCaps="true" />
+
+        <TextView
+            android:id="@+id/nom"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <TextView
+            android:id="@+id/societe"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:textColor="#C7DDF0"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/etape"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="3dp"
+            android:background="@drawable/overlay_pastille"
+            android:textSize="12sp"
+            android:textColor="#12293D"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/note"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textSize="13sp"
+            android:textColor="#C7DDF0"
+            android:maxLines="3"
+            android:ellipsize="end"
+            android:visibility="gone" />
+
+    </LinearLayout>
+</FrameLayout>

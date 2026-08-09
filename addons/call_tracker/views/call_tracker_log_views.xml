@@ -65,6 +65,11 @@
                 <filter name="sans_contact" string="Sans contact rattaché"
                         domain="[('partner_id','=',False)]"/>
                 <separator/>
+                <filter name="semaine" string="7 derniers jours"
+                        domain="[('started_at','&gt;=', (context_today() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+                <filter name="avec_note" string="Avec note"
+                        domain="[('note','!=',False)]"/>
+                <separator/>
                 <!-- Filtres de regroupement à plat, sans <group> englobant :
                      depuis Odoo 17 le RelaxNG des vues recherche réserve
                      <group> au regroupement de CHAMPS et rejette l'attribut
@@ -76,6 +81,52 @@
                 <filter name="par_jour" string="Jour" context="{'group_by': 'started_at:day'}"/>
             </search>
         </field>
+    </record>
+
+    <!--
+        Tableau de bord — deux vues d'agrégation sur le MÊME modèle, plutôt
+        qu'un écran dédié.
+
+        La spec (§4.2) envisageait un tableau de bord dans l'application, en
+        WebView au besoin. Le faire ici coûte deux vues et donne mieux : les
+        filtres, les regroupements et l'export d'Odoo, plus la possibilité pour
+        chacun d'enregistrer SA vue. Un écran natif aurait figé une seule
+        lecture des données.
+    -->
+    <record id="view_call_tracker_log_graph" model="ir.ui.view">
+        <field name="name">call.tracker.log.graph</field>
+        <field name="model">call.tracker.log</field>
+        <field name="arch" type="xml">
+            <graph string="Appels" type="bar" sample="1">
+                <field name="started_at" interval="day"/>
+                <field name="user_id"/>
+                <!-- La durée en mesure, et non le simple décompte : dix appels
+                     de cinq secondes ne valent pas dix conversations. -->
+                <field name="duration_seconds" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="view_call_tracker_log_pivot" model="ir.ui.view">
+        <field name="name">call.tracker.log.pivot</field>
+        <field name="model">call.tracker.log</field>
+        <field name="arch" type="xml">
+            <pivot string="Appels" sample="1">
+                <field name="user_id" type="row"/>
+                <field name="direction" type="col"/>
+                <field name="duration_seconds" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="action_call_tracker_dashboard" model="ir.actions.act_window">
+        <field name="name">Activité téléphonique</field>
+        <field name="res_model">call.tracker.log</field>
+        <field name="view_mode">graph,pivot,list</field>
+        <field name="search_view_id" ref="view_call_tracker_log_search"/>
+        <!-- Ouvre sur les sept derniers jours : « tous les appels depuis
+             toujours » n'est une question que personne ne se pose. -->
+        <field name="context">{'search_default_semaine': 1, 'search_default_par_commercial': 1}</field>
     </record>
 
     <record id="action_call_tracker_log" model="ir.actions.act_window">

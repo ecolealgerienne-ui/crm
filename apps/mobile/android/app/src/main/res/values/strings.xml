@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Les seules chaînes hors des .arb : elles s'affichent dans la surimpression
+    et dans la notification, toutes deux dessinées par du code natif qui ne
+    peut pas atteindre les localisations de Flutter. Elles suivent donc la
+    langue du SYSTÈME et non celle choisie dans l'application — un écart connu,
+    borné à quatre libellés.
+-->
+<resources>
+    <string name="overlay_etiquette">Fiche CRM</string>
+    <string name="overlay_recherche">Recherche…</string>
+    <string name="note_titre">Ajouter une note ?</string>
+    <string name="note_canal">Notes après appel</string>
+</resources>

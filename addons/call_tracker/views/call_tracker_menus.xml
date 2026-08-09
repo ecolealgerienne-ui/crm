@@ -12,6 +12,14 @@
               action="action_call_tracker_log"
               sequence="10"/>
 
+    <!-- Ouvert à tous les utilisateurs internes : chacun doit pouvoir voir sa
+         propre activité, l'action s'ouvrant groupée par commercial. -->
+    <menuitem id="menu_call_tracker_dashboard"
+              name="Activité téléphonique"
+              parent="menu_call_tracker_root"
+              action="action_call_tracker_dashboard"
+              sequence="15"/>
+
     <!-- Réservé aux administrateurs : c'est d'ici que se génèrent et se
          révoquent les jetons. -->
     <menuitem id="menu_call_tracker_device"

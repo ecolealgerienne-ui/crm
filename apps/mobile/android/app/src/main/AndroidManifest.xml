@@ -28,6 +28,17 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!--
+        Fiche CRM affichée par-dessus l'écran d'appel entrant.
+
+        ⚠️ Permission « spéciale » : elle ne se demande pas par une boîte de
+        dialogue mais s'accorde écran par écran dans les réglages du système,
+        et Google la surveille de près sur le Play Store public. Elle est
+        acceptable pour une distribution interne. Refusée, la capture continue
+        normalement — seule la surimpression ne s'affiche pas.
+    -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <!--
         Demande d'exclusion de l'optimisation de batterie. Google restreint
         cette permission sur le Play Store public ; elle est acceptée pour une
         distribution interne, et c'est précisément ce qui empêche le système de
@@ -81,6 +92,24 @@
                 <action android:name="android.intent.action.PHONE_STATE" />
             </intent-filter>
         </receiver>
+
+        <!--
+            Source du numéro entrant. Le système lie ce service lui-même, d'où
+            la permission de liaison et l'action normalisée ; il ne se lance
+            pas depuis l'application.
+
+            Le rôle ROLE_CALL_SCREENING doit avoir été accordé par
+            l'utilisateur, sinon le service n'est jamais appelé — et la
+            surimpression ne s'affiche pas, sans que rien d'autre ne casse.
+        -->
+        <service
+            android:name=".capture.FiltrageAppelService"
+            android:exported="true"
+            android:permission="android.permission.BIND_SCREENING_SERVICE">
+            <intent-filter>
+                <action android:name="android.telecom.CallScreeningService" />
+            </intent-filter>
+        </service>
 
         <!-- Relance l'envoi des appels restés en file après un redémarrage. -->
         <receiver

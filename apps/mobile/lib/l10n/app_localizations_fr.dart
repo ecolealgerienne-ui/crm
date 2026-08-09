@@ -249,4 +249,60 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get permissionsNotificationsBody =>
       'Sans autorisation de notifier, l\'application ne peut pas proposer d\'écrire une note après un appel. La capture, elle, continue.';
+
+  @override
+  String get overlaySection => 'Fiche à la sonnerie';
+
+  @override
+  String get overlayTitle => 'Afficher la fiche CRM pendant la sonnerie';
+
+  @override
+  String get overlayBody =>
+      'Le nom du client, sa société, son étape et sa dernière note s\'affichent par-dessus l\'écran d\'appel. Sans cette autorisation, la capture continue normalement.';
+
+  @override
+  String get overlayAction => 'Autoriser la surimpression';
+
+  @override
+  String get overlayGranted => 'Surimpression autorisée';
+
+  @override
+  String get navSearch => 'Recherche';
+
+  @override
+  String get searchTitle => 'Rechercher un contact';
+
+  @override
+  String get searchHint => 'Numéro de téléphone';
+
+  @override
+  String get searchAction => 'Rechercher';
+
+  @override
+  String get searchNotFound => 'Aucun contact ne correspond à ce numéro';
+
+  @override
+  String get searchPrompt => 'Saisissez un numéro pour voir sa fiche CRM.';
+
+  @override
+  String get searchCompany => 'Société';
+
+  @override
+  String get searchStage => 'Étape';
+
+  @override
+  String get searchLastNote => 'Dernière note';
+
+  @override
+  String get screeningTitle => 'Autoriser la lecture du numéro entrant';
+
+  @override
+  String get screeningBody =>
+      'Sans ce rôle, Android ne communique pas le numéro à l\'application et la fiche ne peut pas s\'afficher. Il ne fait PAS de l\'application votre téléphone par défaut, et aucun appel n\'est filtré ni bloqué.';
+
+  @override
+  String get screeningAction => 'Accorder le rôle';
+
+  @override
+  String get screeningGranted => 'Numéro entrant accessible';
 }

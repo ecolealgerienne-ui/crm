@@ -495,6 +495,114 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Sans autorisation de notifier, l\'application ne peut pas proposer d\'écrire une note après un appel. La capture, elle, continue.'**
   String get permissionsNotificationsBody;
+
+  /// No description provided for @overlaySection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Fiche à la sonnerie'**
+  String get overlaySection;
+
+  /// No description provided for @overlayTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Afficher la fiche CRM pendant la sonnerie'**
+  String get overlayTitle;
+
+  /// No description provided for @overlayBody.
+  ///
+  /// In fr, this message translates to:
+  /// **'Le nom du client, sa société, son étape et sa dernière note s\'affichent par-dessus l\'écran d\'appel. Sans cette autorisation, la capture continue normalement.'**
+  String get overlayBody;
+
+  /// No description provided for @overlayAction.
+  ///
+  /// In fr, this message translates to:
+  /// **'Autoriser la surimpression'**
+  String get overlayAction;
+
+  /// No description provided for @overlayGranted.
+  ///
+  /// In fr, this message translates to:
+  /// **'Surimpression autorisée'**
+  String get overlayGranted;
+
+  /// No description provided for @navSearch.
+  ///
+  /// In fr, this message translates to:
+  /// **'Recherche'**
+  String get navSearch;
+
+  /// No description provided for @searchTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rechercher un contact'**
+  String get searchTitle;
+
+  /// No description provided for @searchHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Numéro de téléphone'**
+  String get searchHint;
+
+  /// No description provided for @searchAction.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rechercher'**
+  String get searchAction;
+
+  /// No description provided for @searchNotFound.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun contact ne correspond à ce numéro'**
+  String get searchNotFound;
+
+  /// No description provided for @searchPrompt.
+  ///
+  /// In fr, this message translates to:
+  /// **'Saisissez un numéro pour voir sa fiche CRM.'**
+  String get searchPrompt;
+
+  /// No description provided for @searchCompany.
+  ///
+  /// In fr, this message translates to:
+  /// **'Société'**
+  String get searchCompany;
+
+  /// No description provided for @searchStage.
+  ///
+  /// In fr, this message translates to:
+  /// **'Étape'**
+  String get searchStage;
+
+  /// No description provided for @searchLastNote.
+  ///
+  /// In fr, this message translates to:
+  /// **'Dernière note'**
+  String get searchLastNote;
+
+  /// No description provided for @screeningTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Autoriser la lecture du numéro entrant'**
+  String get screeningTitle;
+
+  /// No description provided for @screeningBody.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sans ce rôle, Android ne communique pas le numéro à l\'application et la fiche ne peut pas s\'afficher. Il ne fait PAS de l\'application votre téléphone par défaut, et aucun appel n\'est filtré ni bloqué.'**
+  String get screeningBody;
+
+  /// No description provided for @screeningAction.
+  ///
+  /// In fr, this message translates to:
+  /// **'Accorder le rôle'**
+  String get screeningAction;
+
+  /// No description provided for @screeningGranted.
+  ///
+  /// In fr, this message translates to:
+  /// **'Numéro entrant accessible'**
+  String get screeningGranted;
 }
 
 class _AppLocalizationsDelegate

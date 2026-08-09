@@ -247,4 +247,60 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get permissionsNotificationsBody =>
       'Without notification permission, the app cannot offer to write a note after a call. Capture itself continues.';
+
+  @override
+  String get overlaySection => 'Card while ringing';
+
+  @override
+  String get overlayTitle => 'Show the CRM card while the phone rings';
+
+  @override
+  String get overlayBody =>
+      'The customer\'s name, company, stage and latest note appear over the call screen. Without this permission, capture continues normally.';
+
+  @override
+  String get overlayAction => 'Allow overlay';
+
+  @override
+  String get overlayGranted => 'Overlay allowed';
+
+  @override
+  String get navSearch => 'Search';
+
+  @override
+  String get searchTitle => 'Find a contact';
+
+  @override
+  String get searchHint => 'Phone number';
+
+  @override
+  String get searchAction => 'Search';
+
+  @override
+  String get searchNotFound => 'No contact matches this number';
+
+  @override
+  String get searchPrompt => 'Enter a number to see its CRM card.';
+
+  @override
+  String get searchCompany => 'Company';
+
+  @override
+  String get searchStage => 'Stage';
+
+  @override
+  String get searchLastNote => 'Latest note';
+
+  @override
+  String get screeningTitle => 'Allow reading the incoming number';
+
+  @override
+  String get screeningBody =>
+      'Without this role, Android does not pass the number to the app and the card cannot be shown. It does NOT make the app your default phone app, and no call is screened or blocked.';
+
+  @override
+  String get screeningAction => 'Grant the role';
+
+  @override
+  String get screeningGranted => 'Incoming number accessible';
 }

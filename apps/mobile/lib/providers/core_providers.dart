@@ -80,3 +80,11 @@ final appelsProvider = FutureProvider<List<CallEntry>>(
 final batterieOptimiseeProvider = FutureProvider<bool>(
   (ref) => ref.watch(captureChannelProvider).batterieOptimisee(),
 );
+
+final surimpressionProvider = FutureProvider<bool>(
+  (ref) => ref.watch(captureChannelProvider).surimpressionAutorisee(),
+);
+
+final roleFiltrageProvider = FutureProvider<bool>(
+  (ref) => ref.watch(captureChannelProvider).roleFiltrageAccorde(),
+);

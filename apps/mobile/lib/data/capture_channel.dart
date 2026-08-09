@@ -76,6 +76,41 @@ class CaptureChannel {
     return _canal.invokeMethod<int>('consumePendingNoteCallId');
   }
 
+  /// Le rôle de filtrage d'appels est-il accordé ?
+  ///
+  /// C'est LUI qui donne accès au numéro entrant, pas la surimpression. Les
+  /// deux sont nécessaires pour que la fiche s'affiche à la sonnerie, et ils
+  /// s'accordent séparément.
+  Future<bool> roleFiltrageAccorde() async {
+    return await _canal.invokeMethod<bool>('hasCallScreeningRole') ?? false;
+  }
+
+  Future<void> demanderRoleFiltrage() {
+    return _canal.invokeMethod<void>('requestCallScreeningRole');
+  }
+
+  /// La surimpression de fiche CRM est-elle autorisée ?
+  Future<bool> surimpressionAutorisee() async {
+    return await _canal.invokeMethod<bool>('canDrawOverlay') ?? false;
+  }
+
+  /// Ouvre l'écran système d'autorisation de surimpression.
+  ///
+  /// Aucune boîte de dialogue n'est possible pour cette permission
+  /// « spéciale » : elle ne s'accorde que là.
+  Future<void> demanderSurimpression() {
+    return _canal.invokeMethod<void>('requestOverlayPermission');
+  }
+
+  /// Fiche CRM d'un numéro, pour la recherche dans l'application.
+  Future<Map<String, String>?> chercherContact(String numero) async {
+    final fiche = await _canal.invokeMapMethod<String, dynamic>(
+      'lookupContact', {'phoneNumber': numero},
+    );
+    if (fiche == null) return null;
+    return fiche.map((cle, valeur) => MapEntry(cle, (valeur ?? '').toString()));
+  }
+
   Future<bool> batterieOptimisee() async {
     return await _canal.invokeMethod<bool>('isBatteryOptimised') ?? true;
   }

@@ -168,6 +168,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             _Section(titre: l10n.permissionsSection),
             const _BlocPermissions(),
             const SizedBox(height: 12),
+            const _BlocRoleFiltrage(),
+            const SizedBox(height: 12),
+            const _BlocSurimpression(),
+            const SizedBox(height: 12),
             const _BlocBatterie(),
             const SizedBox(height: 32),
 
@@ -269,6 +273,72 @@ class _BlocPermissionsState extends State<_BlocPermissions> {
       action: _refuseDefinitivement ? l10n.permissionsOpenSettings : l10n.permissionsGrant,
       onAction: _refuseDefinitivement ? openAppSettings : _demander,
       alerte: true,
+    );
+  }
+}
+
+/// Le rôle de filtrage : c'est LUI qui donne accès au numéro entrant.
+///
+/// Présenté avant la surimpression parce qu'il vient en premier dans la
+/// chaîne — autoriser à dessiner par-dessus l'écran ne sert à rien tant qu'on
+/// ne sait pas QUI appelle.
+class _BlocRoleFiltrage extends ConsumerWidget {
+  const _BlocRoleFiltrage();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final accorde = ref.watch(roleFiltrageProvider);
+
+    return accorde.maybeWhen(
+      data: (oui) => oui
+          ? _Encart(
+              icone: Icons.ring_volume_outlined,
+              titre: l10n.screeningGranted,
+              corps: '',
+            )
+          : _Encart(
+              icone: Icons.ring_volume_outlined,
+              titre: l10n.screeningTitle,
+              corps: l10n.screeningBody,
+              action: l10n.screeningAction,
+              onAction: () async {
+                await ref.read(captureChannelProvider).demanderRoleFiltrage();
+              },
+            ),
+      orElse: () => const SizedBox.shrink(),
+    );
+  }
+}
+
+class _BlocSurimpression extends ConsumerWidget {
+  const _BlocSurimpression();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final autorisee = ref.watch(surimpressionProvider);
+
+    return autorisee.maybeWhen(
+      data: (accordee) => accordee
+          ? _Encart(
+              icone: Icons.picture_in_picture_alt_outlined,
+              titre: l10n.overlayGranted,
+              corps: '',
+            )
+          : _Encart(
+              icone: Icons.picture_in_picture_alt_outlined,
+              titre: l10n.overlayTitle,
+              corps: l10n.overlayBody,
+              action: l10n.overlayAction,
+              onAction: () async {
+                await ref.read(captureChannelProvider).demanderSurimpression();
+                // La permission s'accorde dans un écran du système : à ce
+                // stade elle n'est pas encore prise. On invalide au retour,
+                // pas ici.
+              },
+            ),
+      orElse: () => const SizedBox.shrink(),
     );
   }
 }

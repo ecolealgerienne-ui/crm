@@ -102,6 +102,20 @@ class TestNote(HttpCase, BancCallTracker):
         )
         self.assertIn('Rappeler après le 15', reponse.json()['last_notes'])
 
+    def test_la_note_remonte_sans_balisage(self):
+        """Le Caller ID s'affiche sur un téléphone, pas dans un éditeur.
+
+        Toute emphase HTML dans le message est rendue en « *texte* » par
+        html2plaintext, et se retrouvait telle quelle sur l'écran d'appel.
+        """
+        self.poster_avec_note('Devis a envoyer', 'evt-note-brute')
+        notes = self.url_open(
+            '/call_tracker/contact/+213555920001',
+            headers={'Authorization': f'Bearer {self.JETON}'},
+        ).json()['last_notes']
+        self.assertNotIn('*', notes)
+        self.assertIn('Devis a envoyer', notes)
+
     def test_sans_rattachement_la_note_reste_sur_l_appel(self):
         # Un numéro trop court ne crée ni contact ni piste : la note ne doit
         # pas disparaître pour autant.

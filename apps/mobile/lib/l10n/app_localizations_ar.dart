@@ -250,4 +250,60 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get permissionsNotificationsBody =>
       'بدون إذن الإشعارات، لا يمكن للتطبيق أن يقترح كتابة ملاحظة بعد المكالمة. أما التسجيل فيستمر.';
+
+  @override
+  String get overlaySection => 'البطاقة أثناء الرنين';
+
+  @override
+  String get overlayTitle => 'إظهار بطاقة العميل أثناء رنين الهاتف';
+
+  @override
+  String get overlayBody =>
+      'يظهر اسم العميل وشركته ومرحلته وآخر ملاحظة فوق شاشة المكالمة. وبدون هذا الإذن يستمر التسجيل كالمعتاد.';
+
+  @override
+  String get overlayAction => 'السماح بالعرض فوق التطبيقات';
+
+  @override
+  String get overlayGranted => 'العرض مسموح';
+
+  @override
+  String get navSearch => 'بحث';
+
+  @override
+  String get searchTitle => 'البحث عن جهة اتصال';
+
+  @override
+  String get searchHint => 'رقم الهاتف';
+
+  @override
+  String get searchAction => 'بحث';
+
+  @override
+  String get searchNotFound => 'لا توجد جهة اتصال بهذا الرقم';
+
+  @override
+  String get searchPrompt => 'أدخل رقمًا لعرض بطاقته في إدارة العلاقات.';
+
+  @override
+  String get searchCompany => 'الشركة';
+
+  @override
+  String get searchStage => 'المرحلة';
+
+  @override
+  String get searchLastNote => 'آخر ملاحظة';
+
+  @override
+  String get screeningTitle => 'السماح بقراءة رقم المتصل';
+
+  @override
+  String get screeningBody =>
+      'بدون هذا الدور، لا يمرّر أندرويد الرقم إلى التطبيق ولا يمكن عرض البطاقة. وهو لا يجعل التطبيق تطبيق الهاتف الافتراضي، ولا يتم حجب أي مكالمة.';
+
+  @override
+  String get screeningAction => 'منح الدور';
+
+  @override
+  String get screeningGranted => 'رقم المتصل متاح';
 }

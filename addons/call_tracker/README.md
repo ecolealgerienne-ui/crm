@@ -216,9 +216,23 @@ L'écriture d'une trace ne peut jamais faire échouer l'appel qu'elle observe :
 un journal d'audit qui casse la fonctionnalité est désactivé au premier
 incident, et il n'y en a alors plus du tout.
 
+## Tableau de bord
+
+*CRM > Call Tracker > Activité téléphonique* — vues graphe et tableau croisé
+sur le même modèle, ouvertes sur les sept derniers jours et groupées par
+commercial.
+
+La spec (§4.2) envisageait un tableau de bord dans l'application. Le faire ici
+coûte deux vues et donne mieux : filtres, regroupements et export d'Odoo, et
+chacun peut enregistrer sa propre lecture. Un écran natif en aurait figé une
+seule.
+
+La mesure par défaut est la **durée**, pas le nombre d'appels : dix appels de
+cinq secondes ne valent pas dix conversations.
+
 ## Tests
 
-94 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
+95 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
 révocation, le rapprochement téléphonique, la création automatique de piste,
 la note post-appel, les liens depuis les fiches CRM, la rétention et le
 journal d'audit.
@@ -254,11 +268,11 @@ en 17 et 18, mais ce n'est ni visé ni éprouvé.
 
 ## Pas encore fait
 
-- **Documentation loi 18-07** : le mécanisme de rétention existe, la
-  qualification de « sous-traitant de données » et la politique écrite qui
-  l'accompagne restent à produire.
-- **Purge des pistes créées automatiquement** : la rétention supprime les
-  appels et les traces, pas les pistes qu'ils ont engendrées. C'est
-  volontaire — une piste est une donnée commerciale, pas une trace technique —
-  mais cela signifie qu'un numéro appelé une fois laisse une piste
-  indéfiniment.
+- **Fixer `CALL_TRACKER_RETENTION_DAYS`** : le mécanisme existe, la durée
+  n'est pas arrêtée, et tant qu'elle vaut 0 il n'y a pas de politique de
+  rétention. Voir [docs/CONFORMITE_DONNEES_APPELS.md](../../docs/CONFORMITE_DONNEES_APPELS.md).
+- **Purge des pistes créées automatiquement et des notes recopiées dans le
+  fil** : la rétention supprime les appels et les traces, pas ce qu'ils ont
+  engendré. Volontaire — une piste est une donnée commerciale — mais cela
+  signifie qu'un numéro appelé une fois laisse une piste indéfiniment.
+- **Marquage « appel privé »** (spec §4.1), côté application.

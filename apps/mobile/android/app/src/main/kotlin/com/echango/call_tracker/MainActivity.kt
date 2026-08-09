@@ -6,9 +6,12 @@ import android.content.Intent
 import android.net.Uri
 import android.os.PowerManager
 import android.provider.Settings
+import com.echango.call_tracker.capture.CallerIdOverlay
 import com.echango.call_tracker.capture.InviteNote
 import com.echango.call_tracker.data.CallStore
+import com.echango.call_tracker.data.ContactCache
 import com.echango.call_tracker.data.SecureSettings
+import com.echango.call_tracker.sync.ContactClient
 import com.echango.call_tracker.sync.SyncWorker
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -142,6 +145,56 @@ class MainActivity : FlutterActivity() {
                 reponse.success(null)
             }
 
+            // Recherche depuis l'application : passe par le CACHE avant le
+            // réseau, exactement comme la surimpression. Un commercial qui
+            // cherche un numéro qu'il vient de voir sonner ne doit pas
+            // provoquer un second appel à l'Odoo du client.
+            "lookupContact" -> {
+                val numero = appel.argument<String>("phoneNumber").orEmpty().trim()
+                Thread {
+                    val cache = ContactCache(applicationContext)
+                    val fiche = cache.lire(numero)
+                        ?: ContactClient.chercher(reglages, numero)
+                            ?.also { cache.ecrire(numero, it) }
+                    // La réponse doit repartir sur le fil principal : le canal
+                    // de plateforme n'est pas utilisable depuis un autre.
+                    runOnUiThread {
+                        reponse.success(
+                            fiche?.let {
+                                mapOf(
+                                    "name" to it.name,
+                                    "company" to it.company,
+                                    "last_notes" to it.lastNotes,
+                                    "crm_stage" to it.crmStage,
+                                )
+                            }
+                        )
+                    }
+                }.start()
+            }
+
+            "hasCallScreeningRole" -> reponse.success(roleFiltrageAccorde())
+
+            "requestCallScreeningRole" -> {
+                demanderRoleFiltrage()
+                reponse.success(null)
+            }
+
+            "canDrawOverlay" -> reponse.success(CallerIdOverlay.autorise(applicationContext))
+
+            "requestOverlayPermission" -> {
+                // Pas de dialogue possible : cette permission s'accorde dans
+                // un écran des réglages du système, que l'on ne peut
+                // qu'ouvrir.
+                startActivity(
+                    Intent(
+                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:$packageName"),
+                    )
+                )
+                reponse.success(null)
+            }
+
             "isBatteryOptimised" -> reponse.success(batterieOptimisee())
 
             "requestIgnoreBatteryOptimisations" -> {
@@ -151,6 +204,31 @@ class MainActivity : FlutterActivity() {
 
             else -> reponse.notImplemented()
         }
+    }
+
+    /**
+     * Le rôle de filtrage d'appels est-il accordé ?
+     *
+     * C'est lui qui donne accès au numéro entrant — voir FiltrageAppelService.
+     * `RoleManager` n'existe qu'à partir d'Android 10 ; en dessous, seule
+     * l'application Téléphone par défaut y a droit, cas qu'on ne vise pas.
+     */
+    private fun roleFiltrageAccorde(): Boolean {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) return false
+        val gestionnaire = getSystemService(android.app.role.RoleManager::class.java)
+        return gestionnaire?.isRoleHeld(android.app.role.RoleManager.ROLE_CALL_SCREENING) == true
+    }
+
+    private fun demanderRoleFiltrage() {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) return
+        val gestionnaire = getSystemService(android.app.role.RoleManager::class.java) ?: return
+        if (!gestionnaire.isRoleAvailable(android.app.role.RoleManager.ROLE_CALL_SCREENING)) return
+        startActivityForResult(
+            gestionnaire.createRequestRoleIntent(
+                android.app.role.RoleManager.ROLE_CALL_SCREENING
+            ),
+            DEMANDE_ROLE,
+        )
     }
 
     private fun batterieOptimisee(): Boolean {
@@ -178,5 +256,6 @@ class MainActivity : FlutterActivity() {
 
     private companion object {
         const val CANAL = "com.echango.call_tracker/capture"
+        const val DEMANDE_ROLE = 7301
     }
 }
