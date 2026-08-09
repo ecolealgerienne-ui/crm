@@ -45,9 +45,13 @@ services:
       POSTGRES_PASSWORD: odoo
       POSTGRES_DB: postgres
     ports:
-      # 5434 et pas 5432/5433 : les autres projets de la suite occupent déjà
-      # ces ports sur un poste de développement (5433 = echangopromo).
-      - '5434:5432'
+      # ⚠️ Ports décalés, pas par goût : le WSL de développement fait tourner
+      # une dizaine de stacks de la suite en même temps. Au 2026-08-09 étaient
+      # déjà pris 5433 (echangopromo), 5434 (echango-invoice), 5440
+      # (echango-vierge), et surtout 8069/8072 par l'Odoo du projet
+      # echangoorder (/home/amar/projects/echangoorder/backend).
+      # Vérifier avant d'en changer :  ss -ltnH | awk '{print $4}'
+      - '5436:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -100,8 +104,11 @@ services:
       - --db_maxconn=16
       - --log-level=info
     ports:
-      - '8069:8069'
-      - '8072:8072'
+      # 8169/8172 côté hôte, 8069/8072 côté conteneur : les ports Odoo
+      # standards sont déjà pris par le projet echangoorder sur ce poste.
+      # → http://localhost:8169
+      - '8169:8069'
+      - '8172:8072'
 
 volumes:
   postgres_data:
