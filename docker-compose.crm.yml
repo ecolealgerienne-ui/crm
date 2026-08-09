@@ -146,7 +146,11 @@ services:
       # echangocrm_bootstrap applique le mot de passe administrateur ; voir
       # addons/echangocrm_bootstrap/.
       - --init=crm,contacts,calendar,echangocrm_bootstrap
-      - --without-demo=all
+      # `=True` et pas `=all` : depuis Odoo 19 cette option est un booleen, elle
+      # ne prend plus une liste de modules. `all` passe encore — Odoo avertit
+      # « invalid boolean value: 'all', assume True » et fait ce qu'on veut —
+      # mais autant ne pas dependre d'un repli.
+      - --without-demo=True
       - --stop-after-init
       - --log-level=${ODOO_LOG_LEVEL:-warn}
     networks:
@@ -188,6 +192,12 @@ services:
       # (le seul réglage d'Odoo qui ne peut vivre que dans un fichier, donc le
       # seul qui obligerait à en générer un contenant un secret).
       - --no-database-list
+      # Explicite alors que c'est le défaut actuel, parce que ce défaut change :
+      # Odoo 19 avertit qu'en 20.0 l'interface d'écoute passera à 127.0.0.1.
+      # Le jour de cette montée de version, Odoo n'écouterait plus que sur la
+      # boucle locale du conteneur, Traefik ne l'atteindrait plus, et le
+      # symptôme serait un 502 sans rapport visible avec la version.
+      - --http-interface=0.0.0.0
       # Derrière Traefik : sans cela Odoo construit ses URLs absolues en http://
       # et journalise l'IP du proxy au lieu de celle du client.
       - --proxy-mode
