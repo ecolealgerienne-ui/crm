@@ -96,7 +96,8 @@ services:
       # websocket tel qu'il tourne derrière Traefik en production.
       - --workers=2
       - --max-cron-threads=1
-      - --db-maxconn=16
+      # Tiret bas — voir le commentaire dans docker-compose.crm.yml.
+      - --db_maxconn=16
       - --log-level=info
     ports:
       - '8069:8069'

@@ -209,7 +209,15 @@ services:
       - --max-cron-threads=1
       # 4 processus x 16 = 64 connexions, sous les 100 de max_connections par
       # défaut de Postgres. Le défaut Odoo (64 par processus) saturerait la base.
-      - --db-maxconn=16
+      #
+      # ⚠️ TIRET BAS, pas tiret. Les options du groupe « base de données »
+      # d'Odoo s'écrivent --db_host, --db_user, --db_password, --db_maxconn ;
+      # seul --db-filter y fait exception. Écrit --db-maxconn, Odoo sort en
+      # code 2 (« no such option ») et le conteneur boucle en redémarrage —
+      # Traefik retire alors nos routeurs et le catch-all de la stack Vendure
+      # sert la boutique sur echangocrm.echango.com, ce qui envoie chercher
+      # très loin de la vraie cause.
+      - --db_maxconn=16
       # Seuils de recyclage, pas des réservations : un worker qui dépasse la
       # limite douce termine sa requête puis redémarre proprement. Volontairement
       # bas, le VPS héberge plusieurs applications. À monter si les rapports PDF
