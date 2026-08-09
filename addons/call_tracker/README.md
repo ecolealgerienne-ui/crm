@@ -138,10 +138,64 @@ curl -i -X POST http://localhost:8169/call_tracker/log_call \
        "started_at":"2026-08-09T14:32:00Z"}'
 ```
 
+## Numéro inconnu — création automatique de piste
+
+Décision du 2026-08-09 (spec §10.2). Un appel dont le numéro n'est **ni** un
+contact **ni** une piste crée une piste, attribuée au commercial qui a passé ou
+reçu l'appel.
+
+Deux garde-fous, et ils comptent autant que la fonctionnalité :
+
+- **Un contact connu sans piste ouverte ne déclenche rien.** Ce n'est pas un
+  numéro inconnu ; lui créer une piste rouvrirait une affaire à chaque appel de
+  suivi.
+- **Le deuxième appel du même inconnu réutilise la piste.** Elle porte le
+  numéro, donc `_chercher_piste` la retrouve. Sans cela, chaque rappel d'un
+  prospect créerait une affaire de plus.
+
+Le type créé (`lead` ou `opportunity`) suit la configuration CRM du commercial.
+Créer un `lead` sur une base où l'étape de qualification est désactivée le
+rendrait **invisible** : le menu correspondant est masqué.
+
+## Rétention
+
+`CALL_TRACKER_RETENTION_DAYS`, lue dans l'environnement du serveur (injectée
+par docker-compose depuis `.env.production`). Une tâche planifiée quotidienne
+purge les appels **et** leurs traces d'audit au-delà.
+
+⚠️ **`0`, absente ou illisible = aucune purge.** Le sens de l'erreur est
+choisi : un fichier d'environnement mal renseigné ne doit pas faire disparaître
+des données. Mais tant que la valeur vaut 0, il n'y a pas de politique de
+rétention — il y a une absence de politique, ce qui ne tient pas au regard de
+la loi 18-07.
+
+La limite se compte sur la **date de l'appel**, pas sur celle de son
+enregistrement : un appel remonté avec trois semaines de retard, parce que le
+téléphone est resté hors réseau, doit être daté de l'appel.
+
+## Journal d'audit
+
+`call.tracker.audit` — *CRM > Call Tracker > Journal d'audit*, réservé aux
+administrateurs. Chaque journalisation d'appel **et chaque consultation de
+contact** y laisse une ligne, y compris les tentatives refusées, avec l'IP
+d'origine.
+
+Les **lectures** sont le vrai sujet. Une écriture laisse une trace visible :
+l'appel apparaît dans la liste. Une consultation ne laisse rien — sans ce
+journal, un jeton volé pourrait parcourir le carnet d'adresses numéro par
+numéro sans qu'il en subsiste la moindre trace. Le filtre *Refusés* fait
+apparaître d'un coup d'œil un jeton révoqué resté dans un téléphone, ou
+quelqu'un qui tâtonne.
+
+L'écriture d'une trace ne peut jamais faire échouer l'appel qu'elle observe :
+un journal d'audit qui casse la fonctionnalité est désactivé au premier
+incident, et il n'y en a alors plus du tout.
+
 ## Tests
 
-53 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
-révocation, le rapprochement téléphonique et le cycle de vie du jeton.
+77 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
+révocation, le rapprochement téléphonique, la création automatique de piste,
+la rétention et le journal d'audit.
 
 ```bash
 docker compose run --rm -T odoo odoo \
@@ -165,15 +219,20 @@ middleware `echangocrm-api-limite` dans `docker-compose.crm.yml`. Les valeurs
 sont hautes délibérément — les opérateurs mobiles algériens font du NAT à
 grande échelle, et l'app vide sa file d'un trait au retour du réseau.
 
+## Portée de version
+
+**Odoo 19 uniquement**, décision du 2026-08-09. La spec §3.2 demandait 16 à 19 ;
+le module utilise `_read_group(aggregates=…)`, les vues `<list>` et un
+`post_init_hook(env)`, tous introduits en Odoo 17. Il tournerait probablement
+en 17 et 18, mais ce n'est ni visé ni éprouvé.
+
 ## Pas encore fait
 
-- **Création automatique de piste** quand le numéro est inconnu (spec §10.2) :
-  la politique n'est pas tranchée. Aujourd'hui l'appel est journalisé sans
-  rattachement, et se retrouve par le filtre *Sans contact rattaché*.
-- **Rétention des données d'appel** et documentation loi 18-07 (spec §7) :
-  aucune durée de conservation, aucune purge.
-- **Journal d'audit** des accès — qui a lu quoi, quand (spec §7). On n'a que
-  `last_seen` sur l'appareil.
-- **Compatibilité Odoo 16**, que la spec §3.2 demande. Le module utilise
-  `_read_group(aggregates=…)`, les vues `<list>` et un `post_init_hook(env)`,
-  tous introduits en **Odoo 17**. Compatible 17 à 19, éprouvé sur 19.
+- **Documentation loi 18-07** : le mécanisme de rétention existe, la
+  qualification de « sous-traitant de données » et la politique écrite qui
+  l'accompagne restent à produire.
+- **Purge des pistes créées automatiquement** : la rétention supprime les
+  appels et les traces, pas les pistes qu'ils ont engendrées. C'est
+  volontaire — une piste est une donnée commerciale, pas une trace technique —
+  mais cela signifie qu'un numéro appelé une fois laisse une piste
+  indéfiniment.

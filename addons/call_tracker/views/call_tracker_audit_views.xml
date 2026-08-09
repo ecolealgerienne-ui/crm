@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_call_tracker_audit_list" model="ir.ui.view">
+        <field name="name">call.tracker.audit.list</field>
+        <field name="model">call.tracker.audit</field>
+        <field name="arch" type="xml">
+            <list string="Journal d'audit" create="false" edit="false">
+                <field name="create_date" string="Horodatage"/>
+                <field name="action"/>
+                <field name="result" widget="badge"
+                       decoration-success="result in ('ok', 'duplicate')"
+                       decoration-warning="result == 'not_found'"
+                       decoration-danger="result in ('unauthorized', 'invalid')"/>
+                <field name="user_id"/>
+                <field name="device_id"/>
+                <field name="phone_number"/>
+                <field name="linked_record" optional="hide"/>
+                <field name="ip_address" optional="hide"/>
+                <field name="detail" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_call_tracker_audit_search" model="ir.ui.view">
+        <field name="name">call.tracker.audit.search</field>
+        <field name="model">call.tracker.audit</field>
+        <field name="arch" type="xml">
+            <search string="Journal d'audit">
+                <field name="phone_number"/>
+                <field name="user_id"/>
+                <field name="ip_address"/>
+                <filter name="lectures" string="Consultations"
+                        domain="[('action','=','contact_lookup')]"/>
+                <filter name="ecritures" string="Journalisations"
+                        domain="[('action','=','log_call')]"/>
+                <separator/>
+                <!-- Le filtre qui sert vraiment : une rafale de refus signale
+                     un jeton révoqué resté dans un téléphone, ou quelqu'un qui
+                     tâtonne. -->
+                <filter name="refus" string="Refusés"
+                        domain="[('result','in',('unauthorized','invalid'))]"/>
+                <separator/>
+                <filter name="aujourdhui" string="Aujourd'hui"
+                        domain="[('create_date','&gt;=', datetime.datetime.combine(context_today(), datetime.time(0,0,0)))]"/>
+                <separator/>
+                <filter name="par_commercial" string="Commercial" context="{'group_by': 'user_id'}"/>
+                <filter name="par_action" string="Action" context="{'group_by': 'action'}"/>
+                <filter name="par_resultat" string="Résultat" context="{'group_by': 'result'}"/>
+                <filter name="par_jour" string="Jour" context="{'group_by': 'create_date:day'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_call_tracker_audit" model="ir.actions.act_window">
+        <field name="name">Journal d'audit</field>
+        <field name="res_model">call.tracker.audit</field>
+        <field name="view_mode">list</field>
+        <field name="search_view_id" ref="view_call_tracker_audit_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aucun accès enregistré</p>
+            <p>
+                Chaque journalisation d'appel et chaque consultation de contact
+                laisse une ligne ici, y compris les tentatives refusées.
+            </p>
+        </field>
+    </record>
+
+</odoo>

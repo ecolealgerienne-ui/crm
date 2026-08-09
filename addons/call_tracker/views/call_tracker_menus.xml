@@ -21,4 +21,11 @@
               groups="base.group_system"
               sequence="20"/>
 
+    <menuitem id="menu_call_tracker_audit"
+              name="Journal d'audit"
+              parent="menu_call_tracker_root"
+              action="action_call_tracker_audit"
+              groups="base.group_system"
+              sequence="30"/>
+
 </odoo>

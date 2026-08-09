@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!--
+            Purge quotidienne selon CALL_TRACKER_RETENTION_DAYS.
+
+            `noupdate="1"` : une mise à jour du module ne doit pas réactiver
+            une tâche que l'exploitant aurait désactivée, ni réécrire l'heure
+            de passage qu'il aurait déplacée.
+
+            Sans variable d'environnement, la tâche s'exécute et ne supprime
+            rien — elle journalise qu'aucune rétention n'est configurée. C'est
+            volontaire : une tâche visible qui dit « je ne fais rien » vaut
+            mieux qu'une absence de tâche, qui laisse croire à une purge
+            silencieuse.
+        -->
+        <record id="cron_purge_retention" model="ir.cron">
+            <field name="name">Call Tracker : purge selon la rétention</field>
+            <field name="model_id" ref="model_call_tracker_log"/>
+            <field name="state">code</field>
+            <field name="code">model._purger()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active" eval="True"/>
+        </record>
+
+    </data>
+</odoo>

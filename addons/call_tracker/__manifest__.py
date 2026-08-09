@@ -25,9 +25,11 @@ qui est écrit et de ce qui est renvoyé.
     'depends': ['crm'],
     'data': [
         'security/ir.model.access.csv',
+        'data/ir_cron.xml',
         'views/call_tracker_token_wizard_views.xml',
         'views/call_tracker_device_views.xml',
         'views/call_tracker_log_views.xml',
+        'views/call_tracker_audit_views.xml',
         'views/call_tracker_menus.xml',
     ],
     'installable': True,

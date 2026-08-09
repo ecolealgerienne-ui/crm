@@ -68,6 +68,16 @@ x-odoo-base: &odoo-base
     # manque : c'est voulu, un CRM public avec admin/admin ne doit pas pouvoir
     # exister, même quelques minutes.
     ODOO_ADMIN_PASSWORD: ${ODOO_ADMIN_PASSWORD:?requis — voir .env.production.example}
+
+    # Durée de conservation des appels et des traces d'audit du Call Tracker,
+    # en jours. Lue par la tâche planifiée quotidienne de l'addon.
+    #
+    # ⚠️ `0` ou absente = AUCUNE purge, conservation indéfinie. Le sens de
+    # l'erreur est choisi : un défaut de configuration ne doit pas faire
+    # disparaître des données. C'est aussi le réglage qui répond à la loi
+    # 18-07 — tant qu'il vaut 0, il n'y a pas de politique de rétention, il y a
+    # une absence de politique.
+    CALL_TRACKER_RETENTION_DAYS: ${CALL_TRACKER_RETENTION_DAYS:-0}
   volumes:
     # Filestore : pièces jointes, images, documents, sessions.
     # ⚠️ Aussi vital que la base — un dump SQL seul restaure un CRM dont toutes

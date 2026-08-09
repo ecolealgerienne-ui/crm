@@ -3,3 +3,4 @@ access_call_tracker_log_user,call.tracker.log lecture commercial,model_call_trac
 access_call_tracker_log_manager,call.tracker.log responsable ventes,model_call_tracker_log,sales_team.group_sale_manager,1,1,0,1
 access_call_tracker_device_manager,call.tracker.device administrateur,model_call_tracker_device,base.group_system,1,1,1,1
 access_call_tracker_token_wizard,call.tracker.token.wizard administrateur,model_call_tracker_token_wizard,base.group_system,1,1,1,1
+access_call_tracker_audit_manager,call.tracker.audit administrateur,model_call_tracker_audit,base.group_system,1,0,0,0

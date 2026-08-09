@@ -31,6 +31,8 @@ x-odoo-base: &odoo-base
     USER: odoo
     PASSWORD: odoo
     ODOO_ADMIN_PASSWORD: admin
+    # 0 = pas de purge. Voir docker-compose.crm.yml pour le détail.
+    CALL_TRACKER_RETENTION_DAYS: ${CALL_TRACKER_RETENTION_DAYS:-0}
   volumes:
     - odoo_data:/var/lib/odoo
     - ./addons:/mnt/extra-addons:ro

@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import logging
+import os
 import re
+from datetime import timedelta
 
 from odoo import api, fields, models
 from odoo.tools import html2plaintext
@@ -126,14 +128,63 @@ class CallTrackerLog(models.Model):
         return appels
 
     def _rattacher(self):
-        """Associe chaque appel au contact et à la piste correspondants."""
+        """Associe chaque appel au contact et à la piste correspondants.
+
+        Si le numéro n'est connu ni comme contact ni comme piste, une piste est
+        créée — décision du 2026-08-09 (spec §10.2).
+        """
         for appel in self:
             if not appel.phone_key:
                 continue
             partenaire = self._chercher_partenaire(appel.phone_key)
             if partenaire:
                 appel.partner_id = partenaire
-            appel.lead_id = self._chercher_piste(appel.phone_key, partenaire)
+            piste = self._chercher_piste(appel.phone_key, partenaire)
+            appel.lead_id = piste or appel._creer_piste()
+
+    def _creer_piste(self):
+        """Crée une piste pour un numéro totalement inconnu.
+
+        ⚠️ Uniquement quand il n'y a NI contact NI piste. Un contact connu sans
+        piste ouverte n'est pas un numéro inconnu : lui en créer une
+        rouvrirait une affaire à chaque appel de suivi.
+
+        Le doublon se règle tout seul : la piste porte le numéro, donc le
+        deuxième appel du même inconnu la retrouve par ``_chercher_piste``.
+        """
+        self.ensure_one()
+        if self.partner_id:
+            return self.env['crm.lead']
+
+        libelles = dict(self._fields['direction'].selection)
+        valeurs = {
+            'name': "%s — %s" % (libelles.get(self.direction, ''), self.phone_number),
+            'phone': self.phone_number,
+            # Attribuée au commercial qui a passé ou reçu l'appel : c'est lui
+            # qui a le contexte, et lui seul saura quoi en faire.
+            'user_id': self.user_id.id,
+            # `lead` si le client a activé l'étape de qualification, sinon
+            # `opportunity`. Créer un `lead` sur une base où la fonction est
+            # désactivée le rendrait INVISIBLE : le menu correspondant est
+            # masqué, et la piste n'apparaîtrait dans aucun écran.
+            #
+            # Le test porte sur le COMMERCIAL, pas sur `env.user` : l'appel
+            # arrive par une route sans session, où `env.user` est un compte
+            # technique dont l'appartenance aux groupes ne dit rien de ce que
+            # voit l'équipe commerciale.
+            'type': 'lead' if self.user_id.has_group('crm.group_use_lead')
+                    else 'opportunity',
+        }
+        medium = self.env.ref('utm.utm_medium_phone', raise_if_not_found=False)
+        if medium:
+            valeurs['medium_id'] = medium.id
+
+        piste = self.env['crm.lead'].sudo().create(valeurs)
+        _logger.info(
+            "Call Tracker : piste %s creee pour le numero inconnu %s",
+            piste.id, self.phone_number,
+        )
+        return piste
 
     @api.model
     def _condition_telephone(self, nom_modele, cle):
@@ -198,6 +249,66 @@ class CallTrackerLog(models.Model):
         )
         ligne = self.env.cr.fetchone()
         return Piste.browse(ligne[0]) if ligne else Piste
+
+    # ── Rétention ────────────────────────────────────────────────────────────
+
+    @api.model
+    def _jours_de_retention(self):
+        """Durée de conservation, lue dans l'environnement du serveur.
+
+        `CALL_TRACKER_RETENTION_DAYS`, injectée par docker-compose depuis
+        `.env.production`. Le même endroit que le reste de la configuration de
+        cette instance — pas un réglage caché dans une interface, où personne
+        ne le retrouverait le jour où il faut répondre à une question de
+        conformité.
+
+        Absente, vide, illisible ou nulle : **aucune purge**. Un défaut de
+        configuration ne doit jamais faire disparaître des données ; le sens
+        de l'erreur est choisi, pas subi.
+        """
+        brut = (os.environ.get('CALL_TRACKER_RETENTION_DAYS') or '').strip()
+        if not brut:
+            return 0
+        try:
+            jours = int(brut)
+        except ValueError:
+            _logger.warning(
+                "Call Tracker : CALL_TRACKER_RETENTION_DAYS=%r illisible, "
+                "aucune purge n'est effectuee", brut,
+            )
+            return 0
+        return jours if jours > 0 else 0
+
+    @api.model
+    def _purger(self):
+        """Supprime les appels et les traces d'audit hors rétention.
+
+        Appelée par une tâche planifiée quotidienne. Les deux modèles suivent
+        la MÊME durée : conserver un journal d'audit plus longtemps que les
+        données qu'il décrit produirait des traces orphelines, et l'inverse
+        laisserait des appels sans trace de leur remise.
+        """
+        jours = self._jours_de_retention()
+        if not jours:
+            _logger.info("Call Tracker : aucune retention configuree, rien a purger")
+            return 0
+
+        limite = fields.Datetime.now() - timedelta(days=jours)
+
+        appels = self.sudo().search([('started_at', '<', limite)])
+        traces = self.env['call.tracker.audit'].sudo().search(
+            [('create_date', '<', limite)]
+        )
+        nombre = len(appels) + len(traces)
+
+        appels.unlink()
+        traces.unlink()
+
+        _logger.info(
+            "Call Tracker : purge a %d jours — %d appel(s) et %d trace(s) supprimes",
+            jours, len(appels), len(traces),
+        )
+        return nombre
 
     # ── Fiche renvoyée à l'app (Caller ID) ───────────────────────────────────
 

@@ -7,11 +7,24 @@ renvoyées en HTTP 200). Un client mobile veut du JSON nu et des codes HTTP qui
 veulent dire quelque chose ; on lit donc le corps et on écrit la réponse
 nous-mêmes.
 
-``auth='none'`` : aucune session Odoo n'est ouverte. L'authentification est
-faite ici, par jeton d'appareil, et les écritures passent en ``sudo()``. C'est
-le point central du module — le jeton présenté par l'app ne porte AUCUN droit
-Odoo, il ne fait que désigner un appareil. Ce qui est écrit, et ce qui est
-renvoyé, est décidé par ce fichier, jamais par les droits d'un compte.
+``auth='public'`` : l'authentification réelle est faite ici, par jeton
+d'appareil, et les accès à la base passent en ``sudo()``. C'est le point
+central du module — le jeton présenté par l'app ne porte AUCUN droit Odoo, il
+ne fait que désigner un appareil. Ce qui est écrit, et ce qui est renvoyé, est
+décidé par ce fichier, jamais par les droits d'un compte.
+
+⚠️ **``public`` et non ``none``, et la nuance n'est pas cosmétique.** Avec
+``auth='none'``, Odoo ne lie aucun utilisateur : ``env.uid`` vaut ``None``. Or
+``sudo()`` lève le contrôle d'accès mais **conserve l'uid** — il ne le répare
+pas. Le défaut ne se voit pas tout de suite : il surgit au *flush* de fin de
+transaction, exécuté dans l'environnement par défaut de la requête, sous la
+forme d'un ``ValueError: Expected singleton: res.users()`` dont la trace ne
+mentionne ni authentification ni contrôleur. Un environnement parallèle
+(``request.env(user=SUPERUSER_ID)``) ne suffit pas non plus, pour la même
+raison : le flush n'utilise pas celui-là.
+
+``auth='public'`` lie l'utilisateur public — un compte réel, sans droit
+notable. Rien n'est ouvert par ce choix : tout passe toujours par ``sudo()``.
 """
 import json
 import logging
@@ -119,7 +132,7 @@ class CallTrackerController(http.Controller):
 
     @http.route(
         '/call_tracker/log_call',
-        type='http', auth='none', methods=['POST'], csrf=False, save_session=False,
+        type='http', auth='public', methods=['POST'], csrf=False, save_session=False,
         # Odoo 19 sert d'abord chaque requête sur un curseur en LECTURE SEULE,
         # et ne rejoue en écriture qu'après avoir vu échouer l'INSERT. Sans ce
         # drapeau, chaque appel journalisé exécute donc le contrôleur DEUX
@@ -131,11 +144,13 @@ class CallTrackerController(http.Controller):
     def log_call(self, **_kwargs):
         appareil = self._authentifier()
         if not appareil:
+            self._tracer('log_call', 'unauthorized')
             return repondre({'status': 'unauthorized'}, 401)
 
         try:
             valeurs = _lire_charge(request.httprequest.get_data())
         except ErreurCharge as erreur:
+            self._tracer('log_call', 'invalid', appareil, detail=str(erreur))
             return repondre({'status': 'invalid', 'detail': str(erreur)}, 400)
 
         Appel = request.env['call.tracker.log'].sudo()
@@ -145,7 +160,7 @@ class CallTrackerController(http.Controller):
         # ferait réessayer indéfiniment le seul cas où tout va bien.
         existant = Appel.search([('client_event_id', '=', valeurs['client_event_id'])], limit=1)
         if existant:
-            return repondre(self._resultat(existant, 'duplicate'))
+            return self._repondre_appel(existant, 'duplicate', 200, appareil)
 
         valeurs.update(device_id=appareil.id, user_id=appareil.user_id.id)
         try:
@@ -156,17 +171,32 @@ class CallTrackerController(http.Controller):
                 appel = Appel.create(valeurs)
         except psycopg2.errors.UniqueViolation:
             appel = Appel.search([('client_event_id', '=', valeurs['client_event_id'])], limit=1)
-            return repondre(self._resultat(appel, 'duplicate'))
+            return self._repondre_appel(appel, 'duplicate', 200, appareil)
 
         appareil.sudo().write({'last_seen': fields.Datetime.now()})
-        return repondre(self._resultat(appel, 'logged'), 201)
+        return self._repondre_appel(appel, 'logged', 201, appareil)
+
+    def _repondre_appel(self, appel, statut, code, appareil):
+        resultat = self._resultat(appel, statut)
+        self._tracer(
+            'log_call',
+            'duplicate' if statut == 'duplicate' else 'ok',
+            appareil,
+            numero=appel.phone_number,
+            linked_record=resultat['linked_record'],
+        )
+        return repondre(resultat, code)
 
     @http.route(
         '/call_tracker/contact/<path:numero>',
-        type='http', auth='none', methods=['GET'], csrf=False, save_session=False,
-        # Lecture pure : le curseur en lecture seule d'Odoo 19 convient, et le
-        # déclarer évite qu'une écriture s'y glisse par inadvertance.
-        readonly=True,
+        type='http', auth='public', methods=['GET'], csrf=False, save_session=False,
+        # `readonly=False` alors que la route ne fait que lire une fiche : elle
+        # ÉCRIT une trace d'audit, et c'est justement l'intérêt du dispositif.
+        # Une consultation ne laisse par nature aucune trace ; sans ce journal,
+        # un jeton volé pourrait parcourir le carnet d'adresses numéro par
+        # numéro sans que rien n'en subsiste. Le curseur en lecture seule
+        # d'Odoo 19 ferait échouer cette écriture.
+        readonly=False,
     )
     def contact(self, numero, **_kwargs):
         """Fiche minimale pour l'affichage à la sonnerie (Caller ID).
@@ -175,22 +205,41 @@ class CallTrackerController(http.Controller):
         s'écrit `+213555000000`, et le `+` comme les espaces d'une saisie
         recopiée traversent mal un segment d'URL classique.
         """
-        if not self._authentifier():
+        appareil = self._authentifier()
+        if not appareil:
+            self._tracer('contact_lookup', 'unauthorized', numero=numero)
             return repondre({'status': 'unauthorized'}, 401)
 
         fiche = request.env['call.tracker.log'].sudo().fiche_contact(numero)
         if not fiche:
+            self._tracer('contact_lookup', 'not_found', appareil, numero=numero)
             # 404 et non un objet vide : l'app doit pouvoir distinguer
             # « inconnu au CRM » de « connu mais sans information », qui
             # s'affichent différemment à l'écran.
             return repondre({'status': 'not_found'}, 404)
+
+        self._tracer('contact_lookup', 'ok', appareil, numero=numero)
         return repondre({'status': 'found', **fiche})
+
+    def _tracer(self, action, result, appareil=None, numero=None,
+                detail=None, linked_record=None):
+        request.env['call.tracker.audit'].sudo().tracer(
+            action=action,
+            result=result,
+            appareil=appareil,
+            numero=numero,
+            detail=detail,
+            linked_record=linked_record,
+            ip=request.httprequest.remote_addr,
+        )
 
     def _authentifier(self):
         entete = request.httprequest.headers.get('Authorization', '')
         if not entete.startswith('Bearer '):
             return None
-        appareil = request.env['call.tracker.device']._resoudre_par_jeton(entete[7:].strip())
+        appareil = request.env['call.tracker.device']._resoudre_par_jeton(
+            entete[7:].strip()
+        )
         # `active` est un champ spécial d'Odoo : un search ordinaire écarte
         # déjà les enregistrements archivés, mais on le revérifie ici pour que
         # la révocation ne dépende pas de ce comportement implicite.
