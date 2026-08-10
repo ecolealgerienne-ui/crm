@@ -300,6 +300,59 @@ class CallTrackerLog(models.Model):
     # une saisie ferait abandonner la fonctionnalité en une semaine.
     note = fields.Text(string="Note")
 
+    #: Ce qui décrit le FAIT, et que personne ne réécrit. Voir ``write``.
+    #:
+    #: Tout le reste du module est construit sur cette liste : la durée est la
+    #: mesure par défaut du tableau de bord, ``started_at`` porte à la fois la
+    #: rétention et le délai de remise, ``phone_number`` décide de quel client
+    #: il s'agit, ``user_id`` de qui est mesuré. Ne sont PAS dedans
+    #: ``partner_id`` et ``lead_id`` : rattacher un appel à un client est une
+    #: interprétation qu'on ajoute par-dessus le fait, pas une correction du
+    #: fait — c'est toute la raison d'être de la file « Appels à qualifier ».
+    CHAMPS_FIGES = frozenset({
+        'client_event_id', 'phone_number', 'phone_key', 'direction',
+        'duration_seconds', 'started_at', 'device_id', 'device_model',
+        'user_id', 'note', 'outcome', 'hour_of_day', 'delivery_lag_minutes',
+    })
+
+    def write(self, valeurs):
+        """Interdit la réécriture des faits, y compris au responsable.
+
+        ⚠️ ``readonly=True`` sur un champ est une consigne d'INTERFACE, et
+        rien de plus : le client web ne renvoie pas le champ, mais l'ORM
+        l'accepte sans broncher. Un appel RPC direct — ou un script — pouvait
+        donc rallonger un appel de trente secondes à une heure. Vérifié le
+        2026-08-10 : le principe « un appel est un compte rendu, il ne se
+        réécrit pas » était affirmé dans le formulaire, dans le README et dans
+        la spec, et n'était appliqué nulle part.
+
+        Le verrou ne dépend pas du groupe. Un responsable peut voir tous les
+        appels et en **supprimer** ; il ne peut pas en modifier un. La
+        différence n'est pas cosmétique : une suppression laisse un trou
+        visible et traçable, une réécriture laisse une ligne plausible.
+
+        ``sudo()`` passe, et c'est voulu : c'est par là qu'arrivent le
+        rattachement automatique à la création et le complément de note du
+        contrôleur, qui est le seul champ à pouvoir légitimement se remplir
+        après coup — et seulement s'il était vide.
+        """
+        if not self.env.su:
+            interdits = sorted(self.CHAMPS_FIGES.intersection(valeurs))
+            if interdits:
+                libelles = ', '.join(
+                    self._fields[nom].string or nom for nom in interdits
+                )
+                raise UserError(_(
+                    "Un appel est un compte rendu : il ne se réécrit pas "
+                    "(%(champs)s).\n\n"
+                    "Pour ajouter ou corriger quelque chose, utilisez "
+                    "« Compléter la note » : le texte est publié dans le fil "
+                    "du client, qui est cumulatif — et il repart vers le "
+                    "téléphone au prochain appel.",
+                    champs=libelles,
+                ))
+        return super().write(valeurs)
+
     def init(self):
         """Contrainte d'unicité posée en SQL plutôt que via ``_sql_constraints``.
 

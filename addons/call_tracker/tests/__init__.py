@@ -20,3 +20,4 @@ from . import test_indicatif_pays
 from . import test_telemetrie
 from . import test_horodatage
 from . import test_note_tardive
+from . import test_immuabilite

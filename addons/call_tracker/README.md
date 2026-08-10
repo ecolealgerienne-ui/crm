@@ -382,6 +382,27 @@ durée corrigeable rendrait chaque chiffre négociable en réunion, et
 `delivery_lag_minutes`, qui doit précéder tout classement entre commerciaux,
 ne vaudrait plus rien.
 
+⚠️ **Ce principe n'était affirmé que par des `readonly=True`, qui ne le
+garantissent pas** — corrigé le 2026-08-10. `readonly` est une consigne
+d'interface : le client web ne renvoie pas le champ, mais l'ORM l'accepte sans
+broncher, et un appel RPC direct rallongeait un appel de trente secondes à une
+heure. Le verrou est désormais dans `write()`, sur `CHAMPS_FIGES`, et il ne
+dépend pas du groupe.
+
+Deux conséquences à connaître :
+
+- **Le responsable non plus ne peut pas modifier un appel.** Il peut en
+  supprimer — une suppression laisse un trou visible et traçable, une
+  réécriture laisse une ligne plausible.
+- **`partner_id` et `lead_id` restent modifiables**, et c'est délibéré :
+  rattacher un appel à un client est une interprétation ajoutée par-dessus le
+  fait, pas une correction du fait. C'est toute la raison d'être de la file
+  *Appels à qualifier*. Le droit d'écriture accordé aux commerciaux dans
+  `ir.model.access.csv` ne sert plus qu'à cela.
+- **`sudo()` passe**, par où arrivent le rattachement automatique à la création
+  et le complément de note du contrôleur — le seul champ à pouvoir
+  légitimement se remplir après coup, et seulement s'il était vide.
+
 **Ce qui s'ajoute après coup va au fil du client.** L'appel est le compte
 rendu d'un *événement*, figé par nature ; le fil est l'histoire de la
 *relation*, cumulative par nature. Une note mal dictée dans la voiture ne se
@@ -649,15 +670,17 @@ relancés par un seul appel.
 
 ## Tests
 
-287 tests couvrant le contrat HTTP des routes, l'idempotence, la
+299 tests couvrant le contrat HTTP des routes, l'idempotence, la
 révocation, le rapprochement téléphonique, la qualification manuelle,
 la note post-appel, les liens depuis les fiches CRM, la rétention, le
 journal d'audit, les champs dérivés, le cloisonnement, la
 couverture du portefeuille et la relance des affaires.
 
-Depuis le 2026-08-10 s'y ajoutent les bornes de `started_at`
-(`test_horodatage.py`), la note qui arrive après l'appel qu'elle décrit
-(`test_note_tardive.py`), et le cas manquant du garde-fou par indicatif pays :
+Depuis le 2026-08-10 s'y ajoutent l'immuabilité des faits
+(`test_immuabilite.py` — le principe le plus répété du module, et le seul qui
+n'était vérifié nulle part), les bornes de `started_at` (`test_horodatage.py`),
+la note qui arrive après l'appel qu'elle décrit (`test_note_tardive.py`), et
+le cas manquant du garde-fou par indicatif pays :
 une fiche saisie en forme nationale **avec son pays renseigné**, où le
 `phone_sanitized` calculé par Odoo suffisait à laisser passer un appel
 étranger.

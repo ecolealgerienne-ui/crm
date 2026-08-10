@@ -275,7 +275,7 @@ invisibles depuis la fiche client.
 
 ## 8. Ce qui est éprouvé, et comment
 
-287 tests Odoo, 44 tests Flutter, **29 tests Kotlin**, 0 échec. Les trois
+299 tests Odoo, 44 tests Flutter, **29 tests Kotlin**, 0 échec. Les trois
 suites tournent à chaque poussée (`.github/workflows/tests.yml`).
 
 Chaîne validée de bout en bout sur émulateur **et sur un téléphone réel**

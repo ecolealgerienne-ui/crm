@@ -233,6 +233,24 @@ couvre la réaffectation d'un téléphone à un autre commercial, mais **pas** l
 vol : un appareil qu'on ne touche plus ne reçoit aucun nouveau réglage. Pour
 celui-là, il n'y a toujours que le MDM.
 
+### Un appel journalisé ne se réécrit pas — vérifié depuis le 2026-08-10
+
+Le principe était affirmé partout et garanti nulle part : les champs portaient
+`readonly=True`, qui n'est qu'une consigne d'interface. Un commercial pouvait,
+par un appel RPC direct, rallonger un de ses appels, en changer le numéro ou
+le déplacer dans le temps — donc décaler sa date d'effacement.
+
+Le verrou est désormais dans `write()` et ne dépend d'aucun groupe : le
+responsable non plus ne peut pas modifier un appel. Il peut en **supprimer**,
+ce qui reste nécessaire au droit à l'effacement (§5), et la différence compte
+ici : une suppression laisse un trou visible, une réécriture laisse une ligne
+plausible.
+
+Ce que cela vaut pour la conformité : le journal d'audit ne trace que des
+consultations. Si les données consultées étaient falsifiables par la personne
+mesurée, le journal aurait continué de tracer fidèlement l'accès à des lignes
+sans valeur probante.
+
 ### Le responsable voit tout, et l'avis le dit maintenant
 
 La règle d'enregistrement du groupe Responsable est `[(1, '=', 1)]` : **tous**
