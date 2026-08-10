@@ -20,7 +20,37 @@
                         invisible="call_tracker_count == 0">
                     <field name="call_tracker_count" widget="statinfo" string="Appels"/>
                 </button>
+                <button name="action_voir_notes" type="object"
+                        class="oe_stat_button" icon="fa-sticky-note-o"
+                        invisible="call_note_count == 0">
+                    <field name="call_note_count" widget="statinfo" string="Notes"/>
+                </button>
             </div>
+        </field>
+    </record>
+
+    <!--
+        L'historique des notes d'un compte, du plus recent au plus ancien.
+
+        Une note vit dans le fil de la PISTE quand l'appel en avait une, sinon
+        dans celui du contact. Sur des donnees reelles, sept notes sur huit se
+        retrouvaient donc sur des pistes, et la fiche du client n'en montrait
+        qu'une : l'historique est eclate par construction, et de plus en plus
+        a mesure qu'un client accumule des affaires. Cet ecran le rassemble.
+    -->
+    <record id="view_call_tracker_notes_list" model="ir.ui.view">
+        <field name="name">call.tracker.notes.list</field>
+        <field name="model">mail.message</field>
+        <field name="arch" type="xml">
+            <list string="Notes" create="false" edit="false" default_order="date desc">
+                <field name="date" string="Le"/>
+                <field name="author_id" string="Par"/>
+                <!-- D'ou vient la note : la piste ou la fiche. Deux notes du
+                     meme jour sur deux affaires differentes ne se confondent
+                     pas. -->
+                <field name="record_name" string="Sur"/>
+                <field name="body" string="Note" widget="html"/>
+            </list>
         </field>
     </record>
 

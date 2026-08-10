@@ -13,3 +13,4 @@ from . import test_relance_affaires
 from . import test_retention
 from . import test_recherche
 from . import test_enrichissement
+from . import test_notes_compte

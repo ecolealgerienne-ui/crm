@@ -223,6 +223,46 @@ suivant.
 ⚠️ Sous-type `mt_note` et non un commentaire public : se tromper ici
 enverrait la note au client par courriel.
 
+## L'historique des notes, rassemblé sur le compte
+
+Bouton **Notes** sur la fiche contact : toutes les notes internes du **compte**
+— la société, ses contacts rattachés et toutes ses pistes — du plus récent au
+plus ancien.
+
+**Le problème que cet écran résout.** `_publier_note` publie sur
+`lead_id` **ou** `partner_id` : la piste l'emporte. Mesuré sur des données
+réelles avant ce chantier :
+
+```
+Appels avec note          : 8
+  publiés sur une PISTE   : 7
+  publiés sur une FICHE   : 1
+```
+
+Sept notes sur huit vivaient dans le fil d'une piste, et la fiche du client
+n'en montrait qu'une. L'historique est éclaté **par construction**, et il
+l'est de plus en plus à mesure qu'un client accumule des affaires.
+
+**Le compte, pas le contact seul.** Les appels sont journalisés au nom de
+l'interlocuteur qu'on a eu au téléphone ; ouvrir « Acme Corporation » doit
+montrer ce qui s'est dit avec Floyd comme avec ses collègues, sinon il faut
+ouvrir cinq fiches pour reconstituer une conversation. Même raisonnement que
+l'écran de couverture.
+
+⚠️ **Interroge `mail.message`, pas une vue SQL.** Les messages portent des
+règles d'accès fines dans Odoo ; une vue les contournerait et rendrait
+visibles des notes de pistes qu'on n'a pas le droit de voir. Passer par le
+modèle laisse Odoo faire ce filtrage, gratuitement et correctement.
+
+Le domaine retient les notes **internes** et écarte trois sortes de bruit :
+
+| Écarté | Pourquoi |
+|---|---|
+| Sous-types `Opportunity Created`, `Stage Changed` | Du mouvement de pipeline, pas ce qui s'est dit |
+| `user_notification` | Mécanique interne d'Odoo ; porte le même sous-type qu'une note |
+| Sous-type `Discussions` | Un courriel ou un SMS **envoyé au client** — le relire à la sonnerie ferait redire au commercial ce que le client a déjà lu |
+| Corps vide | Messages de suivi ne portant qu'un changement de champ |
+
 ## Enrichir depuis le CRM — et pourquoi l'appel reste figé
 
 **L'appel est en lecture seule, définitivement.** Ses faits — numéro, sens,
@@ -440,7 +480,7 @@ relancés par un seul appel.
 
 ## Tests
 
-163 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
+172 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
 révocation, le rapprochement téléphonique, la qualification manuelle,
 la note post-appel, les liens depuis les fiches CRM, la rétention, le
 journal d'audit, les champs dérivés, le cloisonnement, la

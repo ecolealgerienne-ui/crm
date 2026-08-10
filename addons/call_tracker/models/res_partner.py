@@ -44,6 +44,80 @@ class ResPartner(models.Model):
             else:
                 contact.call_tracker_count = 0
 
+    call_note_count = fields.Integer(
+        # « Notes » tout court entre en collision avec le champ natif
+        # `comment` de res.partner, qui porte la même étiquette — Odoo le
+        # signale au chargement, et deux colonnes homonymes dans un sélecteur
+        # de champs ne se distinguent pas.
+        string="Notes du suivi",
+        compute='_compute_call_note_count',
+    )
+
+    def _domaine_notes(self):
+        """Toutes les notes internes du COMPTE : la société, ses contacts, ses pistes.
+
+        **Pourquoi ce périmètre.** Une note vit dans le fil de la piste quand
+        l'appel en avait une, sinon dans celui du contact — la piste l'emporte.
+        Sur des données réelles, sept notes sur huit se retrouvaient donc sur
+        des pistes, et la fiche du client n'en montrait qu'une. L'historique
+        est éclaté par construction, et il l'est de plus en plus à mesure
+        qu'un client accumule des affaires.
+
+        Le compte, et non le contact seul : les appels sont journalisés au nom
+        de l'interlocuteur qu'on a eu au téléphone. Ouvrir « Acme Corporation »
+        doit montrer ce qui s'est dit avec Floyd comme avec ses collègues,
+        sinon il faut ouvrir cinq fiches pour reconstituer une conversation.
+
+        **Interroge `mail.message`, pas une vue SQL.** Les messages portent des
+        règles d'accès fines dans Odoo ; une vue les contournerait et rendrait
+        visibles des notes de pistes qu'on n'a pas le droit de voir. Passer
+        par le modèle laisse Odoo faire ce filtrage, gratuitement et
+        correctement.
+        """
+        self.ensure_one()
+        contacts = self.search([('id', 'child_of', self.commercial_partner_id.id)])
+        pistes = self.env['crm.lead'].search([('partner_id', 'in', contacts.ids)])
+        return [
+            # `mt_note` = note INTERNE. Écarte au passage tout le bruit
+            # automatique d'Odoo — « Opportunity Created », « Stage Changed » —
+            # qui porte ses propres sous-types.
+            ('subtype_id', '=', self.env.ref('mail.mt_note').id),
+            # `comment` = une note écrite par un humain, `notification` = la
+            # trace d'un appel muet. Écarte `user_notification`, qui est une
+            # mécanique interne d'Odoo et n'a rien à dire du client.
+            ('message_type', 'in', ['comment', 'notification']),
+            # Odoo écrit des messages de SUIVI au corps vide, qui ne portent
+            # qu'un changement de champ. Ils comptent dans le compteur et
+            # occupent une ligne pour ne rien dire.
+            ('body', '!=', ''),
+            '|',
+            '&', ('model', '=', 'res.partner'), ('res_id', 'in', contacts.ids),
+            '&', ('model', '=', 'crm.lead'), ('res_id', 'in', pistes.ids),
+        ]
+
+    def _compute_call_note_count(self):
+        Message = self.env['mail.message']
+        for contact in self:
+            # `search_count` et non un `_read_group` : le domaine dépend du
+            # compte de chaque fiche et ne se factorise pas. Une fiche à la
+            # fois, sur un écran qui en affiche une.
+            contact.call_note_count = (
+                Message.search_count(contact._domaine_notes()) if contact.id else 0
+            )
+
+    def action_voir_notes(self):
+        """Toutes les notes du compte, du plus récent au plus ancien."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _("Notes — %s", self.commercial_partner_id.display_name),
+            'res_model': 'mail.message',
+            'view_mode': 'list',
+            'views': [(self.env.ref('call_tracker.view_call_tracker_notes_list').id, 'list')],
+            'domain': self._domaine_notes(),
+            'context': {'create': False, 'edit': False},
+        }
+
     def action_voir_appels(self):
         self.ensure_one()
         return {
