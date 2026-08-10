@@ -873,6 +873,12 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Mis à jour le {when}'**
   String activitiesFetchedAt(String when);
+
+  /// No description provided for @contactSheetPhone.
+  ///
+  /// In fr, this message translates to:
+  /// **'Téléphone'**
+  String get contactSheetPhone;
 }
 
 class _AppLocalizationsDelegate

@@ -127,6 +127,24 @@ Une activite **sans numero** est renvoyee quand meme : la masquer ferait
 perdre une tache reelle pour un champ manquant. L'application l'affiche sans
 bouton d'appel.
 
+#### Contacts d'abord, puis pistes sans contact
+
+La liste rend d'abord les `res.partner`, puis les `crm.lead` **sans contact
+rattache**, dans la limite du meme plafond.
+
+Qualifier un appel d'un numero inconnu cree une PISTE, pas un contact.
+Sans cette seconde source, `fiche_contact` trouvait le prospect a la sonnerie
+et la recherche par fragment ne le trouvait pas — le commercial venait de
+qualifier quelqu'un et ne pouvait plus le retrouver pour le rappeler.
+Constate en rejouant les scenarios le 2026-08-10.
+
+`partner_id IS NULL` : les pistes rattachees a un contact remontent deja par
+ce contact, et les inclure afficherait deux fois la meme personne — une fois
+sous son nom, une fois sous l'intitule de son affaire.
+
+Le plafond borne le TOTAL et non chaque source : sinon un jeton vole
+recolterait deux fois plus par requete.
+
 ### `POST /call_tracker/activity/<id>/done`
 
 ⚠️ **L'appartenance est reverifiee cote serveur.** Rien n'empeche un jeton
@@ -566,7 +584,7 @@ relancés par un seul appel.
 
 ## Tests
 
-197 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
+202 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
 révocation, le rapprochement téléphonique, la qualification manuelle,
 la note post-appel, les liens depuis les fiches CRM, la rétention, le
 journal d'audit, les champs dérivés, le cloisonnement, la

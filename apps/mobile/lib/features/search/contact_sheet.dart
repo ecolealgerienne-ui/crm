@@ -107,7 +107,12 @@ class _ContactSheetState extends ConsumerState<ContactSheet> {
           ],
           if (_numero.isNotEmpty) ...[
             const SizedBox(height: 20),
-            _Champ(etiquette: l10n.searchHint, valeur: _numero, ltr: true),
+            // `searchHint` decrit le CHAMP DE RECHERCHE (« Numéro ou début
+            // de numéro ») : le reutiliser ici affichait cette invite comme
+            // etiquette du numero d'un client, ce qui n'a aucun sens sur une
+            // fiche. Vu sur une capture d'ecran, jamais dans un test — aucune
+            // assertion ne portait sur ce libelle.
+            _Champ(etiquette: l10n.contactSheetPhone, valeur: _numero, ltr: true),
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,

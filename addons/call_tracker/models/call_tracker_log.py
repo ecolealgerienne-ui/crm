@@ -587,6 +587,12 @@ class CallTrackerLog(models.Model):
         celui-ci part d'un numéro complet et rend UNE fiche, celle-ci part
         d'un bout de numéro et rend une liste.
 
+        **Contacts d'abord, puis pistes sans contact.** Un prospect qualifié
+        depuis un appel n'existe que comme piste ; l'omettre rendait
+        introuvable, dans la recherche, quelqu'un que la fiche à la sonnerie
+        trouvait — et précisément au moment où on veut le rappeler. Voir
+        ``_pistes_sans_contact``.
+
         ⚠️ **C'est la route la plus sensible du module, et il faut le dire.**
         Un fragment court interroge tout le carnet d'adresses, alors que
         l'authentification ne repose que sur un jeton d'appareil, sans droits
@@ -669,6 +675,65 @@ class CallTrackerLog(models.Model):
                 # sait ni lequel choisir, ni quoi composer.
                 'phone': partenaire.phone or '',
                 'crm_stage': piste.stage_id.name or '' if piste else '',
+            })
+
+        reste = min(limite or self.RESULTATS_MAX, self.RESULTATS_MAX) - len(resultats)
+        if reste > 0:
+            resultats += self._pistes_sans_contact(chiffres, commercial, reste)
+        return resultats
+
+    @api.model
+    def _pistes_sans_contact(self, chiffres, commercial, limite):
+        """Prospects qui n'existent que comme piste, sans fiche contact.
+
+        **Le trou que cette méthode bouche.** Qualifier un appel d'un numéro
+        inconnu crée une PISTE, pas un contact. La fiche affichée à la sonnerie
+        le trouvait — ``fiche_contact`` retombe sur ``crm.lead`` — mais la
+        recherche par fragment, non : elle n'interrogeait que ``res.partner``.
+        Un commercial venait donc de qualifier un prospect et ne pouvait pas le
+        retrouver pour le rappeler. Constaté en rejouant les scénarios le
+        2026-08-10.
+
+        ``partner_id IS NULL`` : les pistes rattachées à un contact sont déjà
+        remontées par la requête précédente, à travers ce contact. Les inclure
+        ici afficherait deux fois la même personne, une fois sous son nom et
+        une fois sous l'intitulé de son affaire.
+        """
+        champs = self.env['crm.lead']._fields
+        colonnes = [c for c in COLONNES_TELEPHONE if c in champs and champs[c].store]
+        if not colonnes:
+            return []
+
+        condition = ' OR '.join(
+            "regexp_replace(coalesce(l.%s, ''), '\D', '', 'g') LIKE %%s" % colonne
+            for colonne in colonnes
+        )
+        parametres = ['%' + chiffres + '%'] * len(colonnes)
+
+        cloison = ''
+        if self._perimetre_recherche() == 'own' and commercial:
+            # Une seule façon d'être « à moi » ici, contrairement aux
+            # contacts : une piste porte son commercial directement.
+            cloison = ' AND l.user_id = %s'
+            parametres.append(commercial.id)
+
+        self.env.cr.execute(
+            "SELECT l.id FROM crm_lead l "
+            "WHERE l.active = true AND l.partner_id IS NULL AND (%s) %s "
+            "ORDER BY l.id LIMIT %%s" % (condition, cloison),
+            parametres + [limite],
+        )
+        identifiants = [ligne[0] for ligne in self.env.cr.fetchall()]
+
+        resultats = []
+        for piste in self.env['crm.lead'].browse(identifiants):
+            resultats.append({
+                # `contact_name` quand la piste nomme une personne, sinon son
+                # intitulé — c'est ce qu'un commercial reconnaîtra.
+                'name': piste.contact_name or piste.name or '',
+                'company': piste.partner_name or '',
+                'phone': self._premier_telephone(piste),
+                'crm_stage': piste.stage_id.name or '',
             })
         return resultats
 

@@ -485,4 +485,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String activitiesFetchedAt(String when) {
     return 'آخر تحديث $when';
   }
+
+  @override
+  String get contactSheetPhone => 'الهاتف';
 }

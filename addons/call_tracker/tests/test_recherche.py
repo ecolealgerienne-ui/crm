@@ -138,3 +138,71 @@ class TestRechercheContacts(HttpCase, BancCallTracker):
         avant = self.env['call.tracker.audit'].search_count([])
         self.url_open('/call_tracker/contacts/445566')
         self.assertGreater(self.env['call.tracker.audit'].search_count([]), avant)
+
+    # ── Les prospects qui n'ont pas encore de fiche contact ──────────────────
+
+    def test_une_piste_sans_contact_est_trouvee(self):
+        """Le trou constaté en rejouant les scénarios le 2026-08-10.
+
+        Qualifier un appel d'un numéro inconnu crée une PISTE, pas un contact.
+        La fiche à la sonnerie la trouvait, la recherche par fragment non :
+        elle n'interrogeait que `res.partner`. Le commercial venait de
+        qualifier un prospect et ne pouvait plus le retrouver pour le
+        rappeler.
+        """
+        self.env['crm.lead'].create({
+            'name': 'Entrant — +213555909090',
+            'phone': '+213555909090',
+        })
+        noms = [r['name'] for r in self.chercher('909090').json()['results']]
+        self.assertIn('Entrant — +213555909090', noms)
+
+    def test_les_deux_routes_s_accordent_sur_un_meme_numero(self):
+        """L'incohérence est ce qui se remarque, plus que l'absence.
+
+        Un numéro que la sonnerie sait nommer et que la recherche ignore se
+        lit comme une panne intermittente.
+        """
+        self.env['crm.lead'].create({
+            'name': 'Prospect accordé', 'phone': '+213555818181',
+        })
+        fiche = self.Appel.fiche_contact('+213555818181')
+        liste = self.chercher('818181').json()
+
+        self.assertTrue(fiche, "la fiche à la sonnerie doit le trouver")
+        self.assertEqual(liste['count'], 1, "la recherche aussi")
+
+    def test_une_piste_rattachee_n_apparait_pas_deux_fois(self):
+        """Elle remonte déjà par son contact ; l'ajouter afficherait la même
+        personne sous deux intitulés."""
+        contact = self.env['res.partner'].create({
+            'name': 'Client avec affaire', 'phone': '+213555727272',
+        })
+        self.env['crm.lead'].create({
+            'name': 'Affaire du client', 'partner_id': contact.id,
+            'phone': '+213555727272',
+        })
+        resultats = self.chercher('727272').json()['results']
+        self.assertEqual(len(resultats), 1)
+        self.assertEqual(resultats[0]['name'], 'Client avec affaire')
+
+    def test_le_numero_de_la_piste_accompagne_le_resultat(self):
+        self.env['crm.lead'].create({
+            'name': 'Prospect à rappeler', 'phone': '+213555636363',
+        })
+        fiche = self.chercher('636363').json()['results'][0]
+        self.assertTrue(fiche['phone'], "sans numéro, impossible d'appeler")
+
+    def test_le_plafond_couvre_les_deux_sources(self):
+        """Le cap borne le TOTAL, pas chaque source : sinon un jeton volé
+        récolterait deux fois plus par requête."""
+        for i in range(self.Appel.RESULTATS_MAX + 3):
+            self.env['res.partner'].create({
+                'name': 'Contact %d' % i, 'phone': '+2135554400%02d' % i,
+            })
+        for i in range(5):
+            self.env['crm.lead'].create({
+                'name': 'Piste %d' % i, 'phone': '+2135554401%02d' % i,
+            })
+        resultats = self.chercher('55544').json()['results']
+        self.assertLessEqual(len(resultats), self.Appel.RESULTATS_MAX)

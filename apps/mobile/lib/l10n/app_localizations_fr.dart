@@ -487,4 +487,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String activitiesFetchedAt(String when) {
     return 'Mis à jour le $when';
   }
+
+  @override
+  String get contactSheetPhone => 'Téléphone';
 }

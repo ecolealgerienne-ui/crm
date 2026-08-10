@@ -145,6 +145,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             Text(l10n.settingsHoursTitle,
                 style: Theme.of(context).textTheme.titleSmall),
             _Aide(l10n.settingsHoursHelp),
+            // Les menus deroulants portent une etiquette flottante posee SUR
+            // leur bordure. Sans cet espace, elle vient toucher la ligne
+            // d'aide au-dessus, et les deux se lisent comme un seul bloc
+            // brouille. Vu sur une capture d'ecran.
+            const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
