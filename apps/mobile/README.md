@@ -159,6 +159,26 @@ rallumer ne doit pas rattraper ce qu'on avait choisi de ne pas journaliser.
 Le drapeau de débogage `resetCursor` pose `1`, pas `0`, pour rester distinct
 du sentinelle et continuer à rejouer tout un journal d'émulateur.
 
+## Rechercher, puis appeler
+
+L'onglet Recherche prend un **fragment** de numéro — début, milieu ou fin — et
+rend une liste. Chaque résultat porte un bouton *Appeler*.
+
+- **Minimum 4 chiffres**, aligné sur `FRAGMENT_MIN` côté Odoo. Le contrôle est
+  fait des deux côtés : ici pour dire *pourquoi* rien ne part, là-bas parce
+  qu'un serveur ne fait confiance à aucun client. Un test fige la valeur.
+- **`ACTION_DIAL`, pas `ACTION_CALL`.** Le numéro est composé, l'appel n'est
+  pas lancé : c'est le commercial qui appuie sur le vert. `ACTION_CALL`
+  exigerait la permission `CALL_PHONE` — une permission dangereuse de plus sur
+  une application qui demande déjà `READ_CALL_LOG` et le rôle de filtrage — et
+  donnerait à l'app le pouvoir d'appeler toute seule. Sur une vraie ligne
+  professionnelle, un bogue y coûterait de l'argent. Un appui de plus, et la
+  chaîne de capture prend le relais comme pour n'importe quel appel.
+- **Sans cache.** [ContactCache] est indexé par numéro complet ; un fragment
+  n'en est pas un, et garder des listes ferait afficher un carnet périmé — un
+  contact créé il y a cinq minutes resterait introuvable. Le cache sert la
+  sonnerie, où la même fiche revient souvent.
+
 ## Le cache des fiches contact
 
 Une fiche trouvée est gardée **30 minutes**, un numéro inconnu **2 minutes

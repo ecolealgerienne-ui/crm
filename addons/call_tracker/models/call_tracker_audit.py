@@ -21,6 +21,7 @@ class CallTrackerAudit(models.Model):
         [
             ('log_call', "Journalisation d'appel"),
             ('contact_lookup', "Consultation de contact"),
+            ('contact_search', "Recherche de contacts"),
         ],
         required=True,
         index=True,
@@ -31,6 +32,7 @@ class CallTrackerAudit(models.Model):
             ('duplicate', "Déjà reçu"),
             ('not_found', "Sans correspondance"),
             ('invalid', "Charge utile refusée"),
+            ('too_short', "Refusé — fragment trop court"),
             ('unauthorized', "Refusé — jeton"),
         ],
         required=True,

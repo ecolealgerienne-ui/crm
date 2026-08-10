@@ -126,10 +126,10 @@
   "overlayGranted": "Surimpression autorisée",
   "navSearch": "Recherche",
   "searchTitle": "Rechercher un contact",
-  "searchHint": "Numéro de téléphone",
+  "searchHint": "Numéro ou début de numéro",
   "searchAction": "Rechercher",
   "searchNotFound": "Aucun contact ne correspond à ce numéro",
-  "searchPrompt": "Saisissez un numéro pour voir sa fiche CRM.",
+  "searchPrompt": "Saisissez au moins quelques chiffres pour retrouver un contact.",
   "searchCompany": "Société",
   "searchStage": "Étape",
   "searchLastNote": "Dernière note",
@@ -179,5 +179,24 @@
   "noticeSection": "Information",
   "noticeReadAgain": "Avis d'information",
   "noticeReadAgainBody": "Ce que l'application enregistre, qui peut le lire, et combien de temps c'est conservé.",
-  "noticeReadAgainAction": "Relire l'avis"
+  "noticeReadAgainAction": "Relire l'avis",
+  "searchClear": "Effacer",
+  "searchNotFoundFor": "Aucun contact ne correspond à {number}",
+  "@searchNotFoundFor": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "searchPartialHint": "Un fragment suffit — début, milieu ou fin du numéro.",
+  "searchTooShort": "Encore un peu : {min} chiffres au minimum.",
+  "@searchTooShort": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "searchCall": "Appeler"
 }

@@ -541,7 +541,7 @@ abstract class AppLocalizations {
   /// No description provided for @searchHint.
   ///
   /// In fr, this message translates to:
-  /// **'Numéro de téléphone'**
+  /// **'Numéro ou début de numéro'**
   String get searchHint;
 
   /// No description provided for @searchAction.
@@ -559,7 +559,7 @@ abstract class AppLocalizations {
   /// No description provided for @searchPrompt.
   ///
   /// In fr, this message translates to:
-  /// **'Saisissez un numéro pour voir sa fiche CRM.'**
+  /// **'Saisissez au moins quelques chiffres pour retrouver un contact.'**
   String get searchPrompt;
 
   /// No description provided for @searchCompany.
@@ -765,6 +765,36 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Relire l\'avis'**
   String get noticeReadAgainAction;
+
+  /// No description provided for @searchClear.
+  ///
+  /// In fr, this message translates to:
+  /// **'Effacer'**
+  String get searchClear;
+
+  /// No description provided for @searchNotFoundFor.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun contact ne correspond à {number}'**
+  String searchNotFoundFor(String number);
+
+  /// No description provided for @searchPartialHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Un fragment suffit — début, milieu ou fin du numéro.'**
+  String get searchPartialHint;
+
+  /// No description provided for @searchTooShort.
+  ///
+  /// In fr, this message translates to:
+  /// **'Encore un peu : {min} chiffres au minimum.'**
+  String searchTooShort(int min);
+
+  /// No description provided for @searchCall.
+  ///
+  /// In fr, this message translates to:
+  /// **'Appeler'**
+  String get searchCall;
 }
 
 class _AppLocalizationsDelegate

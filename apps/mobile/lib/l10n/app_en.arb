@@ -73,10 +73,10 @@
   "overlayGranted": "Overlay allowed",
   "navSearch": "Search",
   "searchTitle": "Find a contact",
-  "searchHint": "Phone number",
+  "searchHint": "Number or part of a number",
   "searchAction": "Search",
   "searchNotFound": "No contact matches this number",
-  "searchPrompt": "Enter a number to see its CRM card.",
+  "searchPrompt": "Type at least a few digits to find a contact.",
   "searchCompany": "Company",
   "searchStage": "Stage",
   "searchLastNote": "Latest note",
@@ -126,5 +126,24 @@
   "noticeSection": "Information",
   "noticeReadAgain": "Privacy notice",
   "noticeReadAgainBody": "What the app records, who can read it, and how long it is kept.",
-  "noticeReadAgainAction": "Read again"
+  "noticeReadAgainAction": "Read again",
+  "searchClear": "Clear",
+  "searchNotFoundFor": "No contact matches {number}",
+  "@searchNotFoundFor": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "searchPartialHint": "A fragment is enough — start, middle or end of the number.",
+  "searchTooShort": "A little more: {min} digits minimum.",
+  "@searchTooShort": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "searchCall": "Call"
 }

@@ -438,6 +438,85 @@ class CallTrackerLog(models.Model):
         ligne = self.env.cr.fetchone()
         return Partenaire.browse(ligne[0]) if ligne else Partenaire
 
+    # ── Recherche par fragment, depuis l'application ─────────────────────────
+
+    #: En deçà, la recherche est refusée. Trois chiffres rendraient un
+    #: échantillon du carnet d'adresses à qui tape n'importe quoi ; quatre
+    #: suffisent à cibler un correspondant qu'on a en tête.
+    FRAGMENT_MIN = 4
+
+    #: Plafond de résultats. Ce n'est pas de la pagination oubliée : c'est la
+    #: borne. Un écran de téléphone n'affiche pas davantage, et surtout un
+    #: jeton volé ne doit pas pouvoir aspirer le carnet dix par dix moins
+    #: lentement que ça.
+    RESULTATS_MAX = 10
+
+    @api.model
+    def rechercher_contacts(self, fragment, limite=None):
+        """Contacts dont le numéro contient ce fragment de chiffres.
+
+        Sert la recherche manuelle de l'application, distincte du Caller ID :
+        celui-ci part d'un numéro complet et rend UNE fiche, celle-ci part
+        d'un bout de numéro et rend une liste.
+
+        ⚠️ **C'est la route la plus sensible du module, et il faut le dire.**
+        Un fragment court interroge tout le carnet d'adresses, alors que
+        l'authentification ne repose que sur un jeton d'appareil, sans droits
+        Odoo. Trois bornes, et chacune répond à un scénario précis :
+
+        - ``FRAGMENT_MIN`` — sans minimum, ``0`` rend un échantillon de tout ;
+        - ``RESULTATS_MAX`` — un téléphone perdu ne doit pas vider le carnet
+          en quelques requêtes ;
+        - la trace d'audit, écrite par le contrôleur avec le fragment ET le
+          nombre de résultats — une énumération laisse alors une signature
+          lisible : des centaines de recherches courtes en rafale.
+
+        Elles limitent le débit, **elles n'empêchent pas** une énumération
+        patiente. Le jour où ça compte, c'est le périmètre qu'il faut réduire
+        — restreindre aux clients du commercial de l'appareil — pas les
+        bornes qu'il faut resserrer.
+        """
+        chiffres = re.sub(r'\D', '', fragment or '')
+        if len(chiffres) < self.FRAGMENT_MIN:
+            return []
+
+        Partenaire = self.env['res.partner']
+        champs = Partenaire._fields
+        colonnes = [c for c in COLONNES_TELEPHONE if c in champs and champs[c].store]
+        if not colonnes:
+            return []
+
+        # `LIKE %fragment%` et non `LIKE %fragment` : on cherche n'importe où
+        # dans le numéro. Un commercial se souvient rarement de la fin exacte,
+        # plus souvent d'un morceau du milieu.
+        condition = ' OR '.join(
+            "regexp_replace(coalesce(%s, ''), '\\D', '', 'g') LIKE %%s" % colonne
+            for colonne in colonnes
+        )
+        parametres = ['%' + chiffres + '%'] * len(colonnes)
+        self.env.cr.execute(
+            "SELECT id FROM res_partner WHERE active = true AND (%s) "
+            "ORDER BY id LIMIT %%s" % condition,
+            parametres + [min(limite or self.RESULTATS_MAX, self.RESULTATS_MAX)],
+        )
+        identifiants = [ligne[0] for ligne in self.env.cr.fetchall()]
+
+        resultats = []
+        for partenaire in Partenaire.browse(identifiants):
+            piste = self._chercher_piste(
+                chiffres_significatifs(partenaire.phone or ''), partenaire,
+            )
+            resultats.append({
+                'name': partenaire.name or '',
+                'company': self._societe(partenaire, piste),
+                # Le numéro fait partie du résultat, contrairement à la fiche
+                # du Caller ID : sans lui la liste est inutilisable — on ne
+                # sait ni lequel choisir, ni quoi composer.
+                'phone': partenaire.phone or '',
+                'crm_stage': piste.stage_id.name or '' if piste else '',
+            })
+        return resultats
+
     @api.model
     def _chercher_piste(self, cle, partenaire=None):
         """Piste ouverte la plus récente pour ce contact, sinon pour ce numéro."""

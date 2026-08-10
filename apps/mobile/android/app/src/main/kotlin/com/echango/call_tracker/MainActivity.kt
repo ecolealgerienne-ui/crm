@@ -183,6 +183,53 @@ class MainActivity : FlutterActivity() {
             // réseau, exactement comme la surimpression. Un commercial qui
             // cherche un numéro qu'il vient de voir sonner ne doit pas
             // provoquer un second appel à l'Odoo du client.
+            "searchContacts" -> {
+                val fragment = appel.argument<String>("fragment").orEmpty().trim()
+                Thread {
+                    val resultats = ContactClient.rechercher(reglages, fragment)
+                    runOnUiThread {
+                        reponse.success(
+                            resultats.map {
+                                mapOf(
+                                    "name" to it.name,
+                                    "company" to it.company,
+                                    "phone" to it.phone,
+                                    "crm_stage" to it.crmStage,
+                                )
+                            }
+                        )
+                    }
+                }.start()
+            }
+
+            // Ouvre le clavier du téléphone avec le numéro composé, SANS le
+            // lancer.
+            //
+            // `ACTION_DIAL` et non `ACTION_CALL`, et ce n'est pas de la
+            // timidité : `ACTION_CALL` exige la permission `CALL_PHONE`, une
+            // permission dangereuse de plus sur une application qui en
+            // demande déjà une restreinte (`READ_CALL_LOG`) et le rôle de
+            // filtrage d'appels. Elle donnerait surtout à l'application le
+            // pouvoir de passer un appel toute seule — sur la ligne
+            // professionnelle de quelqu'un, un bogue coûterait de l'argent et
+            // de la confiance. Le vert du clavier reste sous le pouce du
+            // commercial. Un appui de plus, et la chaîne de capture prend le
+            // relais comme pour n'importe quel appel.
+            "dial" -> {
+                val numero = appel.argument<String>("phoneNumber").orEmpty().trim()
+                if (numero.isBlank()) {
+                    reponse.success(false)
+                } else {
+                    startActivity(
+                        android.content.Intent(
+                            android.content.Intent.ACTION_DIAL,
+                            android.net.Uri.fromParts("tel", numero, null),
+                        )
+                    )
+                    reponse.success(true)
+                }
+            }
+
             "lookupContact" -> {
                 val numero = appel.argument<String>("phoneNumber").orEmpty().trim()
                 Thread {

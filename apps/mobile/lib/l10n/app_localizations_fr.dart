@@ -273,7 +273,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get searchTitle => 'Rechercher un contact';
 
   @override
-  String get searchHint => 'Numéro de téléphone';
+  String get searchHint => 'Numéro ou début de numéro';
 
   @override
   String get searchAction => 'Rechercher';
@@ -282,7 +282,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get searchNotFound => 'Aucun contact ne correspond à ce numéro';
 
   @override
-  String get searchPrompt => 'Saisissez un numéro pour voir sa fiche CRM.';
+  String get searchPrompt =>
+      'Saisissez au moins quelques chiffres pour retrouver un contact.';
 
   @override
   String get searchCompany => 'Société';
@@ -422,4 +423,24 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get noticeReadAgainAction => 'Relire l\'avis';
+
+  @override
+  String get searchClear => 'Effacer';
+
+  @override
+  String searchNotFoundFor(String number) {
+    return 'Aucun contact ne correspond à $number';
+  }
+
+  @override
+  String get searchPartialHint =>
+      'Un fragment suffit — début, milieu ou fin du numéro.';
+
+  @override
+  String searchTooShort(int min) {
+    return 'Encore un peu : $min chiffres au minimum.';
+  }
+
+  @override
+  String get searchCall => 'Appeler';
 }

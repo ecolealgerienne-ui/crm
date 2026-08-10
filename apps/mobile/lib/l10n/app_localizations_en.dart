@@ -271,7 +271,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchTitle => 'Find a contact';
 
   @override
-  String get searchHint => 'Phone number';
+  String get searchHint => 'Number or part of a number';
 
   @override
   String get searchAction => 'Search';
@@ -280,7 +280,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchNotFound => 'No contact matches this number';
 
   @override
-  String get searchPrompt => 'Enter a number to see its CRM card.';
+  String get searchPrompt => 'Type at least a few digits to find a contact.';
 
   @override
   String get searchCompany => 'Company';
@@ -420,4 +420,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noticeReadAgainAction => 'Read again';
+
+  @override
+  String get searchClear => 'Clear';
+
+  @override
+  String searchNotFoundFor(String number) {
+    return 'No contact matches $number';
+  }
+
+  @override
+  String get searchPartialHint =>
+      'A fragment is enough — start, middle or end of the number.';
+
+  @override
+  String searchTooShort(int min) {
+    return 'A little more: $min digits minimum.';
+  }
+
+  @override
+  String get searchCall => 'Call';
 }

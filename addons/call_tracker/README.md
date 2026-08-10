@@ -89,6 +89,40 @@ et tronqué à 200 caractères. Les notifications automatiques (changement
 d'étape, courriel envoyé) sont écartées : elles noieraient la vraie note sous
 du bruit à chaque sonnerie.
 
+### `GET /call_tracker/contacts/<fragment>`
+
+Contacts dont le numéro **contient** ce fragment de chiffres. Sert la
+recherche manuelle de l'application ; la route précédente sert la sonnerie.
+
+| Réponse | Code |
+|---|---|
+| `{"status":"found","count":2,"results":[{"name","company","phone","crm_stage"}]}` | 200 |
+| `{"status":"not_found","count":0,"results":[]}` | 200 |
+| `{"status":"too_short","min_digits":4}` | 400 |
+| `{"status":"unauthorized"}` | 401 |
+
+⚠️ **C'est la route la plus sensible du module.** Un fragment court interroge
+tout le carnet d'adresses, alors que l'authentification ne repose que sur un
+jeton d'appareil, sans droits Odoo. Trois bornes, chacune pour un scénario
+précis :
+
+- `FRAGMENT_MIN = 4` — sans minimum, `0` rendrait un échantillon de tout ;
+- `RESULTATS_MAX = 10` — un téléphone perdu ne doit pas vider le carnet en
+  quelques requêtes ;
+- **trace d'audit avec le fragment ET le nombre de résultats** — une
+  énumération se reconnaît à sa forme : des recherches courtes en rafale,
+  chacune rendant le maximum. Sans le compte, la trace ne dit pas si le
+  carnet a été effleuré ou vidé. Le refus « trop court » est journalisé lui
+  aussi, et c'est le cas qui compte le plus.
+
+Elles limitent le débit, **elles n'empêchent pas** une énumération patiente.
+Le jour où ça compte, c'est le périmètre qu'il faut réduire — restreindre aux
+clients du commercial de l'appareil — pas les bornes qu'il faut resserrer.
+
+`400` et non une liste vide sur un fragment trop court : « trop court » et
+« aucun résultat » appellent deux messages différents à l'écran, et l'app ne
+peut pas les distinguer si le serveur répond la même chose.
+
 ### L'idempotence, et pourquoi elle renvoie 200
 
 L'app garde une file locale persistante et réémet ce qu'elle n'a pas pu
@@ -367,7 +401,7 @@ relancés par un seul appel.
 
 ## Tests
 
-136 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
+148 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
 révocation, le rapprochement téléphonique, la qualification manuelle,
 la note post-appel, les liens depuis les fiches CRM, la rétention, le
 journal d'audit, les champs dérivés, le cloisonnement, la

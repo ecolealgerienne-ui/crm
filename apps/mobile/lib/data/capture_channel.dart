@@ -111,6 +111,31 @@ class CaptureChannel {
     return fiche.map((cle, valeur) => MapEntry(cle, (valeur ?? '').toString()));
   }
 
+  /// Contacts dont le numéro contient ce fragment.
+  ///
+  /// Distinct de [chercherContact], qui part d'un numéro complet et rend une
+  /// fiche pour la sonnerie. Le serveur impose un minimum de chiffres et un
+  /// plafond de résultats : la route interroge tout le carnet d'adresses, et
+  /// le jeton d'appareil ne porte aucun droit Odoo.
+  Future<List<Map<String, String>>> rechercherContacts(String fragment) async {
+    final liste = await _canal.invokeListMethod<Map<dynamic, dynamic>>(
+      'searchContacts', {'fragment': fragment},
+    );
+    return (liste ?? const [])
+        .map((m) => m.map((c, v) => MapEntry(c.toString(), (v ?? '').toString())))
+        .toList(growable: false);
+  }
+
+  /// Ouvre le clavier du téléphone avec le numéro composé.
+  ///
+  /// **Composé, pas lancé.** C'est le commercial qui appuie sur le vert : une
+  /// application qui peut passer des appels toute seule demande la permission
+  /// `CALL_PHONE`, et un bogue y coûterait de l'argent sur une vraie ligne.
+  /// L'appel qui s'ensuit est capturé comme n'importe quel autre.
+  Future<void> composer(String numero) {
+    return _canal.invokeMethod<bool>('dial', {'phoneNumber': numero});
+  }
+
   Future<bool> batterieOptimisee() async {
     return await _canal.invokeMethod<bool>('isBatteryOptimised') ?? true;
   }

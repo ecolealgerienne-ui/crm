@@ -28,6 +28,7 @@ notable. Rien n'est ouvert par ce choix : tout passe toujours par ``sudo()``.
 """
 import json
 import logging
+import re
 from datetime import datetime, timezone
 
 import psycopg2
@@ -234,6 +235,57 @@ class CallTrackerController(http.Controller):
 
         self._tracer('contact_lookup', 'ok', appareil, numero=numero)
         return repondre({'status': 'found', **fiche})
+
+    @http.route(
+        '/call_tracker/contacts/<path:fragment>',
+        type='http', auth='public', methods=['GET'], csrf=False, save_session=False,
+        # Écrit une trace d'audit, comme la route de fiche. Ici c'est encore
+        # plus nécessaire : une recherche par fragment touche potentiellement
+        # tout le carnet d'adresses, et c'est la seule chose qui en restera.
+        readonly=False,
+    )
+    def contacts(self, fragment, **_kwargs):
+        """Contacts dont le numéro contient ce fragment.
+
+        Distincte de ``/contact/<numero>``, qui sert la sonnerie : celle-là
+        part d'un numéro complet et rend une fiche, celle-ci part d'un bout de
+        numéro et rend une liste. Les fusionner reviendrait à donner au Caller
+        ID le droit de balayer le carnet, pour aucun gain.
+
+        Le **nombre de résultats** est journalisé autant que le fragment : une
+        énumération se reconnaît à sa forme — des recherches courtes en
+        rafale, chacune rendant le maximum — et sans ce compte la trace ne
+        dirait pas si le carnet a été effleuré ou vidé.
+        """
+        appareil = self._authentifier()
+        if not appareil:
+            self._tracer('contact_search', 'unauthorized', numero=fragment)
+            return repondre({'status': 'unauthorized'}, 401)
+
+        Appel = request.env['call.tracker.log'].sudo()
+        chiffres = re.sub(r'\D', '', fragment or '')
+        if len(chiffres) < Appel.FRAGMENT_MIN:
+            # 400 et non une liste vide : « trop court » et « aucun résultat »
+            # appellent deux messages différents à l'écran, et l'app ne peut
+            # pas les distinguer si le serveur répond la même chose.
+            self._tracer('contact_search', 'too_short', appareil, numero=fragment)
+            return repondre(
+                {'status': 'too_short', 'min_digits': Appel.FRAGMENT_MIN}, 400,
+            )
+
+        resultats = Appel.rechercher_contacts(chiffres)
+        self._tracer(
+            'contact_search',
+            'ok' if resultats else 'not_found',
+            appareil,
+            numero=chiffres,
+            detail='%d resultat(s)' % len(resultats),
+        )
+        return repondre({
+            'status': 'found' if resultats else 'not_found',
+            'count': len(resultats),
+            'results': resultats,
+        })
 
     def _tracer(self, action, result, appareil=None, numero=None,
                 detail=None, linked_record=None):

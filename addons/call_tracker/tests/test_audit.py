@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo.tests import HttpCase, tagged
+from odoo.tests import HttpCase, TransactionCase, tagged
 
 from .common import BancCallTracker, ChargeUtile
 
@@ -110,3 +110,40 @@ class TestAudit(HttpCase, BancCallTracker):
         charge['phone_number'] = '+' + '9' * 500
         reponse = self.poster(charge)
         self.assertEqual(reponse.status_code, 201)
+
+
+@tagged('post_install', '-at_install')
+class TestVocabulaireAudit(TransactionCase):
+    """Le contrôleur et le journal doivent parler le même vocabulaire.
+
+    Garde-fou générique, écrit après un défaut réel : le contrôleur traçait un
+    résultat `too_short` absent de la sélection du champ, et l'écriture
+    échouait. En silence — `tracer()` avale toute erreur par conception, pour
+    qu'un journal cassé n'emporte pas la fonctionnalité qu'il observe.
+
+    Cette conception est la bonne, mais elle a un prix : une valeur oubliée ne
+    se signale nulle part, et la trace manque précisément le jour où on la
+    cherche. Ce test paie ce prix une fois pour toutes.
+    """
+
+    def test_toute_valeur_tracee_existe_dans_la_selection(self):
+        import inspect
+        import re as regex
+
+        from odoo.addons.call_tracker.controllers import main
+
+        source = inspect.getsource(main)
+        Audit = self.env['call.tracker.audit']
+        actions = dict(Audit._fields['action'].selection)
+        resultats = dict(Audit._fields['result'].selection)
+
+        # `self._tracer('action', 'resultat', ...)` — les deux premiers
+        # arguments littéraux de chaque appel.
+        appels = regex.findall(r"_tracer\(\s*'([a-z_]+)',\s*'([a-z_]+)'", source)
+        self.assertTrue(appels, "aucun appel à _tracer trouvé : test à revoir")
+
+        for action, resultat in appels:
+            self.assertIn(action, actions,
+                          "action tracée %r absente de la sélection" % action)
+            self.assertIn(resultat, resultats,
+                          "résultat tracé %r absent de la sélection" % resultat)

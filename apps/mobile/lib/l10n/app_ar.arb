@@ -73,10 +73,10 @@
   "overlayGranted": "العرض مسموح",
   "navSearch": "بحث",
   "searchTitle": "البحث عن جهة اتصال",
-  "searchHint": "رقم الهاتف",
+  "searchHint": "الرقم أو جزء منه",
   "searchAction": "بحث",
   "searchNotFound": "لا توجد جهة اتصال بهذا الرقم",
-  "searchPrompt": "أدخل رقمًا لعرض بطاقته في إدارة العلاقات.",
+  "searchPrompt": "اكتب بضعة أرقام على الأقل للعثور على جهة اتصال.",
   "searchCompany": "الشركة",
   "searchStage": "المرحلة",
   "searchLastNote": "آخر ملاحظة",
@@ -126,5 +126,24 @@
   "noticeSection": "معلومات",
   "noticeReadAgain": "إشعار المعلومات",
   "noticeReadAgainBody": "ما يسجّله التطبيق، ومن يمكنه الاطّلاع عليه، ومدة الاحتفاظ به.",
-  "noticeReadAgainAction": "إعادة القراءة"
+  "noticeReadAgainAction": "إعادة القراءة",
+  "searchClear": "مسح",
+  "searchNotFoundFor": "لا توجد جهة اتصال مطابقة للرقم {number}",
+  "@searchNotFoundFor": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "searchPartialHint": "يكفي جزء من الرقم — أوّله أو وسطه أو آخره.",
+  "searchTooShort": "قليلًا بعد: {min} أرقام على الأقل.",
+  "@searchTooShort": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "searchCall": "اتّصال"
 }

@@ -274,7 +274,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get searchTitle => 'البحث عن جهة اتصال';
 
   @override
-  String get searchHint => 'رقم الهاتف';
+  String get searchHint => 'الرقم أو جزء منه';
 
   @override
   String get searchAction => 'بحث';
@@ -283,7 +283,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get searchNotFound => 'لا توجد جهة اتصال بهذا الرقم';
 
   @override
-  String get searchPrompt => 'أدخل رقمًا لعرض بطاقته في إدارة العلاقات.';
+  String get searchPrompt => 'اكتب بضعة أرقام على الأقل للعثور على جهة اتصال.';
 
   @override
   String get searchCompany => 'الشركة';
@@ -423,4 +423,23 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get noticeReadAgainAction => 'إعادة القراءة';
+
+  @override
+  String get searchClear => 'مسح';
+
+  @override
+  String searchNotFoundFor(String number) {
+    return 'لا توجد جهة اتصال مطابقة للرقم $number';
+  }
+
+  @override
+  String get searchPartialHint => 'يكفي جزء من الرقم — أوّله أو وسطه أو آخره.';
+
+  @override
+  String searchTooShort(int min) {
+    return 'قليلًا بعد: $min أرقام على الأقل.';
+  }
+
+  @override
+  String get searchCall => 'اتّصال';
 }
