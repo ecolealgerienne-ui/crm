@@ -132,8 +132,13 @@ services:
   # démarrage, et le CRM répondrait « database does not exist » entre-temps.
   #
   # Il se relance à chaque `up`, ce qui est voulu et sans effet : réinstaller
-  # un module déjà installé ne fait rien. Cela vaut aussi pour les addons
-  # ajoutés plus tard dans addons/ — ils s'installent au redéploiement suivant.
+  # un module déjà installé ne fait rien.
+  #
+  # ⚠️ **Un addon ajouté dans addons/ ne s'installe PAS tout seul pour autant.**
+  # `--init` n'agit que sur les modules qu'il NOMME : il faut ajouter le module
+  # à la liste ci-dessous, sans quoi le redéploiement le laisse invisible.
+  # Constaté le 2026-08-10 — un commentaire promettait ici le contraire, et
+  # call_tracker était resté hors de la liste.
   #
   # Pourquoi un conteneur séparé plutôt que --init sur le serveur lui-même :
   # --init force Odoo à recharger le graphe des modules à CHAQUE démarrage,
@@ -156,7 +161,7 @@ services:
       # `base` est implicite (Odoo l'ajoute lui-même à la création de la base).
       # echangocrm_bootstrap applique le mot de passe administrateur ; voir
       # addons/echangocrm_bootstrap/.
-      - --init=crm,contacts,calendar,echangocrm_bootstrap
+      - --init=crm,contacts,calendar,echangocrm_bootstrap,call_tracker
       # `=True` et pas `=all` : depuis Odoo 19 cette option est un booléen, elle
       # ne prend plus une liste de modules. `all` passe encore — Odoo avertit
       # « invalid boolean value: 'all', assume True » et fait ce qu'on veut —
