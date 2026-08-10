@@ -71,23 +71,71 @@ Odoo, accès base en `sudo()`. **Le jeton ne porte aucun droit Odoo** : il
 désigne un appareil, et le contrôleur décide seul de ce qui est écrit et de ce
 qui est renvoyé.
 
-| Route | Méthode | Rôle |
-|---|---|---|
-| `/call_tracker/log_call` | POST | Journaliser un appel |
-| `/call_tracker/contact/<numero>` | GET | Fiche d'un numéro complet — Caller ID |
-| `/call_tracker/contacts/<fragment>` | GET | Recherche par fragment — liste |
-| `/call_tracker/activities` | GET | Les appels programmés dans le CRM |
-| `/call_tracker/activity/<id>/done` | POST | Clôturer une activité |
+| Route | Méthode | Rôle | Périmètre des données rendues |
+|---|---|---|---|
+| `/call_tracker/log_call` | POST | Journaliser un appel | écrit seulement ; attribué au commercial de l'appareil |
+| `/call_tracker/contact/<numero>` | GET | Fiche d'un numéro complet — Caller ID | **tout le carnet**, toujours |
+| `/call_tracker/contacts/<fragment>` | GET | Recherche par fragment — liste | selon `CALL_TRACKER_SEARCH_SCOPE` |
+| `/call_tracker/activities` | GET | Les appels programmés dans le CRM | **le commercial de l'appareil, toujours** |
+| `/call_tracker/activity/<id>/done` | POST | Clôturer une activité | ses activités à lui, vérifié au serveur |
 
 Le détail de chaque contrat, ses bornes et ses pièges : [`addons/call_tracker/README.md`](../addons/call_tracker/README.md).
 
-### Deux écarts au contrat d'origine, tous deux volontaires
+### 2.1 Où s'applique `CALL_TRACKER_SEARCH_SCOPE`, et où il ne s'applique pas
 
-**`rep_external_id` a disparu de la charge utile.** La spec faisait envoyer par
-l'app l'identifiant du commercial. Le jeton d'appareil le porte désormais :
+**Une seule route le consulte : la recherche par fragment.** Les quatre autres
+ne l'appellent jamais, et ce n'est pas un oubli — chacune a sa propre raison.
+
+**`/contacts/<fragment>` — réglable.** C'est la seule route qui parcourt le
+carnet d'adresses à partir d'un bout de numéro, donc la seule où le périmètre
+soit une question ouverte. `all` par défaut, `own` pour restreindre aux clients
+du commercial. Voir §6.
+
+**`/activities` — cloisonné par la donnée, sans réglage possible.** Une
+activité *est* assignée à un utilisateur ; le jeton désigne l'appareil, donc le
+commercial. La requête filtre `user_id = <commercial de l'appareil>` et il n'y
+a rien à choisir. Un réglage ici n'aurait aucun sens : il ne pourrait
+qu'*élargir* le périmètre au-delà de ce que le CRM a assigné.
+
+**`/contact/<numero>` — délibérément ouverte, quel que soit le réglage.** Quand
+le téléphone sonne, il faut savoir qui appelle, même si la fiche appartient à
+un collègue en congé. Afficher « inconnu » ferait décrocher à l'aveugle, ce qui
+est pire que de ne rien afficher. Elle exige un numéro **complet** : on ne
+parcourt rien, on identifie un correspondant qui est déjà en train d'appeler.
+
+**`/log_call` — n'a pas de périmètre de lecture.** Elle écrit, et n'accuse
+réception qu'avec `call_id`, `linked_record` et `retention_days`. Aucun nom, ni
+libellé de piste : une route d'écriture n'a pas à devenir une fuite de lecture.
+
+### 2.2 Ce que l'application déclare ne fait jamais autorité
+
+Trois mécanismes distincts, un seul principe : **le serveur ne croit pas
+l'app**. C'est le pendant concret du « moindre privilège » de la spec
+d'origine, et c'est ce qui rend acceptable qu'un jeton d'appareil circule sur
+des téléphones qu'on ne maîtrise pas.
+
+**L'identité du commercial n'est pas envoyée.** La spec d'origine faisait
+transmettre par l'app un `rep_external_id`. Il a disparu de la charge utile :
 `user_id` est déduit de `appareil.user_id`, côté serveur. **Une application ne
 peut donc pas se déclarer être quelqu'un d'autre**, ce que le champ d'origine
-permettait.
+permettait — un jeton volé aurait pu attribuer des appels à n'importe qui.
+
+**La propriété d'une activité est revérifiée à chaque clôture.** L'app envoie
+un identifiant ; rien n'empêche un jeton volé d'en envoyer d'autres, au hasard.
+Le contrôleur ne se contente donc pas de clôturer ce qu'on lui désigne :
+
+```python
+activite = self.env['mail.activity'].sudo().browse(identifiant)
+if not activite.exists() or activite.user_id != commercial:
+    return False          # -> HTTP 404
+```
+
+**Le même 404 dans les deux cas**, et c'est le point : distinguer
+« inexistante » de « pas la vôtre » renseignerait sur le portefeuille des
+collègues, un identifiant à la fois. Sans ce contrôle, un appareil clôturerait
+les tâches de n'importe qui — et une tâche qui disparaît de la liste d'un
+collègue ne se remarque pas, elle s'oublie. Deux tests le couvrent, dont un
+qui vérifie qu'une activité étrangère **survit** à la tentative.
 
 **Un jeton par appareil, pas un par installation du module.** La spec prévoyait
 un jeton unique généré à l'installation, rangé dans `res.config.settings`. Il

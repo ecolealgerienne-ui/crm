@@ -114,10 +114,12 @@ instance en francais l'appellerait « Appel » et un filtre sur le nom rendrait
 une liste vide sans que rien ne le signale. Un test le verrouille en renommant
 le type.
 
-⚠️ **Aucun reglage de perimetre ici.** Une activite est assignee a un
-utilisateur et le jeton designe l'appareil donc le commercial : le
-cloisonnement est dans la donnee. Contrairement a la recherche de contacts, il
-n'y a rien a debattre.
+⚠️ **`CALL_TRACKER_SEARCH_SCOPE` ne s'applique PAS a cette route.** Elle ne le
+consulte jamais. Une activite est assignee a un utilisateur et le jeton designe
+l'appareil donc le commercial : la requete filtre `user_id = <commercial de
+l'appareil>` et le cloisonnement est dans la donnee. Un reglage n'aurait aucun
+sens ici — il ne pourrait qu'ELARGIR le perimetre au-dela de ce que le CRM a
+assigne. Contrairement a la recherche de contacts, il n'y a rien a debattre.
 
 `state` — `overdue` / `today` / `planned` — est **calcule par Odoo**, dans le
 fuseau de l'utilisateur. Le recalculer cote telephone donnerait deux verites
@@ -193,6 +195,11 @@ Ce qui réduit vraiment le dégât, c'est le périmètre — voir ci-dessous.
 
 `CALL_TRACKER_SEARCH_SCOPE`, dans le `.env` du serveur, au même endroit que la
 durée de rétention.
+
+⚠️ **Cette variable ne concerne QUE cette route.** Les quatre autres ne la
+consultent jamais : `/activities` est cloisonnée par la donnée, `/contact` est
+délibérément ouverte pour que la sonnerie sache toujours qui appelle, et
+`/log_call` ne rend aucune donnée de lecture.
 
 | Valeur | Effet |
 |---|---|
