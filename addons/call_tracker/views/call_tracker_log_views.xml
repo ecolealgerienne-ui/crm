@@ -143,6 +143,13 @@
                         context="{'group_by': 'hour_of_day'}"/>
                 <filter name="par_appareil" string="Appareil"
                         context="{'group_by': 'device_id'}"/>
+                <!-- Le regroupement qui repond a « quels modeles remontent en
+                     retard ? ». Grouper par APPAREIL ne suffit pas : deux
+                     commerciaux peuvent porter le meme telephone, et c'est la
+                     surcouche constructeur qu'on veut mettre en cause, pas la
+                     personne. -->
+                <filter name="par_modele" string="Modèle d'appareil"
+                        context="{'group_by': 'device_model'}"/>
             </search>
         </field>
     </record>

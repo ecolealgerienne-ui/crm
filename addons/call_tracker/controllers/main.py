@@ -178,6 +178,10 @@ class CallTrackerController(http.Controller):
             return self._repondre_appel(existant, 'duplicate', 200, appareil)
 
         valeurs.update(device_id=appareil.id, user_id=appareil.user_id.id)
+        # AVANT la création : l'appel recopie le modèle depuis l'appareil, et
+        # le noter après laisserait le tout premier appel d'une version d'app
+        # sans modèle — soit exactement celui d'un téléphone qu'on découvre.
+        self._noter_appareil(appareil)
         try:
             # Point de reprise : deux réessais concurrents de l'app peuvent
             # franchir ensemble le search ci-dessus. L'index unique tranche, et
@@ -188,7 +192,6 @@ class CallTrackerController(http.Controller):
             appel = Appel.search([('client_event_id', '=', valeurs['client_event_id'])], limit=1)
             return self._repondre_appel(appel, 'duplicate', 200, appareil)
 
-        appareil.sudo().write({'last_seen': fields.Datetime.now()})
         return self._repondre_appel(appel, 'logged', 201, appareil)
 
     def _repondre_appel(self, appel, statut, code, appareil):
@@ -362,6 +365,28 @@ class CallTrackerController(http.Controller):
         if not fait:
             return repondre({'status': 'not_found'}, 404)
         return repondre({'status': 'done'})
+
+    def _noter_appareil(self, appareil):
+        """Horodate l'appareil et relève ce qu'il déclare de lui-même.
+
+        Le modèle et la version d'Android arrivent par des **en-têtes**, pas
+        par la charge utile : celle-ci a une liste blanche stricte qui rejette
+        tout champ inconnu, et y ajouter des clés ferait échouer l'envoi de
+        TOUS les appels d'une version d'app antérieure. Un en-tête absent ne
+        casse rien — les anciennes versions continuent simplement sans.
+
+        Écrit seulement ce qui change : un `write` par appel remis, sur tous
+        les téléphones, pour recopier deux chaînes identiques, ce serait de
+        l'écriture pure pour rien.
+        """
+        valeurs = {'last_seen': fields.Datetime.now()}
+        entetes = request.httprequest.headers
+        for champ, entete in (('device_model', 'X-Device-Model'),
+                              ('os_version', 'X-Device-Os')):
+            annonce = (entetes.get(entete) or '').strip()[:64]
+            if annonce and annonce != appareil[champ]:
+                valeurs[champ] = annonce
+        appareil.sudo().write(valeurs)
 
     def _tracer(self, action, result, appareil=None, numero=None,
                 detail=None, linked_record=None):

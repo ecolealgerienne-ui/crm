@@ -1,6 +1,7 @@
 package com.echango.call_tracker.sync
 
 import android.content.Context
+import android.os.Build
 import android.util.Log
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
@@ -99,6 +100,17 @@ class SyncWorker(
                 doOutput = true
                 setRequestProperty("Content-Type", "application/json; charset=utf-8")
                 setRequestProperty("Authorization", "Bearer $jeton")
+                // Ce que l'appareil declare de lui-meme, pour expliquer les
+                // delais de remise : les surcouches constructeur n'ont pas
+                // toutes le meme appetit pour suspendre les applications, et
+                // sans le modele on ne peut pas savoir laquelle decroche.
+                //
+                // En EN-TETES et non dans la charge utile : celle-ci a une
+                // liste blanche stricte cote Odoo, et y ajouter des cles
+                // ferait echouer l'envoi de TOUS les appels contre un serveur
+                // plus ancien. Un en-tete inconnu, lui, est simplement ignore.
+                setRequestProperty("X-Device-Model", "${Build.MANUFACTURER} ${Build.MODEL}")
+                setRequestProperty("X-Device-Os", "Android ${Build.VERSION.RELEASE}")
             }
             connexion.outputStream.use { it.write(corps.toString().toByteArray(Charsets.UTF_8)) }
 

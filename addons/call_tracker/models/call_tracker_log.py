@@ -192,6 +192,20 @@ class CallTrackerLog(models.Model):
         index=True,
         help="Heure de l'appel dans le fuseau du commercial, de 0 à 23.",
     )
+    # Figé à la création, et surtout PAS un champ related : le modèle est
+    # recopié au moment de l'appel. Un related, même stocké, serait réécrit le
+    # jour où le commercial change de téléphone — et toute la distribution des
+    # délais passés basculerait rétroactivement sur le nouveau modèle, en
+    # effaçant justement ce qu'on cherchait à mesurer.
+    device_model = fields.Char(
+        string="Modèle d'appareil",
+        readonly=True,
+        index=True,
+        help="Modèle de l'appareil au moment de l'appel. Sert à rapporter le "
+             "délai de remise par modèle, les surcouches constructeur n'ayant "
+             "pas toutes le même appétit pour suspendre les applications.",
+    )
+
     delivery_lag_minutes = fields.Integer(
         string="Délai de remise (min)",
         compute='_compute_delivery_lag',
@@ -294,8 +308,14 @@ class CallTrackerLog(models.Model):
 
     @api.model_create_multi
     def create(self, liste_valeurs):
+        Appareil = self.env['call.tracker.device']
         for valeurs in liste_valeurs:
             valeurs['phone_key'] = chiffres_significatifs(valeurs.get('phone_number'))
+            # Recopié depuis l'appareil, une fois pour toutes. Voir le champ.
+            if valeurs.get('device_id') and not valeurs.get('device_model'):
+                valeurs['device_model'] = Appareil.browse(
+                    valeurs['device_id']
+                ).device_model or False
         appels = super().create(liste_valeurs)
         appels._rattacher()
         appels._publier_note()

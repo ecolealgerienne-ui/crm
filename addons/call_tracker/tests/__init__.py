@@ -17,3 +17,4 @@ from . import test_notes_compte
 from . import test_perimetre_recherche
 from . import test_activites
 from . import test_indicatif_pays
+from . import test_telemetrie

@@ -55,6 +55,29 @@ class CallTrackerDevice(models.Model):
         help="Décocher révoque l'appareil : ses appels sont refusés, sans "
              "toucher au compte du commercial ni aux appels déjà journalisés.",
     )
+    # ── Ce que l'appareil déclare de lui-même ────────────────────────────────
+    #
+    # Renseignés par l'application à chaque appel remis, via des EN-TÊTES HTTP
+    # et non par la charge utile : celle-ci a une liste blanche stricte qui
+    # rejette tout champ inconnu, et y ajouter des clés ferait échouer l'envoi
+    # de TOUS les appels d'une version d'app plus ancienne. Un en-tête absent
+    # ne casse rien.
+    #
+    # ⚠️ Déclaratif, donc à ne pas confondre avec une preuve. Ces champs
+    # servent à EXPLIQUER un délai de remise, pas à établir un fait : un
+    # appareil peut annoncer ce qu'il veut. C'est suffisant pour répondre à
+    # « quels modèles remontent en retard ? », insuffisant pour fonder quoi
+    # que ce soit de contractuel.
+    device_model = fields.Char(
+        string="Modèle",
+        readonly=True,
+        help="Marque et modèle annoncés par l'appareil au dernier envoi.",
+    )
+    os_version = fields.Char(
+        string="Version d'Android",
+        readonly=True,
+    )
+
     last_seen = fields.Datetime(
         string="Dernier appel reçu",
         readonly=True,

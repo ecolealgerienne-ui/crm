@@ -466,6 +466,37 @@ La recherche remonte desormais jusqu'a `CANDIDATS_MAX` candidats au lieu d'un
 seul, puis filtre : prendre le premier par identifiant choisirait le mauvais
 pays des qu'une fiche etrangere a ete creee avant la bonne.
 
+## Ce que l'appareil declare de lui-meme
+
+L'application envoie sa marque, son modele et sa version d'Android en
+**EN-TETES** HTTP a chaque appel remis :
+
+    X-Device-Model: OnePlus GM1913
+    X-Device-Os:    Android 12
+
+⚠️ **En en-tetes et non dans la charge utile**, et ce n'est pas un detail : la
+charge utile a une liste blanche stricte qui REJETTE tout champ inconnu. Y
+ajouter des cles ferait echouer l'envoi de TOUS les appels d'une version d'app
+plus ancienne — pas seulement de ceux qui portent la nouveaute. Un en-tete
+absent, lui, ne casse rien.
+
+Ils sont releves sur `call.tracker.device`, et **figes sur chaque appel** dans
+`device_model`. Fige, et non `related` : un commercial qui change de telephone
+ne doit pas faire basculer retroactivement tout son historique sur le nouveau
+modele — ce serait effacer precisement ce qu'on cherchait a mesurer.
+
+A quoi ca sert : *Regrouper par > Modele d'appareil* sur la liste des appels,
+avec `delivery_lag_minutes`. C'est la surcouche constructeur qu'on met en
+cause, pas la personne, et le remede — exclure l'app de l'optimisation de
+batterie — se decide par modele. Voir `docs/REPORTING_KPI.md` §2.
+
+⚠️ **Declaratif.** Un appareil annonce ce qu'il veut. Suffisant pour expliquer
+un delai, insuffisant pour fonder quoi que ce soit de contractuel.
+
+L'appareil est note AVANT la creation de l'appel : le noter apres laisserait
+sans modele le tout premier appel de chaque telephone, soit exactement celui
+qu'on decouvre.
+
 ## Rétention
 
 `CALL_TRACKER_RETENTION_DAYS`, lue dans l'environnement du serveur (injectée
@@ -618,7 +649,7 @@ relancés par un seul appel.
 
 ## Tests
 
-213 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
+219 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
 révocation, le rapprochement téléphonique, la qualification manuelle,
 la note post-appel, les liens depuis les fiches CRM, la rétention, le
 journal d'audit, les champs dérivés, le cloisonnement, la

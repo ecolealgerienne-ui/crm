@@ -68,6 +68,29 @@ par appareil, il dit immédiatement quel téléphone décroche du reste.
 Rien de nouveau à collecter ; c'est le point à regarder en premier, avant tout
 classement.
 
+### Par modèle de téléphone, depuis le 2026-08-10
+
+Le délai seul ne dit pas **quoi corriger**. Ce qui est actionnable, c'est la
+répartition par modèle : c'est la surcouche constructeur qu'on met en cause,
+pas la personne — et le remède, l'exclusion de l'optimisation de batterie, se
+décide par modèle.
+
+L'application annonce désormais sa marque, son modèle et sa version d'Android
+à chaque appel remis. *CRM > Call Tracker > Appels*, puis **Regrouper par >
+Modèle d'appareil**, avec `delivery_lag_minutes` en moyenne.
+
+⚠️ **Le modèle est figé sur l'appel**, pas lu sur l'appareil. Un commercial
+qui change de téléphone ne doit pas faire basculer rétroactivement tout son
+historique sur le nouveau modèle — ce serait effacer précisément ce qu'on
+cherchait à mesurer.
+
+⚠️ **C'est déclaratif.** Un appareil annonce ce qu'il veut. Suffisant pour
+répondre à « quels modèles remontent en retard ? », insuffisant pour fonder
+quoi que ce soit de contractuel.
+
+Groupé par **modèle** et non par appareil : deux commerciaux peuvent porter le
+même téléphone, et c'est le comportement du modèle qu'on veut isoler.
+
 ---
 
 ## 3. Lot 1 — ce qui est fait

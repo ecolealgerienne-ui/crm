@@ -9,6 +9,8 @@
                 <field name="name"/>
                 <field name="user_id"/>
                 <field name="log_count" string="Appels"/>
+                <field name="device_model"/>
+                <field name="os_version"/>
                 <field name="last_seen"/>
                 <field name="active" column_invisible="True"/>
             </list>
@@ -36,6 +38,11 @@
                         </group>
                         <group>
                             <field name="active"/>
+                            <!-- Declares par l'appareil lui-meme a chaque
+                                 envoi : servent a expliquer un delai de
+                                 remise, pas a etablir un fait. -->
+                            <field name="device_model"/>
+                            <field name="os_version"/>
                             <field name="last_seen"/>
                             <field name="log_count"/>
                         </group>

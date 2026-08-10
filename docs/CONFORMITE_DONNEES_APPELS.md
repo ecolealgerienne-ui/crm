@@ -154,6 +154,45 @@ note — jamais le courriel, l'adresse ni aucune donnée financière.
 Tout accès, en lecture comme en écriture, laisse une trace dans
 `call.tracker.audit`, y compris les tentatives refusées, avec l'adresse IP.
 
+### Révoquer un appareil perdu ou volé
+
+*CRM > Call Tracker > Appareils* → décocher **Actif**, ou **Générer un jeton**
+(l'ancien cesse aussitôt de valoir).
+
+**L'effet est immédiat.** `_authentifier` revérifie `active` à chaque requête
+et il n'y a aucun cache côté serveur : la requête suivante du téléphone est
+refusée. Les appels déjà journalisés ne bougent pas, et le compte du
+commercial n'est pas touché.
+
+**Ce que la révocation ne récupère pas** — à savoir avant de décider si elle
+suffit :
+
+| Reste sur l'appareil | Portée |
+|---|---|
+| Cache des fiches contact | Nom, société, étape et dernière note des numéros consultés dans les **30 dernières minutes** |
+| File locale des appels | Les appels capturés, y compris déjà remis — numéros, durées, notes |
+| Jeton | Inutilisable, mais toujours présent dans le stockage de l'app |
+
+**Le risque réel, dans l'ordre.** Le jeton ne porte aucun droit Odoo : il ne
+peut ni lire une fiche complète, ni écrire ailleurs que dans
+`call.tracker.log`. Restent donc, par ordre de gravité :
+
+1. **La lecture du carnet** par `/contacts/<fragment>` — la seule route qui
+   parcourt. C'est ce que `CALL_TRACKER_SEARCH_SCOPE=own` réduit, et la raison
+   pour laquelle ce réglage existe.
+2. **L'injection de faux appels**, qui fausse les indicateurs sans exposer de
+   donnée.
+3. Le cache local, borné à 30 minutes et à ce qui a déjà été consulté.
+
+**Le journal d'audit dit ce qui a été fait avec le jeton** avant la
+révocation : chaque lecture y figure, avec le numéro, l'adresse IP et
+l'horodatage. C'est là qu'on regarde pour décider s'il faut prévenir qui que
+ce soit.
+
+⚠️ Effacer l'appareil à distance n'est pas possible depuis Odoo. Sur un
+téléphone d'entreprise géré, c'est le MDM qui le fait ; sinon, la révocation
+plus l'expiration du cache sont tout ce dont on dispose.
+
 ### ⚠️ L'asymétrie entre le CRM et le téléphone
 
 **Dans Odoo, tout est cloisonné** : un commercial ne voit que ses appels, sa
