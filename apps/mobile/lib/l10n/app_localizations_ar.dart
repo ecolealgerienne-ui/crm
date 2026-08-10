@@ -442,4 +442,10 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get searchCall => 'اتّصال';
+
+  @override
+  String get contactSheetTitle => 'بطاقة العميل';
+
+  @override
+  String get contactSheetNoNote => 'لا توجد ملاحظة بعد.';
 }

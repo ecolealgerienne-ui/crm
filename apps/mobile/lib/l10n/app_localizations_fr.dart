@@ -443,4 +443,10 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get searchCall => 'Appeler';
+
+  @override
+  String get contactSheetTitle => 'Fiche client';
+
+  @override
+  String get contactSheetNoNote => 'Aucune note pour l\'instant.';
 }

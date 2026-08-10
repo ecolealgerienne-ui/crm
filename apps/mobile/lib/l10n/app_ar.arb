@@ -145,5 +145,7 @@
       }
     }
   },
-  "searchCall": "اتّصال"
+  "searchCall": "اتّصال",
+  "contactSheetTitle": "بطاقة العميل",
+  "contactSheetNoNote": "لا توجد ملاحظة بعد."
 }

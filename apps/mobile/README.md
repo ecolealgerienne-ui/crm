@@ -159,10 +159,33 @@ rallumer ne doit pas rattraper ce qu'on avait choisi de ne pas journaliser.
 Le drapeau de débogage `resetCursor` pose `1`, pas `0`, pour rester distinct
 du sentinelle et continuer à rejouer tout un journal d'émulateur.
 
-## Rechercher, puis appeler
+## Rechercher, consulter, appeler
 
 L'onglet Recherche prend un **fragment** de numéro — début, milieu ou fin — et
-rend une liste. Chaque résultat porte un bouton *Appeler*.
+rend une liste de lignes compactes. Toucher une ligne ouvre la **fiche
+client** ; l'icône de droite compose directement.
+
+**Deux routes, et le partage entre elles est délibéré :**
+
+| | Rend | Contient |
+|---|---|---|
+| `/contacts/<fragment>` | une liste | nom, numéro, société, étape |
+| `/contact/<numero>` | une fiche | + la **dernière note** |
+
+La note n'est pas dans la liste, et c'est volontaire : la route de liste peut
+toucher tout le carnet d'adresses, donc plus elle en dit par résultat, plus un
+jeton volé récolte à chaque requête. Charger dix notes pour en lire une
+coûterait aussi dix fois plus au serveur. La fiche exige un numéro complet :
+on ne la déclenche que pour un contact déjà identifié, et elle passe par le
+cache de 30 minutes.
+
+Le détail **complète** le résumé, il ne le remplace pas : réseau coupé, la
+fiche reste lisible avec ce que la recherche avait déjà rendu, au lieu de se
+vider. Un test le vérifie.
+
+Le raccourci d'appel reste sur la ligne parce que le cas courant est de
+chercher pour appeler, sans rien relire ; ouvrir la fiche sert à autre chose —
+retrouver ce qui s'est dit la dernière fois.
 
 - **Minimum 4 chiffres**, aligné sur `FRAGMENT_MIN` côté Odoo. Le contrôle est
   fait des deux côtés : ici pour dire *pourquoi* rien ne part, là-bas parce

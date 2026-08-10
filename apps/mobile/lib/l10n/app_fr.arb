@@ -198,5 +198,7 @@
       }
     }
   },
-  "searchCall": "Appeler"
+  "searchCall": "Appeler",
+  "contactSheetTitle": "Fiche client",
+  "contactSheetNoNote": "Aucune note pour l'instant."
 }

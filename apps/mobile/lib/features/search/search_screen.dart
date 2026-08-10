@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../providers/core_providers.dart';
+import 'contact_sheet.dart';
 
 /// Recherche d'un contact par numéro.
 ///
@@ -100,6 +101,12 @@ class SearchScreenState extends ConsumerState<SearchScreen> {
     return ref.read(captureChannelProvider).composer(numero);
   }
 
+  void _ouvrirFiche(Map<String, String> resume) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => ContactSheet(resume: resume)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -161,103 +168,70 @@ class SearchScreenState extends ConsumerState<SearchScreen> {
           )
         else
           for (final fiche in _resultats)
-            _Fiche(fiche: fiche, onAppeler: _appeler),
+            _Ligne(
+              fiche: fiche,
+              onAppeler: _appeler,
+              onOuvrir: () => _ouvrirFiche(fiche),
+            ),
       ],
     );
   }
 }
 
-class _Fiche extends StatelessWidget {
-  const _Fiche({required this.fiche, required this.onAppeler});
+class _Ligne extends StatelessWidget {
+  const _Ligne({
+    required this.fiche,
+    required this.onAppeler,
+    required this.onOuvrir,
+  });
 
   final Map<String, String> fiche;
   final Future<void> Function(String numero) onAppeler;
+  final VoidCallback onOuvrir;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final scheme = Theme.of(context).colorScheme;
-
     final numero = fiche['phone'] ?? '';
+    final societe = fiche['company'] ?? '';
+    final etape = fiche['crm_stage'] ?? '';
 
+    // Une ligne, pas une carte. La liste sert à CHOISIR : une carte par
+    // résultat pousse le troisième hors de l'écran et fait défiler pour rien.
+    // Ce qui se lit est ce qui distingue — le nom, le numéro, la société.
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+      margin: const EdgeInsets.only(bottom: 8),
+      clipBehavior: Clip.antiAlias,
+      child: ListTile(
+        onTap: onOuvrir,
+        title: Text(fiche['name'] ?? ''),
+        subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              fiche['name'] ?? '',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            if (numero.isNotEmpty) ...[
-              const SizedBox(height: 4),
+            if (numero.isNotEmpty)
+              Text(numero, textDirection: TextDirection.ltr),
+            if (societe.isNotEmpty || etape.isNotEmpty)
               Text(
-                numero,
-                // Un numéro se lit de gauche à droite, même en arabe.
-                textDirection: TextDirection.ltr,
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-            ],
-            if ((fiche['company'] ?? '').isNotEmpty) ...[
-              const SizedBox(height: 4),
-              _Ligne(etiquette: l10n.searchCompany, valeur: fiche['company']!),
-            ],
-            if ((fiche['crm_stage'] ?? '').isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Chip(
-                label: Text(fiche['crm_stage']!),
-                backgroundColor: scheme.primaryContainer,
-                side: BorderSide.none,
-              ),
-            ],
-            if (numero.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              // Pleine largeur : c'est l'action de l'écran. On cherche un
-              // numéro pour l'appeler, pas pour le lire.
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: () => onAppeler(numero),
-                  icon: const Icon(Icons.call),
-                  label: Text(l10n.searchCall),
-                ),
-              ),
-            ],
-            if ((fiche['last_notes'] ?? '').isNotEmpty) ...[
-              const SizedBox(height: 16),
-              Text(
-                l10n.searchLastNote,
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                [societe, etape].where((t) => t.isNotEmpty).join(' · '),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: scheme.onSurfaceVariant,
                     ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                fiche['last_notes']!,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ],
           ],
         ),
+        // Le raccourci d'appel reste sur la ligne : le cas courant est de
+        // chercher pour appeler, sans rien avoir à relire. Ouvrir la fiche
+        // sert à autre chose — retrouver ce qui s'est dit la dernière fois.
+        trailing: numero.isEmpty
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.call),
+                color: scheme.primary,
+                tooltip: l10n.searchCall,
+                onPressed: () => onAppeler(numero),
+              ),
       ),
-    );
-  }
-}
-
-class _Ligne extends StatelessWidget {
-  const _Ligne({required this.etiquette, required this.valeur});
-
-  final String etiquette;
-  final String valeur;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      '$etiquette · $valeur',
-      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
     );
   }
 }

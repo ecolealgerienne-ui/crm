@@ -145,5 +145,7 @@
       }
     }
   },
-  "searchCall": "Call"
+  "searchCall": "Call",
+  "contactSheetTitle": "Customer record",
+  "contactSheetNoNote": "No note yet."
 }

@@ -440,4 +440,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get searchCall => 'Call';
+
+  @override
+  String get contactSheetTitle => 'Customer record';
+
+  @override
+  String get contactSheetNoNote => 'No note yet.';
 }

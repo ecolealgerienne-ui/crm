@@ -795,6 +795,18 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Appeler'**
   String get searchCall;
+
+  /// No description provided for @contactSheetTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Fiche client'**
+  String get contactSheetTitle;
+
+  /// No description provided for @contactSheetNoNote.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune note pour l\'instant.'**
+  String get contactSheetNoNote;
 }
 
 class _AppLocalizationsDelegate
