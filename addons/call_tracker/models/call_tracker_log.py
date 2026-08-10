@@ -704,8 +704,14 @@ class CallTrackerLog(models.Model):
         if not colonnes:
             return []
 
+        # ⚠️ `\\D` et non `\D` : dans une chaîne Python ordinaire, `\D` n'est
+        # pas une séquence d'échappement connue. Python 3.12 le laisse passer
+        # tel quel — le SQL produit est donc correct — mais il émet un
+        # `SyntaxWarning` à CHAQUE chargement du module, qui atterrit dans les
+        # journaux de production. Les deux autres requêtes de ce fichier
+        # doublent l'antislash ; celle-ci l'avait oublié.
         condition = ' OR '.join(
-            "regexp_replace(coalesce(l.%s, ''), '\D', '', 'g') LIKE %%s" % colonne
+            "regexp_replace(coalesce(l.%s, ''), '\\D', '', 'g') LIKE %%s" % colonne
             for colonne in colonnes
         )
         parametres = ['%' + chiffres + '%'] * len(colonnes)
