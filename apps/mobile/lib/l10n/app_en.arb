@@ -147,5 +147,23 @@
   },
   "searchCall": "Call",
   "contactSheetTitle": "Customer record",
-  "contactSheetNoNote": "No note yet."
+  "contactSheetNoNote": "No note yet.",
+  "navActivities": "To call",
+  "activitiesTitle": "Calls to make",
+  "activitiesEmpty": "No scheduled calls. Calls are planned from the CRM, on the customer record or the opportunity.",
+  "activitiesOverdue": "Overdue",
+  "activitiesToday": "Today",
+  "activitiesDone": "Done",
+  "activitiesDoneFailed": "Server unreachable — the call is still to be made.",
+  "activitiesNoNumber": "No number on this record",
+  "activitiesRefreshing": "Updating…",
+  "activitiesNeverFetched": "Never synced — pull to update",
+  "activitiesFetchedAt": "Updated {when}",
+  "@activitiesFetchedAt": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  }
 }

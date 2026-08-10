@@ -15,3 +15,4 @@ from . import test_recherche
 from . import test_enrichissement
 from . import test_notes_compte
 from . import test_perimetre_recherche
+from . import test_activites

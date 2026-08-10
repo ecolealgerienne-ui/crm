@@ -695,6 +695,125 @@ class CallTrackerLog(models.Model):
         ligne = self.env.cr.fetchone()
         return Piste.browse(ligne[0]) if ligne else Piste
 
+    # ── Appels à passer, depuis l'application ────────────────────────────────
+
+    #: Plafond de la liste renvoyée au téléphone. Au-delà, ce n'est plus une
+    #: liste de travail mais un arriéré qu'on ne regarde plus.
+    ACTIVITES_MAX = 50
+
+    @api.model
+    def activites_a_appeler(self, commercial, limite=None):
+        """Les appels programmés dans le CRM pour ce commercial.
+
+        C'est la seule route qui rende quelque chose au commercial au lieu de
+        lui prendre. Tout le reste du dispositif est rétrospectif — il capture,
+        il transmet, il rapporte à un responsable. Un outil qui ne rend rien
+        ne s'ouvre pas, et une application qu'on n'ouvre jamais est une
+        application dont la file d'envoi ne se vide pas : constaté sur un
+        OnePlus, où la tâche d'envoi n'a tourné qu'au moment où l'écran s'est
+        allumé.
+
+        ⚠️ **Le filtre porte sur `category`, pas sur le nom du type.** « Call »
+        est un libellé : il se traduit, il se renomme, et une instance en
+        français l'appellera « Appel ». `phonecall` est structurel — c'est ce
+        qu'Odoo utilise lui-même pour décider d'afficher une icône de
+        téléphone.
+
+        ⚠️ **Le périmètre n'est pas un choix ici.** Une activité est assignée à
+        un utilisateur, et l'appareil connaît le sien : la route est cloisonnée
+        par la donnée elle-même. Contrairement à la recherche de contacts, il
+        n'y a rien à régler et rien à débattre.
+        """
+        activites = self.env['mail.activity'].sudo().search(
+            [
+                ('user_id', '=', commercial.id),
+                ('activity_type_id.category', '=', 'phonecall'),
+            ],
+            # Les échéances les plus anciennes d'abord : le retard passe devant
+            # ce qui est prévu pour demain. `state` est calculé, donc pas
+            # triable en base — mais trier par échéance produit exactement le
+            # même ordre, et sans coût.
+            order='date_deadline asc, id asc',
+            limit=min(limite or self.ACTIVITES_MAX, self.ACTIVITES_MAX),
+        )
+        return [self._resume_activite(a) for a in activites]
+
+    @api.model
+    def _resume_activite(self, activite):
+        client, numero = self._cible_de_l_activite(activite)
+        return {
+            'id': activite.id,
+            'client': client,
+            'phone': numero,
+            'deadline': activite.date_deadline and str(activite.date_deadline) or '',
+            # `overdue` / `today` / `planned`, calculé par Odoo dans le fuseau
+            # de l'utilisateur. Le recalculer côté téléphone donnerait deux
+            # vérités pour la même échéance.
+            'state': activite.state or '',
+            'summary': activite.summary or activite.activity_type_id.name or '',
+            # Le HTML d'une note d'activité ne s'affiche pas sur un téléphone,
+            # et 200 caractères suffisent à se rappeler pourquoi on appelle.
+            'note': html2plaintext(activite.note or '').strip()[:200],
+        }
+
+    @api.model
+    def _cible_de_l_activite(self, activite):
+        """Nom du client et numéro à composer, quel que soit le modèle porteur.
+
+        Une activité peut vivre sur une piste comme sur une fiche contact.
+        Le numéro se cherche donc là où il est, et sur une piste il faut
+        retomber sur le contact rattaché : beaucoup de pistes ne portent pas
+        de numéro propre.
+
+        Un numéro introuvable ne fait pas disparaître l'activité : elle
+        s'affiche sans bouton d'appel. La masquer ferait perdre une tâche
+        réelle pour un champ manquant.
+        """
+        if not activite.res_model or not activite.res_id:
+            return activite.res_name or '', ''
+
+        enregistrement = self.env[activite.res_model].sudo().browse(activite.res_id)
+        if not enregistrement.exists():
+            return activite.res_name or '', ''
+
+        numero = self._premier_telephone(enregistrement)
+        if not numero and 'partner_id' in enregistrement._fields:
+            numero = self._premier_telephone(enregistrement.partner_id)
+
+        return enregistrement.display_name or activite.res_name or '', numero
+
+    @api.model
+    def _premier_telephone(self, enregistrement):
+        if not enregistrement:
+            return ''
+        for colonne in COLONNES_TELEPHONE:
+            if colonne in enregistrement._fields:
+                valeur = enregistrement[colonne]
+                if valeur:
+                    return valeur
+        return ''
+
+    @api.model
+    def cloturer_activite(self, identifiant, commercial, retour=None):
+        """Marque une activité comme faite, si elle appartient bien au commercial.
+
+        ⚠️ **La vérification d'appartenance est le cœur de cette méthode.**
+        L'application envoie un identifiant ; rien n'empêche un jeton volé
+        d'en envoyer d'autres. Sans ce contrôle, un appareil clôturerait les
+        activités de n'importe qui — et une tâche qui disparaît de la liste
+        d'un collègue ne se remarque pas, elle s'oublie.
+
+        Rend `False` si l'activité n'existe pas ou n'est pas la sienne : le
+        contrôleur en fait un 404, indistinguable de l'un ou l'autre cas. Dire
+        « elle existe mais elle n'est pas à vous » renseignerait sur le
+        portefeuille des autres.
+        """
+        activite = self.env['mail.activity'].sudo().browse(identifiant)
+        if not activite.exists() or activite.user_id != commercial:
+            return False
+        activite.action_feedback(feedback=retour or _("Appel passé depuis le mobile"))
+        return True
+
     # ── Rétention ────────────────────────────────────────────────────────────
 
     @api.model

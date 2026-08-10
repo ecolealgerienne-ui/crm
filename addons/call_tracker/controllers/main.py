@@ -295,6 +295,74 @@ class CallTrackerController(http.Controller):
             'results': resultats,
         })
 
+    @http.route(
+        '/call_tracker/activities',
+        type='http', auth='public', methods=['GET'], csrf=False, save_session=False,
+        readonly=False,  # écrit une trace d'audit
+    )
+    def activities(self, **_kwargs):
+        """Les appels programmés dans le CRM pour le commercial de l'appareil.
+
+        La seule route qui rende quelque chose au commercial au lieu de lui
+        prendre — et donc la seule qui lui donne une raison d'ouvrir
+        l'application. Ce n'est pas anecdotique : une application qu'on
+        n'ouvre jamais est une application dont la file d'envoi ne se vide
+        pas.
+
+        Aucun paramètre de périmètre : une activité est assignée à un
+        utilisateur, et le jeton désigne l'appareil donc le commercial. Le
+        cloisonnement est dans la donnée.
+        """
+        appareil = self._authentifier()
+        if not appareil:
+            self._tracer('activity_list', 'unauthorized')
+            return repondre({'status': 'unauthorized'}, 401)
+
+        activites = request.env['call.tracker.log'].sudo().activites_a_appeler(
+            appareil.user_id,
+        )
+        self._tracer(
+            'activity_list', 'ok' if activites else 'not_found', appareil,
+            detail='%d activite(s)' % len(activites),
+        )
+        return repondre({
+            'status': 'found' if activites else 'not_found',
+            'count': len(activites),
+            'results': activites,
+        })
+
+    @http.route(
+        '/call_tracker/activity/<int:identifiant>/done',
+        type='http', auth='public', methods=['POST'], csrf=False, save_session=False,
+        readonly=False,
+    )
+    def activity_done(self, identifiant, **_kwargs):
+        """Clôture une activité d'appel.
+
+        ⚠️ L'appartenance est revérifiée côté serveur, dans le modèle. Rien
+        n'empêche un jeton volé d'envoyer des identifiants au hasard, et une
+        tâche qui disparaît de la liste d'un collègue ne se remarque pas :
+        elle s'oublie.
+
+        404 aussi bien pour « inexistante » que pour « pas la vôtre » : les
+        distinguer renseignerait sur le portefeuille des autres.
+        """
+        appareil = self._authentifier()
+        if not appareil:
+            self._tracer('activity_done', 'unauthorized')
+            return repondre({'status': 'unauthorized'}, 401)
+
+        fait = request.env['call.tracker.log'].sudo().cloturer_activite(
+            identifiant, appareil.user_id,
+        )
+        self._tracer(
+            'activity_done', 'ok' if fait else 'not_found', appareil,
+            detail='activite %d' % identifiant,
+        )
+        if not fait:
+            return repondre({'status': 'not_found'}, 404)
+        return repondre({'status': 'done'})
+
     def _tracer(self, action, result, appareil=None, numero=None,
                 detail=None, linked_record=None):
         request.env['call.tracker.audit'].sudo().tracer(

@@ -66,6 +66,80 @@ class CallEntry {
   }
 }
 
+/// Urgence d'un appel programmé, telle qu'Odoo la calcule.
+///
+/// Reprise du serveur et jamais recalculée ici : Odoo décide dans le fuseau de
+/// l'utilisateur, et un second calcul côté téléphone donnerait deux vérités
+/// pour la même échéance — qui divergeraient au passage de minuit.
+enum EtatActivite { overdue, today, planned }
+
+@immutable
+class ActiviteAppel {
+  const ActiviteAppel({
+    required this.id,
+    required this.client,
+    required this.phone,
+    required this.deadline,
+    required this.etat,
+    required this.summary,
+    required this.note,
+  });
+
+  final int id;
+  final String client;
+  final String phone;
+  final String deadline;
+  final EtatActivite etat;
+  final String summary;
+  final String note;
+
+  factory ActiviteAppel.fromMap(Map<dynamic, dynamic> map) {
+    return ActiviteAppel(
+      id: (map['id'] as num?)?.toInt() ?? 0,
+      client: (map['client'] ?? '').toString(),
+      phone: (map['phone'] ?? '').toString(),
+      deadline: (map['deadline'] ?? '').toString(),
+      // Un état inconnu retombe sur `planned` : une échéance mal comprise ne
+      // doit pas faire clignoter une tâche en rouge sans raison.
+      etat: EtatActivite.values.firstWhere(
+        (e) => e.name == map['state'],
+        orElse: () => EtatActivite.planned,
+      ),
+      summary: (map['summary'] ?? '').toString(),
+      note: (map['note'] ?? '').toString(),
+    );
+  }
+}
+
+/// La liste, et la date à laquelle elle a été récupérée.
+///
+/// Les deux voyagent ensemble et s'affichent ensemble : une liste sans sa date
+/// de fraîcheur laisse croire qu'elle est à jour, et c'est précisément faux au
+/// moment où ça compte — hors réseau.
+@immutable
+class ListeActivites {
+  const ListeActivites({required this.activites, required this.recupereeLe});
+
+  final List<ActiviteAppel> activites;
+
+  /// `null` si aucune récupération n'a jamais abouti.
+  final DateTime? recupereeLe;
+
+  static const vide = ListeActivites(activites: [], recupereeLe: null);
+
+  factory ListeActivites.fromMap(Map<dynamic, dynamic> map) {
+    final millis = (map['fetchedAtMillis'] as num?)?.toInt() ?? 0;
+    final brut = (map['results'] as List?) ?? const [];
+    return ListeActivites(
+      activites: brut
+          .map((e) => ActiviteAppel.fromMap(e as Map<dynamic, dynamic>))
+          .toList(growable: false),
+      recupereeLe:
+          millis > 0 ? DateTime.fromMillisecondsSinceEpoch(millis) : null,
+    );
+  }
+}
+
 @immutable
 class CaptureSettings {
   const CaptureSettings({

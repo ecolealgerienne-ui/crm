@@ -449,4 +449,42 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get contactSheetNoNote => 'Aucune note pour l\'instant.';
+
+  @override
+  String get navActivities => 'À appeler';
+
+  @override
+  String get activitiesTitle => 'Appels à passer';
+
+  @override
+  String get activitiesEmpty =>
+      'Aucun appel programmé. Les appels se planifient depuis le CRM, sur la fiche du client ou l\'affaire.';
+
+  @override
+  String get activitiesOverdue => 'En retard';
+
+  @override
+  String get activitiesToday => 'Aujourd\'hui';
+
+  @override
+  String get activitiesDone => 'Fait';
+
+  @override
+  String get activitiesDoneFailed =>
+      'Serveur injoignable — l\'appel reste à faire.';
+
+  @override
+  String get activitiesNoNumber => 'Aucun numéro sur cette fiche';
+
+  @override
+  String get activitiesRefreshing => 'Mise à jour…';
+
+  @override
+  String get activitiesNeverFetched =>
+      'Jamais synchronisé — tirez pour mettre à jour';
+
+  @override
+  String activitiesFetchedAt(String when) {
+    return 'Mis à jour le $when';
+  }
 }

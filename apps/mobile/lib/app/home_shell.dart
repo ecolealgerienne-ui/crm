@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../features/activities/activities_screen.dart';
 import '../features/calls/calls_screen.dart';
 import '../features/search/search_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/core_providers.dart';
 
-/// Trois onglets, un `IndexedStack` : pas de routeur.
+/// Quatre onglets, un `IndexedStack` : pas de routeur.
 ///
 /// Aucun lien profond, aucune redirection conditionnelle — go_router
 /// n'apporterait ici qu'une dépendance et une indirection. À reprendre en
@@ -34,7 +35,8 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   /// 2026-08-10.
   void _allerA(int index) {
     setState(() => _onglet = index);
-    if (index == 0) ref.invalidate(appelsProvider);
+    if (index == 0) ref.invalidate(activitesProvider);
+    if (index == 1) ref.invalidate(appelsProvider);
   }
 
   @override
@@ -47,8 +49,9 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       appBar: AppBar(
         title: Text(
           switch (_onglet) {
-            0 => l10n.callsTitle,
-            1 => l10n.searchTitle,
+            0 => l10n.activitiesTitle,
+            1 => l10n.callsTitle,
+            2 => l10n.searchTitle,
             _ => l10n.settingsTitle,
           },
         ),
@@ -84,12 +87,26 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       ),
       body: IndexedStack(
         index: _onglet,
-        children: const [CallsScreen(), SearchScreen(), SettingsScreen()],
+        // « À appeler » en PREMIER, et ce n'est pas un détail d'ordre : c'est
+        // le seul onglet qui rende quelque chose au commercial. L'ouverture de
+        // l'application doit tomber sur ce qu'il a à faire, pas sur ce qu'on a
+        // enregistré de lui.
+        children: const [
+          ActivitiesScreen(),
+          CallsScreen(),
+          SearchScreen(),
+          SettingsScreen(),
+        ],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _onglet,
         onDestinationSelected: _allerA,
         destinations: [
+          NavigationDestination(
+            icon: const Icon(Icons.event_outlined),
+            selectedIcon: const Icon(Icons.event),
+            label: l10n.navActivities,
+          ),
           NavigationDestination(
             icon: const Icon(Icons.call_outlined),
             selectedIcon: const Icon(Icons.call),

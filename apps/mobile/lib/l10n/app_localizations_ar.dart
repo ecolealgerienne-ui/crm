@@ -448,4 +448,41 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get contactSheetNoNote => 'لا توجد ملاحظة بعد.';
+
+  @override
+  String get navActivities => 'للاتصال';
+
+  @override
+  String get activitiesTitle => 'مكالمات مطلوبة';
+
+  @override
+  String get activitiesEmpty =>
+      'لا توجد مكالمات مبرمجة. تُبرمَج المكالمات من نظام إدارة العملاء، على بطاقة العميل أو الصفقة.';
+
+  @override
+  String get activitiesOverdue => 'متأخرة';
+
+  @override
+  String get activitiesToday => 'اليوم';
+
+  @override
+  String get activitiesDone => 'تمّت';
+
+  @override
+  String get activitiesDoneFailed =>
+      'تعذّر الوصول إلى الخادم — المكالمة ما زالت مطلوبة.';
+
+  @override
+  String get activitiesNoNumber => 'لا يوجد رقم على هذه البطاقة';
+
+  @override
+  String get activitiesRefreshing => 'جارٍ التحديث…';
+
+  @override
+  String get activitiesNeverFetched => 'لم تتم أي مزامنة — اسحب للتحديث';
+
+  @override
+  String activitiesFetchedAt(String when) {
+    return 'آخر تحديث $when';
+  }
 }

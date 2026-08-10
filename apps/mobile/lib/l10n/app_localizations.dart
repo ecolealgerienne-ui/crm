@@ -807,6 +807,72 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Aucune note pour l\'instant.'**
   String get contactSheetNoNote;
+
+  /// No description provided for @navActivities.
+  ///
+  /// In fr, this message translates to:
+  /// **'À appeler'**
+  String get navActivities;
+
+  /// No description provided for @activitiesTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Appels à passer'**
+  String get activitiesTitle;
+
+  /// No description provided for @activitiesEmpty.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun appel programmé. Les appels se planifient depuis le CRM, sur la fiche du client ou l\'affaire.'**
+  String get activitiesEmpty;
+
+  /// No description provided for @activitiesOverdue.
+  ///
+  /// In fr, this message translates to:
+  /// **'En retard'**
+  String get activitiesOverdue;
+
+  /// No description provided for @activitiesToday.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aujourd\'hui'**
+  String get activitiesToday;
+
+  /// No description provided for @activitiesDone.
+  ///
+  /// In fr, this message translates to:
+  /// **'Fait'**
+  String get activitiesDone;
+
+  /// No description provided for @activitiesDoneFailed.
+  ///
+  /// In fr, this message translates to:
+  /// **'Serveur injoignable — l\'appel reste à faire.'**
+  String get activitiesDoneFailed;
+
+  /// No description provided for @activitiesNoNumber.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun numéro sur cette fiche'**
+  String get activitiesNoNumber;
+
+  /// No description provided for @activitiesRefreshing.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mise à jour…'**
+  String get activitiesRefreshing;
+
+  /// No description provided for @activitiesNeverFetched.
+  ///
+  /// In fr, this message translates to:
+  /// **'Jamais synchronisé — tirez pour mettre à jour'**
+  String get activitiesNeverFetched;
+
+  /// No description provided for @activitiesFetchedAt.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mis à jour le {when}'**
+  String activitiesFetchedAt(String when);
 }
 
 class _AppLocalizationsDelegate

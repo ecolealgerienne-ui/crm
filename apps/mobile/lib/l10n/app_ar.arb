@@ -147,5 +147,23 @@
   },
   "searchCall": "اتّصال",
   "contactSheetTitle": "بطاقة العميل",
-  "contactSheetNoNote": "لا توجد ملاحظة بعد."
+  "contactSheetNoNote": "لا توجد ملاحظة بعد.",
+  "navActivities": "للاتصال",
+  "activitiesTitle": "مكالمات مطلوبة",
+  "activitiesEmpty": "لا توجد مكالمات مبرمجة. تُبرمَج المكالمات من نظام إدارة العملاء، على بطاقة العميل أو الصفقة.",
+  "activitiesOverdue": "متأخرة",
+  "activitiesToday": "اليوم",
+  "activitiesDone": "تمّت",
+  "activitiesDoneFailed": "تعذّر الوصول إلى الخادم — المكالمة ما زالت مطلوبة.",
+  "activitiesNoNumber": "لا يوجد رقم على هذه البطاقة",
+  "activitiesRefreshing": "جارٍ التحديث…",
+  "activitiesNeverFetched": "لم تتم أي مزامنة — اسحب للتحديث",
+  "activitiesFetchedAt": "آخر تحديث {when}",
+  "@activitiesFetchedAt": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  }
 }

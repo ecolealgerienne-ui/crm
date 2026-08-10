@@ -11,6 +11,7 @@ import com.echango.call_tracker.capture.InviteNote
 import com.echango.call_tracker.data.CallStore
 import com.echango.call_tracker.data.ContactCache
 import com.echango.call_tracker.data.SecureSettings
+import com.echango.call_tracker.sync.ActiviteClient
 import com.echango.call_tracker.sync.ContactClient
 import com.echango.call_tracker.sync.SyncWorker
 import io.flutter.embedding.android.FlutterActivity
@@ -183,6 +184,47 @@ class MainActivity : FlutterActivity() {
             // réseau, exactement comme la surimpression. Un commercial qui
             // cherche un numéro qu'il vient de voir sonner ne doit pas
             // provoquer un second appel à l'Odoo du client.
+            // Les appels programmes dans le CRM. Le cache est rendu tout de
+            // suite ; le rafraichissement suit, sur son fil.
+            "listActivities" -> {
+                val forcer = appel.argument<Boolean>("refresh") ?: false
+                Thread {
+                    if (forcer) ActiviteClient.rafraichir(applicationContext)
+                    val liste = ActiviteClient.lireCache(applicationContext)
+                    val date = ActiviteClient.dateDuCache(applicationContext)
+                    runOnUiThread {
+                        reponse.success(
+                            mapOf(
+                                // Millisecondes de la derniere recuperation
+                                // reussie. AFFICHEE a l'ecran : une liste
+                                // d'hier vaut mieux qu'un ecran vide, a
+                                // condition de dire qu'elle date d'hier.
+                                "fetchedAtMillis" to date,
+                                "results" to liste.map {
+                                    mapOf(
+                                        "id" to it.id,
+                                        "client" to it.client,
+                                        "phone" to it.phone,
+                                        "deadline" to it.deadline,
+                                        "state" to it.state,
+                                        "summary" to it.summary,
+                                        "note" to it.note,
+                                    )
+                                },
+                            )
+                        )
+                    }
+                }.start()
+            }
+
+            "completeActivity" -> {
+                val id = (appel.argument<Number>("id") ?: 0).toLong()
+                Thread {
+                    val ok = ActiviteClient.cloturer(applicationContext, id)
+                    runOnUiThread { reponse.success(ok) }
+                }.start()
+            }
+
             "searchContacts" -> {
                 val fragment = appel.argument<String>("fragment").orEmpty().trim()
                 Thread {

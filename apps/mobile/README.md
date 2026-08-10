@@ -159,6 +159,55 @@ rallumer ne doit pas rattraper ce qu'on avait choisi de ne pas journaliser.
 Le drapeau de débogage `resetCursor` pose `1`, pas `0`, pour rester distinct
 du sentinelle et continuer à rejouer tout un journal d'émulateur.
 
+## A appeler — le premier onglet, et pourquoi
+
+Les activites de type appel programmees dans le CRM, en retard d'abord. On
+tape, ca compose ; un bouton **Fait** cloture cote Odoo.
+
+**Place en premier deliberement.** C'est le seul ecran qui rende quelque chose
+au commercial : tout le reste de l'application capture, transmet et rapporte a
+un responsable. Ouvrir l'app doit tomber sur ce qu'il a a faire, pas sur ce
+qu'on a enregistre de lui.
+
+Et ce n'est pas qu'une question d'adoption. On a mesure sur un OnePlus que
+OxygenOS gele l'application ecran eteint, et que la tache d'envoi ne tourne
+qu'au reveil : **une application qu'on n'ouvre jamais est une application dont
+la file d'envoi ne se vide pas.** L'ecran qui rend l'app utile est celui qui
+rend la capture fiable.
+
+### Le cache, et pourquoi il n'expire jamais
+
+Toute l'application est batie sur « ca marche sans reseau » : la capture met
+en file et reessaie. Une liste de taches est l'inverse — elle ne peut que
+lire. Sans copie locale, un commercial dans un sous-sol verrait une liste
+vide, conclurait que l'outil ment, et retournerait a son papier.
+
+Le cache n'a donc **pas de duree de validite**. Une liste d'hier vaut
+infiniment mieux qu'un ecran vide — *a condition de dire qu'elle date
+d'hier*. D'ou le bandeau de fraicheur, affiche en permanence : « Mis a jour
+le… » ou « Jamais synchronise ». Une liste perimee qui se presente comme a
+jour est un mensonge, et c'est ce mensonge qui ferait perdre la confiance.
+
+Le cache n'est remplace qu'une fois la reponse **lue et valide** : une coupure
+au milieu du transfert ne vide pas la liste de quelqu'un qui travaille.
+
+### Pas de cloture optimiste
+
+Si le serveur ne confirme pas, **la ligne reste**. Retirer la tache sans
+enregistrement ferait disparaitre un appel que personne n'a passe, et le
+commercial croirait l'avoir coche. Mieux vaut un bouton qui refuse de marcher
+qu'une tache perdue en silence.
+
+### Ce que cet ecran ne fait pas
+
+Ni creer, ni replanifier, ni modifier une activite. Programmer un appel est un
+acte de bureau, et le jour ou on ajoute « creer une activite » on commence un
+Odoo mobile qu'on ne finira pas.
+
+Le pointage « fait » est **manuel**, pas deduit d'un appel capture. Un appel
+de quatre secondes tombe sur la messagerie cocherait sinon la tache, et le
+commercial perdrait un vrai rappel sans le voir.
+
 ## Rechercher, consulter, appeler
 
 L'onglet Recherche prend un **fragment** de numéro — début, milieu ou fin — et

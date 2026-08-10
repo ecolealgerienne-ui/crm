@@ -136,6 +136,25 @@ class CaptureChannel {
     return _canal.invokeMethod<bool>('dial', {'phoneNumber': numero});
   }
 
+  /// Les appels programmés dans le CRM pour ce commercial.
+  ///
+  /// Rend toujours le cache local, et la date à laquelle il a été récupéré.
+  /// [rafraichir] tente d'abord un aller-retour serveur ; s'il échoue, la
+  /// liste précédente est rendue telle quelle. Une liste d'hier vaut mieux
+  /// qu'un écran vide — à condition d'afficher qu'elle date d'hier.
+  Future<ListeActivites> listerActivites({bool rafraichir = false}) async {
+    final map = await _canal.invokeMapMethod<String, dynamic>(
+      'listActivities', {'refresh': rafraichir},
+    );
+    return ListeActivites.fromMap(map ?? const {});
+  }
+
+  /// Marque une activité comme faite. Rend `false` si le serveur n'a pas
+  /// confirmé — l'écran ne doit alors PAS retirer la ligne.
+  Future<bool> cloturerActivite(int id) async {
+    return await _canal.invokeMethod<bool>('completeActivity', {'id': id}) ?? false;
+  }
+
   Future<bool> batterieOptimisee() async {
     return await _canal.invokeMethod<bool>('isBatteryOptimised') ?? true;
   }

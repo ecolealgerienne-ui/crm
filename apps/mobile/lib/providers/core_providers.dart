@@ -117,6 +117,12 @@ final reglagesProvider = FutureProvider<CaptureSettings>(
   (ref) => ref.watch(captureChannelProvider).lireReglages(),
 );
 
+/// Les appels programmés dans le CRM. Lit le cache local sans réseau ;
+/// l'écran déclenche lui-même un rafraîchissement à l'ouverture.
+final activitesProvider = FutureProvider<ListeActivites>(
+  (ref) => ref.watch(captureChannelProvider).listerActivites(),
+);
+
 final appelsProvider = FutureProvider<List<CallEntry>>(
   (ref) => ref.watch(captureChannelProvider).listerAppels(),
 );

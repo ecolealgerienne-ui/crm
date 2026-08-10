@@ -89,6 +89,59 @@ et tronqué à 200 caractères. Les notifications automatiques (changement
 d'étape, courriel envoyé) sont écartées : elles noieraient la vraie note sous
 du bruit à chaque sonnerie.
 
+### `GET /call_tracker/activities` — les appels a passer
+
+Les activites de type appel programmees dans le CRM pour le commercial de
+l'appareil, echeance la plus ancienne d'abord.
+
+```json
+{"status":"found","count":2,"results":[
+  {"id":17,"client":"Relance Acme","phone":"+213555123456",
+   "deadline":"2026-08-08","state":"overdue",
+   "summary":"Relancer sur le devis","note":""}]}
+```
+
+**La seule route qui rende quelque chose au commercial au lieu de lui
+prendre.** Tout le reste du dispositif est retrospectif ; celle-ci est la
+raison d'ouvrir l'application. Ce n'est pas qu'une question d'adoption : on a
+mesure sur un OnePlus que la surcouche gele l'app ecran eteint, et que la
+tache d'envoi ne tourne qu'au reveil. **Une application qu'on n'ouvre jamais
+est une application dont la file d'envoi ne se vide pas.**
+
+⚠️ **Le filtre porte sur `activity_type_id.category == 'phonecall'`, pas sur
+le nom du type.** « Call » est un libelle : il se traduit, il se renomme. Une
+instance en francais l'appellerait « Appel » et un filtre sur le nom rendrait
+une liste vide sans que rien ne le signale. Un test le verrouille en renommant
+le type.
+
+⚠️ **Aucun reglage de perimetre ici.** Une activite est assignee a un
+utilisateur et le jeton designe l'appareil donc le commercial : le
+cloisonnement est dans la donnee. Contrairement a la recherche de contacts, il
+n'y a rien a debattre.
+
+`state` — `overdue` / `today` / `planned` — est **calcule par Odoo**, dans le
+fuseau de l'utilisateur. Le recalculer cote telephone donnerait deux verites
+pour la meme echeance, qui divergeraient au passage de minuit.
+
+Une activite **sans numero** est renvoyee quand meme : la masquer ferait
+perdre une tache reelle pour un champ manquant. L'application l'affiche sans
+bouton d'appel.
+
+### `POST /call_tracker/activity/<id>/done`
+
+⚠️ **L'appartenance est reverifiee cote serveur.** Rien n'empeche un jeton
+vole d'envoyer des identifiants au hasard — et une tache qui disparait de la
+liste d'un collegue ne se remarque pas, elle s'oublie.
+
+`404` aussi bien pour « inexistante » que pour « pas la votre » : les
+distinguer renseignerait sur le portefeuille des autres.
+
+⚠️ **Odoo 19 ne supprime plus une activite close, il la desactive.** Le
+filtre `active` implicite l'ecarte donc des recherches suivantes — mais un
+test ecrit pour une version anterieure, qui verifierait la disparition de la
+ligne en base, passerait a cote. Ce qui compte est qu'elle ne revienne plus
+sur le telephone.
+
 ### `GET /call_tracker/contacts/<fragment>`
 
 Contacts dont le numéro **contient** ce fragment de chiffres. Sert la
@@ -513,7 +566,7 @@ relancés par un seul appel.
 
 ## Tests
 
-181 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
+197 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
 révocation, le rapprochement téléphonique, la qualification manuelle,
 la note post-appel, les liens depuis les fiches CRM, la rétention, le
 journal d'audit, les champs dérivés, le cloisonnement, la

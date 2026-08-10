@@ -22,6 +22,8 @@ class CallTrackerAudit(models.Model):
             ('log_call', "Journalisation d'appel"),
             ('contact_lookup', "Consultation de contact"),
             ('contact_search', "Recherche de contacts"),
+            ('activity_list', "Appels à passer"),
+            ('activity_done', "Clôture d'activité"),
         ],
         required=True,
         index=True,

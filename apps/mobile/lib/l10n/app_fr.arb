@@ -200,5 +200,23 @@
   },
   "searchCall": "Appeler",
   "contactSheetTitle": "Fiche client",
-  "contactSheetNoNote": "Aucune note pour l'instant."
+  "contactSheetNoNote": "Aucune note pour l'instant.",
+  "navActivities": "À appeler",
+  "activitiesTitle": "Appels à passer",
+  "activitiesEmpty": "Aucun appel programmé. Les appels se planifient depuis le CRM, sur la fiche du client ou l'affaire.",
+  "activitiesOverdue": "En retard",
+  "activitiesToday": "Aujourd'hui",
+  "activitiesDone": "Fait",
+  "activitiesDoneFailed": "Serveur injoignable — l'appel reste à faire.",
+  "activitiesNoNumber": "Aucun numéro sur cette fiche",
+  "activitiesRefreshing": "Mise à jour…",
+  "activitiesNeverFetched": "Jamais synchronisé — tirez pour mettre à jour",
+  "activitiesFetchedAt": "Mis à jour le {when}",
+  "@activitiesFetchedAt": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  }
 }
