@@ -5,5 +5,6 @@ from . import call_tracker_audit
 from . import call_tracker_coverage
 from . import call_tracker_lead_activity
 from . import call_tracker_token_wizard
+from . import call_tracker_note_wizard
 from . import res_partner
 from . import crm_lead

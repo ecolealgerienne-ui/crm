@@ -8,6 +8,7 @@ import pytz
 from markupsafe import Markup
 
 from odoo import _, api, fields, models
+from odoo.exceptions import UserError
 from odoo.tools import html2plaintext
 
 _logger = logging.getLogger(__name__)
@@ -107,6 +108,24 @@ class CallTrackerLog(models.Model):
     # ── Rattachement ─────────────────────────────────────────────────────────
     partner_id = fields.Many2one('res.partner', string="Contact", index=True)
     lead_id = fields.Many2one('crm.lead', string="Piste", index=True)
+
+    # Ce que le commercial verra au prochain appel de ce numéro. Affiché sur
+    # la fiche de l'appel pour donner le contexte sans naviguer.
+    #
+    # **Non stocké**, et c'est le point : le fil grossit après l'appel, et une
+    # copie figée dirait « dernière note » en montrant l'avant-dernière. Le
+    # champ n'est donc ni filtrable ni groupable — ce qu'on veut, il n'a rien
+    # à faire dans un tableau croisé.
+    last_note = fields.Text(
+        string="Dernière note du client",
+        compute='_compute_last_note',
+        help="Dernier commentaire du fil du client ou de la piste. "
+             "C'est ce texte qui s'affiche sur le téléphone à la sonnerie.",
+    )
+
+    def _compute_last_note(self):
+        for appel in self:
+            appel.last_note = self._derniere_note(appel.partner_id, appel.lead_id)
 
     # ── Champs dérivés, pour l'analyse ───────────────────────────────────────
     # Stockés : ils servent de colonnes de regroupement dans les tableaux
@@ -359,6 +378,53 @@ class CallTrackerLog(models.Model):
             'res_model': 'crm.lead',
             'res_id': self.lead_id.id,
             'view_mode': 'form',
+        }
+
+    def action_ouvrir_client(self):
+        """Ouvre la piste, ou à défaut la fiche contact, de cet appel.
+
+        Le chemin existait, rien ne le montrait. C'est là que se fait
+        l'enrichissement : ce qui s'écrit dans ce fil revient au téléphone à
+        la sonnerie suivante.
+        """
+        self.ensure_one()
+        cible = self.lead_id or self.partner_id
+        if not cible:
+            raise UserError(_(
+                "Cet appel n'est rattaché à aucun client ni à aucune piste."
+            ))
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': cible._name,
+            'res_id': cible.id,
+            'view_mode': 'form',
+        }
+
+    def action_completer_note(self):
+        """Ouvre l'assistant qui publie une note dans le fil du client.
+
+        ⚠️ La note va au fil du client, **pas** sur l'appel. L'appel est le
+        compte rendu d'un événement, figé ; le fil est l'histoire de la
+        relation, cumulative. Voir ``call.tracker.note.wizard``.
+        """
+        self.ensure_one()
+        cible = self.lead_id or self.partner_id
+        if not cible:
+            raise UserError(_(
+                "Cet appel n'est rattaché à aucun client ni à aucune piste. "
+                "Qualifiez-le d'abord : la note n'aurait nulle part où aller."
+            ))
+        assistant = self.env['call.tracker.note.wizard'].create({
+            'call_id': self.id,
+            'target_name': cible.display_name,
+        })
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _("Compléter la note"),
+            'res_model': 'call.tracker.note.wizard',
+            'res_id': assistant.id,
+            'view_mode': 'form',
+            'target': 'new',
         }
 
     def _rattacher_appels_du_meme_numero(self):

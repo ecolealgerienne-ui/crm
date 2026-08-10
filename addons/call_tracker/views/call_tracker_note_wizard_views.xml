@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_call_tracker_note_wizard_form" model="ir.ui.view">
+        <field name="name">call.tracker.note.wizard.form</field>
+        <field name="model">call.tracker.note.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Compléter la note">
+                <!-- Dire OÙ va la note, avant de la faire écrire. Elle ne va
+                     pas sur l'appel mais dans le fil du client, et
+                     l'utilisateur doit le savoir en écrivant : on n'écrit pas
+                     la même chose pour soi et pour le dossier. -->
+                <div class="alert alert-info" role="alert">
+                    Cette note sera publiée dans le fil de
+                    <field name="target_name" readonly="1" nolabel="1" class="oe_inline"/>,
+                    et s'affichera sur le téléphone au prochain appel de ce numéro.
+                </div>
+                <group>
+                    <field name="call_id" invisible="1"/>
+                    <field name="note" nolabel="1" required="1" placeholder="Ce qu'il faut retenir…"/>
+                </group>
+                <footer>
+                    <button name="action_publier" type="object"
+                            string="Publier" class="btn-primary"/>
+                    <button string="Annuler" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

@@ -36,6 +36,15 @@
                     <button name="action_creer_piste" type="object"
                             string="Créer une piste" class="btn-primary"
                             invisible="lead_id or partner_id"/>
+                    <!-- Les deux actions d'enrichissement, visibles seulement
+                         une fois l'appel rattaché : sans client ni piste, la
+                         note n'aurait nulle part où aller. -->
+                    <button name="action_completer_note" type="object"
+                            string="Compléter la note" class="btn-primary"
+                            invisible="not lead_id and not partner_id"/>
+                    <button name="action_ouvrir_client" type="object"
+                            string="Ouvrir la fiche client"
+                            invisible="not lead_id and not partner_id"/>
                 </header>
                 <sheet>
                     <group>
@@ -58,8 +67,25 @@
                         <field name="lead_id"/>
                         <field name="phone_key" groups="base.group_no_one"/>
                     </group>
-                    <group string="Note" invisible="not note">
+                    <group string="Note prise pendant l'appel" invisible="not note">
                         <field name="note" nolabel="1" readonly="1"/>
+                    </group>
+                    <!-- ⚠️ L'appel est en LECTURE SEULE, et ce n'est pas un
+                         oubli : ses faits — durée, horodatage, sens — sont le
+                         socle du reporting, et une durée corrigeable rendrait
+                         chaque chiffre négociable. Ce qui s'ajoute après coup
+                         va au fil du client, qui est cumulatif par nature —
+                         et qui repart vers le téléphone. -->
+                    <group string="Ce que le téléphone affichera au prochain appel">
+                        <field name="last_note" nolabel="1" readonly="1"
+                               placeholder="Aucune note sur ce client pour l'instant."/>
+                        <div colspan="2" class="text-muted"
+                             invisible="not lead_id and not partner_id">
+                            Pour ajouter ou corriger, utilisez
+                            <b>Compléter la note</b> : le texte est publié dans le fil
+                            du client, jamais sur l'appel — un appel est un compte rendu,
+                            il ne se réécrit pas.
+                        </div>
                     </group>
                 </sheet>
             </form>

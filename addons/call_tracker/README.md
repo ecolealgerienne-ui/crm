@@ -223,6 +223,45 @@ suivant.
 ⚠️ Sous-type `mt_note` et non un commentaire public : se tromper ici
 enverrait la note au client par courriel.
 
+## Enrichir depuis le CRM — et pourquoi l'appel reste figé
+
+**L'appel est en lecture seule, définitivement.** Ses faits — numéro, sens,
+durée, horodatage, appareil, commercial — sont le socle du reporting. Une
+durée corrigeable rendrait chaque chiffre négociable en réunion, et
+`delivery_lag_minutes`, qui doit précéder tout classement entre commerciaux,
+ne vaudrait plus rien.
+
+**Ce qui s'ajoute après coup va au fil du client.** L'appel est le compte
+rendu d'un *événement*, figé par nature ; le fil est l'histoire de la
+*relation*, cumulative par nature. Une note mal dictée dans la voiture ne se
+réécrit donc pas — on écrit la bonne en dessous.
+
+Et cette boucle **existait déjà sans que rien ne le signale** :
+`_derniere_note` lit le dernier commentaire du fil de la piste ou du contact.
+Tout ce qu'un responsable, une assistante ou le commercial lui-même écrit dans
+ce fil **s'affiche sur le téléphone à la sonnerie suivante**.
+
+Trois ajouts pour rendre ce chemin visible, sur la fiche d'un appel :
+
+| | |
+|---|---|
+| **Compléter la note** | Ouvre un assistant qui publie dans le fil du client. Un geste au lieu de trois — ouvrir la fiche, trouver le fil, cliquer « Log note » |
+| **Ouvrir la fiche client** | La piste, ou à défaut le contact |
+| Champ `last_note` | Ce que le téléphone affichera au prochain appel, lisible sans naviguer |
+
+⚠️ **Le complément est publié sans en-tête**, contrairement à la trace d'un
+appel. C'est ce même message que `_derniere_note` renvoie au Caller ID,
+tronqué à 200 caractères : un « Appel sortant — +213… » en mangerait la moitié
+pour redire ce que le fil affiche déjà à côté.
+
+⚠️ **Pas de `sudo()` dans l'assistant.** Publier au nom de l'utilisateur réel
+fait jouer les droits d'Odoo : personne ne doit pouvoir écrire dans le fil
+d'une piste qu'il n'a pas le droit de voir, par le détour d'un appel. Le
+contrôleur, lui, passe en sudo — il n'a justement aucun utilisateur derrière.
+
+`last_note` n'est **pas stocké** : le fil grossit après l'appel, et une copie
+figée dirait « dernière note » en montrant l'avant-dernière.
+
 ## Numéro inconnu — qualification manuelle
 
 **Aucune piste n'est créée automatiquement.** Décision du 2026-08-09, qui
@@ -401,7 +440,7 @@ relancés par un seul appel.
 
 ## Tests
 
-148 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
+163 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
 révocation, le rapprochement téléphonique, la qualification manuelle,
 la note post-appel, les liens depuis les fiches CRM, la rétention, le
 journal d'audit, les champs dérivés, le cloisonnement, la

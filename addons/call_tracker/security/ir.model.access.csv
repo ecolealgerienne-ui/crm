@@ -8,3 +8,4 @@ access_call_tracker_coverage_user,call.tracker.coverage utilisateur,model_call_t
 access_call_tracker_coverage_manager,call.tracker.coverage responsable,model_call_tracker_coverage,group_call_tracker_manager,1,0,0,0
 access_call_tracker_lead_activity_user,call.tracker.lead.activity utilisateur,model_call_tracker_lead_activity,group_call_tracker_user,1,0,0,0
 access_call_tracker_lead_activity_manager,call.tracker.lead.activity responsable,model_call_tracker_lead_activity,group_call_tracker_manager,1,0,0,0
+access_call_tracker_note_wizard_user,call.tracker.note.wizard.user,model_call_tracker_note_wizard,group_call_tracker_user,1,1,1,0

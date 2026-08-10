@@ -12,3 +12,4 @@ from . import test_couverture
 from . import test_relance_affaires
 from . import test_retention
 from . import test_recherche
+from . import test_enrichissement
