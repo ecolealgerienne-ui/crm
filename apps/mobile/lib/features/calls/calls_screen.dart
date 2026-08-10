@@ -75,9 +75,20 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
         data: (liste) {
           final enAttente =
               liste.where((a) => a.syncStatus != SyncStatus.sent).length;
+          // Le motif du blocage est écrit en base par le worker depuis
+          // toujours ; il ne remontait simplement jamais jusqu'ici. Un jeton
+          // refusé laisse l'appel en « pending », et l'écran se contentait
+          // d'un compteur qui monte — le commercial conclut au réseau et
+          // attend, parfois des semaines.
+          final motifBloquant = liste
+              .where((a) =>
+                  a.syncStatus != SyncStatus.sent &&
+                  (a.lastError ?? '').isNotEmpty)
+              .map((a) => a.lastError!)
+              .firstOrNull;
           return Column(
             children: [
-              _BandeauSynchro(enAttente: enAttente),
+              _BandeauSynchro(enAttente: enAttente, motif: motifBloquant),
               Expanded(
                 child: liste.isEmpty
                     ? _Message(
@@ -110,15 +121,24 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
 }
 
 class _BandeauSynchro extends ConsumerWidget {
-  const _BandeauSynchro({required this.enAttente});
+  const _BandeauSynchro({required this.enAttente, this.motif});
 
   final int enAttente;
+
+  /// Motif du dernier échec, quand la file ne part pas pour une raison que
+  /// l'attente ne résoudra pas — jeton refusé, adresse absente. Nul quand
+  /// la file est simplement en cours d'écoulement.
+  final String? motif;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     final couleurs = Theme.of(context).extension<AppSemanticColors>()!;
-    final teinte = enAttente == 0 ? couleurs.synced : couleurs.pending;
+    final scheme = Theme.of(context).colorScheme;
+    final bloque = motif != null;
+    final teinte = bloque
+        ? scheme.error
+        : (enAttente == 0 ? couleurs.synced : couleurs.pending);
 
     return Container(
       width: double.infinity,
@@ -127,15 +147,33 @@ class _BandeauSynchro extends ConsumerWidget {
       child: Row(
         children: [
           Icon(
-            enAttente == 0 ? Icons.cloud_done_outlined : Icons.cloud_sync_outlined,
+            bloque
+                ? Icons.error_outline
+                : (enAttente == 0
+                    ? Icons.cloud_done_outlined
+                    : Icons.cloud_sync_outlined),
             color: teinte,
             size: 20,
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              l10n.callsPendingCount(enAttente),
-              style: Theme.of(context).textTheme.labelLarge,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  l10n.callsPendingCount(enAttente),
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+                if (bloque)
+                  Text(
+                    l10n.callsBlockedReason(motif!),
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: teinte),
+                  ),
+              ],
             ),
           ),
           if (enAttente > 0)
@@ -247,8 +285,21 @@ class _PastilleSynchro extends StatelessWidget {
     final couleurs = Theme.of(context).extension<AppSemanticColors>()!;
     final scheme = Theme.of(context).colorScheme;
 
+    // Un 401 est classé « temporaire » par le worker — à raison, un jeton se
+    // régénère — donc l'appel reste « pending » et n'atteint jamais l'état
+    // « failed », le seul dont le motif s'affichait. Le motif était pourtant
+    // écrit en base. C'est le statut PLUS la présence d'un motif qui dit si
+    // l'attente est normale ou si elle ne finira jamais toute seule.
+    final motif = appel.lastError;
+    final bloque = motif != null && motif.isNotEmpty;
+
     final (teinte, texte, infobulle) = switch (appel.syncStatus) {
       SyncStatus.sent => (couleurs.synced, l10n.syncSent, l10n.syncSent),
+      SyncStatus.pending when bloque => (
+          scheme.error,
+          l10n.syncBlocked,
+          l10n.syncBlockedWithReason(motif),
+        ),
       SyncStatus.pending => (
           couleurs.pending,
           l10n.syncPending,
@@ -257,7 +308,7 @@ class _PastilleSynchro extends StatelessWidget {
       SyncStatus.failed => (
           scheme.error,
           l10n.syncFailed,
-          l10n.syncFailedWithReason(appel.lastError ?? '—'),
+          l10n.syncFailedWithReason(motif ?? '—'),
         ),
     };
 

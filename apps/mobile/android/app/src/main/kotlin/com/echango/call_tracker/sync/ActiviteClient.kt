@@ -41,6 +41,21 @@ object ActiviteClient {
     private const val CLE_LISTE = "liste"
     private const val CLE_DATE = "recuperee_le"
 
+    /**
+     * Oublie la liste mise en cache.
+     *
+     * Appelée quand l'appareil change d'identité — nouveau jeton, nouveau
+     * serveur. Sans elle, un téléphone réaffecté ouvrait l'onglet « À
+     * appeler » sur la liste du commercial précédent : noms de clients,
+     * résumés, notes d'activité. Le serveur empêche bien de CLÔTURER la tâche
+     * d'un autre, mais la lecture, elle, a déjà eu lieu — et sans laisser la
+     * moindre trace d'audit, puisqu'elle n'a touché aucun serveur.
+     */
+    fun vider(context: Context) {
+        context.getSharedPreferences(FICHIER, Context.MODE_PRIVATE)
+            .edit().clear().apply()
+    }
+
     /** Rafraîchit depuis le serveur. Rend `false` si le réseau n'a pas répondu. */
     fun rafraichir(context: Context): Boolean {
         val reglages = SecureSettings(context)

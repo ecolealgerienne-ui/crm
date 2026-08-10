@@ -83,7 +83,15 @@ final themeModeProvider = StateNotifierProvider<ThemeModeNotifier, ThemeMode>(
 ///
 /// Une reformulation, une faute corrigée, une traduction : on ne touche à
 /// rien.
-const noticeVersion = 1;
+///
+/// **2 — 2026-08-10.** Trois affirmations de l'avis étaient fausses, et une
+/// relecture du code les a établies : la capture ne distinguait pas les cartes
+/// SIM alors que le texte promettait « vos appels professionnels » ; le
+/// responsable voit tous les appels de l'instance et non ceux de son équipe ;
+/// les consultations faites dans Odoo ne sont pas journalisées. Le fond a
+/// donc changé — pas la formulation — et l'accord déjà donné portait sur un
+/// texte qui décrivait autre chose que ce que fait le système.
+const noticeVersion = 2;
 
 const _cleAvisLu = 'notice.acknowledgedVersion';
 

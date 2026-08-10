@@ -29,7 +29,7 @@ notable. Rien n'est ouvert par ce choix : tout passe toujours par ``sudo()``.
 import json
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import psycopg2
 
@@ -124,12 +124,34 @@ def _lire_charge(corps):
     }
 
 
+#: Tolérance sur un horodatage à venir. Une heure absorbe la dérive ordinaire
+#: d'une horloge de téléphone sans laisser passer une date aberrante.
+AVANCE_MAX = timedelta(hours=1)
+
+#: Ancienneté maximale quand aucune purge n'est configurée. Dix ans ne
+#: protègent de rien d'utile ; ils écartent seulement l'absurde — un appel
+#: daté de 1970 par une horloge repartie de zéro.
+ANCIENNETE_MAX = timedelta(days=3650)
+
+
 def _lire_horodatage(valeur):
     """Convertit un ISO 8601 en datetime naïf UTC, la forme stockée par Odoo.
 
     Un horodatage sans fuseau est refusé : le téléphone d'un commercial peut
     être sur n'importe quel fuseau, et l'interpréter comme de l'UTC décalerait
     les appels de plusieurs heures sans que rien ne le signale.
+
+    Il est aussi borné des deux côtés, et c'est ce qui rend visible la seule
+    panne réellement silencieuse du dispositif : une horloge de téléphone
+    fausse. Trop ancien, l'appel arrive, se journalise, puis est supprimé par
+    la purge au passage suivant du cron avec sa trace d'audit — il aura existé
+    sans laisser la moindre trace. Trop récent, il n'est jamais purgé : la
+    rétention se compte sur ``started_at``, donc un appel daté de 2999
+    survivrait à la fermeture du service.
+
+    Refuser vaut mieux qu'accepter : un 400 est classé « refus définitif » par
+    l'application, l'appel bascule en échec et le motif s'affiche à l'écran.
+    Le défaut le plus muet du système devient le plus visible.
     """
     if not isinstance(valeur, str):
         raise ErreurCharge("started_at doit être une chaîne ISO 8601")
@@ -140,7 +162,27 @@ def _lire_horodatage(valeur):
         raise ErreurCharge("started_at illisible, ISO 8601 attendu (ex. 2026-08-09T14:32:00Z)")
     if moment.tzinfo is None:
         raise ErreurCharge("started_at doit porter un fuseau horaire (suffixe Z ou +HH:MM)")
-    return moment.astimezone(timezone.utc).replace(tzinfo=None)
+
+    horodatage = moment.astimezone(timezone.utc).replace(tzinfo=None)
+    maintenant = fields.Datetime.now()
+    if horodatage > maintenant + AVANCE_MAX:
+        raise ErreurCharge(
+            "started_at est dans le futur — vérifiez l'heure du téléphone"
+        )
+    # ⚠️ `_jours_de_retention()` rend 0 pour dire « aucune purge », PAS « une
+    # rétention nulle ». Le prendre au pied de la lettre posait le plancher à
+    # l'instant présent et refusait absolument tous les appels — y compris
+    # celui qui vient de raccrocher. Le sens choisi là-bas (un défaut de
+    # configuration ne doit jamais faire disparaître de données) s'inverse ici
+    # s'il n'est pas retraduit : le même 0 ferait tout perdre.
+    jours = request.env['call.tracker.log'].sudo()._jours_de_retention()
+    plancher = maintenant - (timedelta(days=jours) if jours > 0 else ANCIENNETE_MAX)
+    if horodatage < plancher:
+        raise ErreurCharge(
+            "started_at est plus ancien que la durée de conservation — "
+            "vérifiez l'heure du téléphone"
+        )
+    return horodatage
 
 
 class CallTrackerController(http.Controller):
@@ -175,6 +217,7 @@ class CallTrackerController(http.Controller):
         # ferait réessayer indéfiniment le seul cas où tout va bien.
         existant = Appel.search([('client_event_id', '=', valeurs['client_event_id'])], limit=1)
         if existant:
+            self._completer_note(existant, valeurs, appareil)
             return self._repondre_appel(existant, 'duplicate', 200, appareil)
 
         valeurs.update(device_id=appareil.id, user_id=appareil.user_id.id)
@@ -190,9 +233,26 @@ class CallTrackerController(http.Controller):
                 appel = Appel.create(valeurs)
         except psycopg2.errors.UniqueViolation:
             appel = Appel.search([('client_event_id', '=', valeurs['client_event_id'])], limit=1)
+            self._completer_note(appel, valeurs, appareil)
             return self._repondre_appel(appel, 'duplicate', 200, appareil)
 
         return self._repondre_appel(appel, 'logged', 201, appareil)
+
+    def _completer_note(self, existant, valeurs, appareil):
+        """Seul champ qu'un rejeu a le droit d'ajouter : la note.
+
+        ⚠️ Borné à l'appareil qui a remis l'appel. Un `client_event_id` est un
+        UUID, donc impraticable à deviner — mais cadrer coûte une comparaison
+        et évite qu'un jeton quelconque puisse écrire dans le fil d'un client
+        au nom d'un autre commercial.
+        """
+        if not existant or not valeurs.get('note'):
+            return
+        if existant.device_id != appareil:
+            self._tracer('log_call', 'forbidden', appareil,
+                         numero=existant.phone_number)
+            return
+        existant.completer_note(valeurs['note'])
 
     def _repondre_appel(self, appel, statut, code, appareil):
         resultat = self._resultat(appel, statut)

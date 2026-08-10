@@ -48,6 +48,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _a = reglages.toHour;
   }
 
+  /// Applique immédiatement un réglage qui n'a rien à valider.
+  ///
+  /// L'adresse et le jeton se saisissent, donc se confirment par un bouton.
+  /// L'interrupteur de capture et la plage horaire, eux, sont des réglages :
+  /// leur geste EST la décision. Les laisser dépendre du bouton « Enregistrer »
+  /// — en bas d'une liste défilante, après quatre cartes d'autorisations —
+  /// produisait le pire défaut possible : l'interrupteur restait affiché sur
+  /// « activé » alors que la capture était éteinte, indéfiniment, parce que
+  /// l'IndexedStack garde l'écran monté d'un onglet à l'autre.
+  Future<void> _appliquer(CaptureSettings reglages) async {
+    await ref.read(captureChannelProvider).ecrireReglages(
+          // L'adresse enregistrée, pas celle en cours de frappe : ce geste-ci
+          // ne valide pas le formulaire.
+          serverUrl: reglages.serverUrl,
+          token: null,
+          captureEnabled: _captureActive,
+          fromHour: _de,
+          toHour: _a,
+        );
+    ref.invalidate(reglagesProvider);
+  }
+
   Future<void> _enregistrer() async {
     final url = _urlCtrl.text.trim();
     final l10n = AppLocalizations.of(context)!;
@@ -137,7 +159,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               value: _captureActive,
-              onChanged: (v) => setState(() => _captureActive = v),
+              onChanged: (v) {
+                setState(() => _captureActive = v);
+                _appliquer(r);
+              },
               title: Text(l10n.settingsCaptureEnabled),
               subtitle: Text(l10n.settingsCaptureEnabledHelp),
             ),
@@ -156,7 +181,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   child: _ChoixHeure(
                     label: l10n.settingsHoursFrom,
                     valeur: _de,
-                    onChanged: (v) => setState(() => _de = v),
+                    onChanged: (v) {
+                      setState(() => _de = v);
+                      _appliquer(r);
+                    },
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -164,7 +192,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   child: _ChoixHeure(
                     label: l10n.settingsHoursTo,
                     valeur: _a,
-                    onChanged: (v) => setState(() => _a = v),
+                    onChanged: (v) {
+                      setState(() => _a = v);
+                      _appliquer(r);
+                    },
                   ),
                 ),
               ],

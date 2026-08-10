@@ -649,11 +649,22 @@ relancés par un seul appel.
 
 ## Tests
 
-219 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
+287 tests couvrant le contrat HTTP des routes, l'idempotence, la
 révocation, le rapprochement téléphonique, la qualification manuelle,
 la note post-appel, les liens depuis les fiches CRM, la rétention, le
 journal d'audit, les champs dérivés, le cloisonnement, la
 couverture du portefeuille et la relance des affaires.
+
+Depuis le 2026-08-10 s'y ajoutent les bornes de `started_at`
+(`test_horodatage.py`), la note qui arrive après l'appel qu'elle décrit
+(`test_note_tardive.py`), et le cas manquant du garde-fou par indicatif pays :
+une fiche saisie en forme nationale **avec son pays renseigné**, où le
+`phone_sanitized` calculé par Odoo suffisait à laisser passer un appel
+étranger.
+
+⚠️ Ce chiffre dérive vite. Il est désormais vérifié à chaque poussée par
+`.github/workflows/tests.yml`, qui lance cette même commande — Odoo rendant 0
+même lorsque des tests échouent, la CI lit le journal et non le code de sortie.
 
 ```bash
 docker compose run --rm -T odoo odoo \

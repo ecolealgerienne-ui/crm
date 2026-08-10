@@ -1,9 +1,17 @@
 # -*- coding: utf-8 -*-
 import hashlib
 import secrets
+from datetime import timedelta
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
+
+#: Au-delà de ce silence, l'appareil est signalé. Trois jours couvrent un
+#: week-end sans crier, et restent en deçà du délai où l'on cesserait de
+#: pouvoir reconstituer ce qui s'est passé.
+#: ⚠️ Ce seuil est repris en dur dans le filtre de recherche des vues, qui
+#: doit s'exprimer en domaine côté serveur — les deux sont à changer ensemble.
+SILENCE_JOURS = 3
 
 
 def hacher_jeton(jeton):
@@ -78,15 +86,48 @@ class CallTrackerDevice(models.Model):
         readonly=True,
     )
 
+    # « Dernier contact » et non « dernier appel reçu » : ce champ ne dit rien
+    # des appels entrants du téléphone, il date la dernière fois que le serveur
+    # a eu des nouvelles de cet appareil. C'est le champ dont dépend tout le
+    # diagnostic « ce commercial n'appelle plus » contre « ce téléphone
+    # n'envoie plus » ; un intitulé ambigu le rendait illisible.
     last_seen = fields.Datetime(
-        string="Dernier appel reçu",
+        string="Dernier contact de l'appareil",
         readonly=True,
         copy=False,
+        help="Dernière remise d'appel reçue de cet appareil.",
     )
     log_count = fields.Integer(
         string="Appels journalisés",
         compute='_compute_log_count',
     )
+
+    silencieux = fields.Boolean(
+        string="Silencieux",
+        compute='_compute_silencieux',
+        help="Aucune nouvelle de cet appareil depuis plus de "
+             "%s jours." % SILENCE_JOURS,
+    )
+
+    @api.depends('last_seen', 'active', 'create_date')
+    def _compute_silencieux(self):
+        """Un appareil actif dont on n'a plus de nouvelles.
+
+        Le repli sur ``create_date`` n'est pas un détail : sans lui, un
+        appareil déclaré ce matin serait signalé avant même que le commercial
+        ait eu le temps d'installer l'application. Avec lui, l'appareil déclaré
+        il y a quatre jours qui n'a JAMAIS rien envoyé est signalé — et c'est
+        exactement le cas d'un enrôlement raté, que rien d'autre ne révèle.
+        """
+        seuil = fields.Datetime.now() - timedelta(days=SILENCE_JOURS)
+        for appareil in self:
+            if not appareil.active:
+                # Un appareil révoqué est silencieux par construction : le
+                # signaler noierait ceux qui devraient parler.
+                appareil.silencieux = False
+                continue
+            dernier_signe = appareil.last_seen or appareil.create_date
+            appareil.silencieux = bool(dernier_signe and dernier_signe < seuil)
 
     def _compute_log_count(self):
         # read_group en un seul appel : un search_count par ligne ferait une

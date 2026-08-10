@@ -108,6 +108,19 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get syncBlocked => 'Blocked';
+
+  @override
+  String syncBlockedWithReason(String reason) {
+    return 'Blocked: $reason';
+  }
+
+  @override
+  String callsBlockedReason(String reason) {
+    return 'The server is refusing: $reason';
+  }
+
+  @override
   String durationSeconds(int seconds) {
     final intl.NumberFormat secondsNumberFormat =
         intl.NumberFormat.decimalPattern(localeName);
@@ -309,10 +322,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noticeIntro =>
-      'This phone is a work tool: the app sends your business calls to the company CRM. Here is exactly what, for whom, and for how long.';
+      'This phone is a work tool: the app sends the calls made and received on this device to the company CRM. Here is exactly what, for whom, and for how long.';
 
   @override
   String get noticeRecordedTitle => 'What is recorded';
+
+  @override
+  String get noticeRecordedAllLines =>
+      'Every call on this device, whichever SIM card it used: the app does not tell a work line from a personal one. To keep a call out, turn capture off in Settings before you make it.';
 
   @override
   String get noticeRecordedNumber =>
@@ -351,11 +368,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noticeWhoYou => 'You, for your own calls.';
 
   @override
-  String get noticeWhoManager => 'Your manager, for their team\'s calls.';
+  String get noticeWhoManager =>
+      'Sales managers, for every call in the CRM — not only their own team\'s.';
 
   @override
   String get noticeWhoAudited =>
-      'Every lookup is itself logged, your manager\'s included.';
+      'Lookups made from this app are logged. Lookups made directly in the CRM, such as an export by your manager, are not.';
 
   @override
   String get noticeHowLongTitle => 'For how long';

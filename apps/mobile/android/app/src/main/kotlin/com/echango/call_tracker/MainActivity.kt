@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.PowerManager
 import android.provider.Settings
+import com.echango.call_tracker.capture.BalayageWorker
 import com.echango.call_tracker.capture.CallerIdOverlay
 import com.echango.call_tracker.capture.InviteNote
 import com.echango.call_tracker.data.CallStore
@@ -34,6 +35,16 @@ class MainActivity : FlutterActivity() {
     override fun onCreate(etat: android.os.Bundle?) {
         super.onCreate(etat)
         recupererIdAppel(intent)
+        relancerLaCapture()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Et pas seulement à `onCreate` : l'activité est en `singleTop` et
+        // survit aux passages en arrière-plan. Un commercial qui laisse
+        // l'application ouverte pendant des jours ne repasserait jamais par
+        // `onCreate`.
+        relancerLaCapture()
     }
 
     /**
@@ -50,6 +61,39 @@ class MainActivity : FlutterActivity() {
     private fun recupererIdAppel(intention: Intent?) {
         val id = intention?.getLongExtra(InviteNote.EXTRA_ID_APPEL, -1L) ?: -1L
         if (id > 0) idAppelEnAttente = id
+    }
+
+    /**
+     * Efface tout ce qui a été rapatrié sous une autre identité d'appareil.
+     *
+     * Les fiches contact et la liste des appels à passer viennent du serveur et
+     * portent des données de clients ; elles n'ont aucune raison de survivre à
+     * un changement de jeton ou d'instance. `retentionKnown` repasse à faux
+     * pour que l'écran d'information cesse d'annoncer une durée de conservation
+     * que le nouveau serveur n'a pas encore confirmée.
+     */
+    private fun oublierLesCaches() {
+        ContactCache(applicationContext).vider()
+        ActiviteClient.vider(applicationContext)
+        SecureSettings(applicationContext).retentionKnown = false
+    }
+
+    /**
+     * Remet la capture en route à chaque ouverture.
+     *
+     * Trois gestes, et chacun ferme un trou constaté :
+     * - le balayage périodique est le seul filet contre les surcouches qui
+     *   gèlent l'application ; `KEEP` fait que le reposer ne coûte rien ;
+     * - un balayage immédiat rattrape ce qu'une diffusion `PHONE_STATE` non
+     *   délivrée aurait laissé passer ;
+     * - `forcer` vide la file. L'écran « À appeler » est en premier onglet
+     *   précisément pour faire ouvrir l'application et vider la file — encore
+     *   fallait-il que l'ouverture la vide. Elle ne le faisait pas.
+     */
+    private fun relancerLaCapture() {
+        BalayageWorker.planifierPeriodique(applicationContext)
+        BalayageWorker.planifier(applicationContext)
+        SyncWorker.forcer(applicationContext)
     }
 
     override fun configureFlutterEngine(moteur: FlutterEngine) {
@@ -85,10 +129,25 @@ class MainActivity : FlutterActivity() {
             )
 
             "saveSettings" -> {
+                // Relevés AVANT écriture : c'est le changement qui compte, pas
+                // la valeur. Voir `oublierLesCaches` juste en dessous.
+                val ancienneUrl = reglages.serverUrl
+                val ancienJeton = reglages.token
+
                 reglages.serverUrl = appel.argument<String>("serverUrl").orEmpty().trim()
                 // Absent = inchangé. C'est ce qui permet à l'écran de réglages
                 // de laisser le champ vide sans effacer un jeton déjà en place.
                 appel.argument<String>("token")?.let { reglages.token = it.trim() }
+
+                // Changer de jeton ou de serveur, c'est changer d'identité :
+                // le téléphone est réaffecté, ou vise une autre instance. Tout
+                // ce qui a été rapatrié sous l'ancienne identité doit partir.
+                // `ContactCache.vider()` existait déjà et n'était appelé de
+                // nulle part ; la documentation de révocation promettait
+                // pourtant une purge que rien n'exécutait.
+                if (reglages.serverUrl != ancienneUrl || reglages.token != ancienJeton) {
+                    oublierLesCaches()
+                }
 
                 // ⚠️ **Le suivi commence à l'activation, jamais avant.**
                 //

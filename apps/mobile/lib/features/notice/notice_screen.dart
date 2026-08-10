@@ -81,6 +81,10 @@ class NoticeScreen extends ConsumerWidget {
             icone: Icons.fact_check_outlined,
             titre: l10n.noticeRecordedTitle,
             points: [
+              // En tête de liste : c'est le point qui surprend, et celui sur
+              // lequel l'avis mentait. Le lire après « le numéro appelé »
+              // reviendrait à le glisser dans le détail.
+              l10n.noticeRecordedAllLines,
               l10n.noticeRecordedNumber,
               l10n.noticeRecordedWhen,
               l10n.noticeRecordedDirection,

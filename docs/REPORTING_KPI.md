@@ -68,6 +68,24 @@ par appareil, il dit immédiatement quel téléphone décroche du reste.
 Rien de nouveau à collecter ; c'est le point à regarder en premier, avant tout
 classement.
 
+⚠️ **Et il ne mesure pas que le téléphone.** Jusqu'au 2026-08-10, un envoi mis
+en échec repartait sur un backoff exponentiel saturant à cinq heures, pendant
+lesquelles toute nouvelle demande d'envoi était jetée. Après une
+indisponibilité du serveur un vendredi soir, les appels du lundi matin
+partaient donc avec des heures de retard **sur un réseau parfait**. Ce délai-là
+était une caractéristique de l'ordonnanceur, et il se serait lu comme une
+caractéristique de la surcouche constructeur. Un balayage périodique remet
+désormais le compteur à zéro toutes les quinze minutes ; les mesures
+antérieures à cette date sont à écarter.
+
+### Le menu Appareils est ouvert au responsable
+
+Depuis le 2026-08-10, en lecture seule, avec un filtre « Silencieux depuis
+3 jours ». C'est le préalable pratique de tout ce qui précède : sans lui,
+« Farid n'a passé aucun appel cette semaine » et « le téléphone de Farid
+n'envoie plus rien depuis lundi » produisaient exactement le même écran, et
+l'écran qui les distingue était fermé à la personne chargée de comparer.
+
 ### Par modèle de téléphone, depuis le 2026-08-10
 
 Le délai seul ne dit pas **quoi corriger**. Ce qui est actionnable, c'est la
@@ -78,6 +96,15 @@ décide par modèle.
 L'application annonce désormais sa marque, son modèle et sa version d'Android
 à chaque appel remis. *CRM > Call Tracker > Appels*, puis **Regrouper par >
 Modèle d'appareil**, avec `delivery_lag_minutes` en moyenne.
+
+⚠️ **La moyenne n'est pas un choix de lecture, elle est posée dans le champ**
+(`aggregator='avg'`, corrigé le 2026-08-10). L'agrégat par défaut d'un entier
+dans Odoo est la SOMME, et l'interface pivot ne permet pas d'en changer à la
+main : ce paragraphe prescrivait donc une manipulation impossible, et le
+chiffre affiché à la place était un cumul de minutes qui croît mécaniquement
+avec le nombre d'appels. Le commercial le plus actif portait le plus gros
+total et se trouvait désigné comme celui dont le téléphone décroche —
+l'inversion exacte du signal que toute cette section sert à produire.
 
 ⚠️ **Le modèle est figé sur l'appel**, pas lu sur l'appareil. Un commercial
 qui change de téléphone ne doit pas faire basculer rétroactivement tout son
@@ -97,7 +124,7 @@ même téléphone, et c'est le comportement du modèle qu'on veut isoler.
 
 | | |
 |---|---|
-| Cloisonnement | Deux groupes, `Call Tracker / Utilisateur` et `Call Tracker / Responsable`, avec des règles d'enregistrement : chacun ses appels, le responsable voit tout |
+| Cloisonnement | Deux groupes, `Call Tracker / Utilisateur` et `Call Tracker / Responsable`, avec des règles d'enregistrement : chacun ses appels, le responsable voit **tous** les appels de l'instance — pas ceux de sa seule équipe, le modèle ne portant aucun `team_id`. L'avis d'information le dit désormais tel quel |
 | `outcome` | Répondu / sans réponse, dérivé de la durée |
 | `hour_of_day` | Heure locale de l'appel, pour la répartition horaire |
 | `delivery_lag_minutes` | Délai de remise, la mesure du §2 |

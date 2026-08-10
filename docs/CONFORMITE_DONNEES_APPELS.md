@@ -72,14 +72,43 @@ place, et ce sont les seules que l'application applique :
 3. **Types ignorés** : messagerie vocale, transferts et refus externes ne sont
    pas journalisés.
 
-**Pas de marquage « appel privé »** — décision du 2026-08-09. La ligne est
-professionnelle : tous les appels qui y transitent le sont par définition, et
-il n'y a pas de vie privée du salarié à protéger dans ce flux. La spec §4.1 le
-prévoyait ; l'item est retiré.
+⚠️ **La plage horaire ne s'appliquait pas au Caller ID** jusqu'au 2026-08-10.
+Le service de filtrage ne vérifiait que l'interrupteur de capture : un appel
+entrant à 23 h ne produisait aucun appel journalisé, mais déclenchait bien la
+recherche de fiche — donc une requête vers Odoo, donc **une ligne d'audit
+portant le numéro de l'appelant**, conservée aussi longtemps que le reste.
+L'avis d'information promettait pourtant « rien en dehors de la plage horaire
+indiquée dans les réglages ». Le filtre est désormais appliqué aux deux
+chemins. C'est le genre d'écart qui ne se voit pas : rien ne remonte, tout
+semble conforme, et la trace est ailleurs.
 
-⚠️ **Ce que cette décision ne règle pas.** Le CORRESPONDANT, lui, peut être un
-particulier appelant depuis son mobile personnel. Ce n'est plus une question de
-vie privée du salarié, c'est celle de la conservation et de l'effacement —
+### Le marquage « appel privé », et ce qu'il fallait dire à la place
+
+**Pas de marquage « appel privé »** — décision du 2026-08-09, maintenue. Le
+raisonnement d'alors était que la ligne est professionnelle et que tous les
+appels qui y transitent le sont par définition.
+
+⚠️ **Cette prémisse est fausse, et l'avis d'information a été corrigé plutôt
+que le code** (décision du 2026-08-10). L'application lit `CallLog.Calls` sans
+filtrer sur `PHONE_ACCOUNT_ID` : en double SIM — la norme en Algérie, y compris
+sur un téléphone fourni par l'employeur — les appels de la ligne **personnelle**
+remontent aussi. Un appel au médecin à 11 h part dans le CRM et atterrit dans
+*Appels à qualifier*.
+
+Deux réponses étaient possibles : filtrer la carte SIM, ou dire la vérité.
+C'est la seconde qui a été retenue. L'avis annonce désormais « tous les appels
+de cet appareil, quelle que soit la carte SIM », et indique le seul moyen de
+tenir un appel hors du CRM : couper la capture avant de le passer. Un avis plus
+généreux que la réalité est exactement ce qui, découvert par hasard, détruit
+l'adoption — et il n'est pas conforme.
+
+Conséquence à assumer sur la proportionnalité (18-07) : la finalité reste le
+suivi commercial, mais la collecte dépasse ce périmètre par construction. C'est
+le point à rouvrir si le filtrage par SIM devient possible.
+
+⚠️ **Ce que cette décision ne règle pas non plus.** Le CORRESPONDANT peut être
+un particulier appelant depuis son mobile personnel. Ce n'est pas une question
+de vie privée du salarié, c'est celle de la conservation et de l'effacement —
 traitée au §4 et au §5.
 
 ---
@@ -88,8 +117,9 @@ traitée au §4 et au §5.
 
 | Emplacement | Contenu | Durée |
 |---|---|---|
-| Téléphone — file locale SQLite | appels non encore remis | jusqu'à remise, puis conservés en base locale sans purge |
-| Téléphone — cache de fiches | nom, société, étape, dernière note | 30 minutes |
+| Téléphone — file locale SQLite | appels remis et non remis | `CALL_TRACKER_RETENTION_DAYS` relayée par le serveur, plus un plafond dur de 500 lignes. Les appels **non remis** ne sont jamais purgés : la copie locale est tout ce qu'il en reste |
+| Téléphone — cache de fiches | nom, société, étape, dernière note | 30 minutes, et **vidé au changement de jeton ou de serveur** |
+| Téléphone — cache des appels à passer | client, résumé, échéance | jusqu'au rafraîchissement suivant, et **vidé au changement de jeton ou de serveur** |
 | Odoo — `call.tracker.log` | l'appel et sa note | `CALL_TRACKER_RETENTION_DAYS` |
 | Odoo — `call.tracker.audit` | accès en lecture et en écriture | `CALL_TRACKER_RETENTION_DAYS` |
 | Odoo — fil de discussion CRM | la note, recopiée | **indéfinie** |
@@ -193,6 +223,41 @@ ce soit.
 téléphone d'entreprise géré, c'est le MDM qui le fait ; sinon, la révocation
 plus l'expiration du cache sont tout ce dont on dispose.
 
+⚠️ **Correction du 2026-08-10 — la purge promise ici n'existait pas.** Ce
+paragraphe s'appuyait sur « l'expiration du cache » ; en réalité `vider()`
+n'était appelé de nulle part, et la péremption ne fait qu'IGNORER les entrées
+sans les effacer. Un téléphone révoqué conservait donc en clair tout le carnet
+consulté depuis l'installation, notes commerciales comprises. Les deux caches
+sont désormais effacés dès que le jeton ou l'adresse du serveur change — ce qui
+couvre la réaffectation d'un téléphone à un autre commercial, mais **pas** le
+vol : un appareil qu'on ne touche plus ne reçoit aucun nouveau réglage. Pour
+celui-là, il n'y a toujours que le MDM.
+
+### Le responsable voit tout, et l'avis le dit maintenant
+
+La règle d'enregistrement du groupe Responsable est `[(1, '=', 1)]` : **tous**
+les appels de l'instance, pas ceux de son équipe. Le modèle ne porte aucun
+`team_id`, donc un cloisonnement par équipe n'est pas seulement absent, il
+n'est pas exprimable en l'état.
+
+L'avis d'information annonçait « votre responsable, sur ceux de son équipe ».
+Corrigé le 2026-08-10 : il annonce désormais « les responsables des ventes, sur
+l'ensemble des appels du CRM ». Restreindre réellement la règle suppose
+d'ajouter `team_id` au modèle et de le renseigner à la création — c'est un
+chantier, pas un correctif, et il est listé au §8.
+
+### Ce que le journal d'audit ne couvre pas
+
+Les cinq routes mobiles tracent chaque lecture. **Aucune lecture faite depuis
+Odoo ne l'est** : `read()` n'est surchargé nulle part, donc un responsable qui
+filtre la liste des appels et l'exporte ne laisse aucune trace dans
+`call.tracker.audit`.
+
+L'avis affirmait « chaque consultation est elle-même journalisée, y compris
+celles de votre responsable » — c'est-à-dire précisément le cas non couvert.
+Corrigé le 2026-08-10 : il distingue désormais les consultations faites depuis
+l'application, journalisées, de celles faites dans le CRM, qui ne le sont pas.
+
 ### ⚠️ L'asymétrie entre le CRM et le téléphone
 
 **Dans Odoo, tout est cloisonné** : un commercial ne voit que ses appels, sa
@@ -263,6 +328,19 @@ Le rejeu d'un appel déjà remis porte la durée lui aussi : sans cela, un
 téléphone à jour ne recevrait plus que des `duplicate` et n'apprendrait jamais
 la politique de l'instance.
 
+### L'avis est repassé en version 2
+
+L'accusé de lecture porte un **numéro de version**, et non un simple booléen
+« déjà vu », précisément pour ce cas : le 2026-08-10, trois affirmations de
+l'avis se sont révélées fausses — les cartes SIM, le périmètre du responsable,
+l'étendue du journal d'audit. Ce n'est pas une reformulation, c'est le fond qui
+change, et l'accord déjà donné portait sur un texte qui décrivait autre chose
+que ce que fait le système.
+
+Chaque commercial reverra donc l'écran à la prochaine ouverture et devra
+l'accuser à nouveau. C'est le comportement voulu, et la seule raison d'être de
+ce compteur.
+
 ### ⚠️ Ce que l'écran ne peut pas garantir
 
 La capture vit côté natif et ne dépend pas de l'application Flutter. **Un
@@ -281,11 +359,24 @@ la capture dans les réglages.
 Par ordre de ce qui bloquerait un usage réel :
 
 1. **Procédure d'effacement**, aujourd'hui manuelle et sur trois modèles.
-2. **Purge de la file locale** des appels déjà remis, côté téléphone.
-3. **Qualification en cas de vente à un tiers** : l'éditeur deviendrait
+2. **Cloisonnement par équipe** : ajouter `team_id` au modèle et le renseigner
+   à la création, pour que la règle du responsable puisse enfin dire « son
+   équipe ». En attendant, c'est l'avis qui a été aligné sur le code, et non
+   l'inverse.
+3. **Journalisation des lectures faites dans Odoo** : un `read()` surchargé, ou
+   à défaut une mention claire que seul le chemin mobile est tracé — c'est
+   aujourd'hui la seconde option qui est en place.
+4. **Filtrage par carte SIM**, qui permettrait de revenir sur la collecte des
+   appels personnels en double SIM (§3). Tant que ce n'est pas fait, l'avis
+   annonce la collecte telle qu'elle est.
+5. **Qualification en cas de vente à un tiers** : l'éditeur deviendrait
    sous-traitant, ce qui appelle un contrat de sous-traitance et une revue
    juridique complète. Hors sujet tant que l'usage reste interne, bloquant dès
    le premier client.
+
+**Réglé le 2026-08-10** : la purge de la file locale, qui figurait ici depuis
+l'origine. Elle suit la durée annoncée par le serveur, avec un plafond dur pour
+le cas où le serveur ne s'est jamais exprimé.
 
 **Réglé depuis la première version de ce document** : l'information des
 commerciaux (§7), la durée de rétention (1095 jours), la suppression de la

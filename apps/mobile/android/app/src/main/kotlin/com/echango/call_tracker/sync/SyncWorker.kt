@@ -10,7 +10,6 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.echango.call_tracker.capture.CallLogScanner
 import com.echango.call_tracker.data.CallStore
 import com.echango.call_tracker.data.SecureSettings
 import kotlinx.coroutines.Dispatchers
@@ -25,12 +24,16 @@ import java.util.TimeZone
 import java.util.concurrent.TimeUnit
 
 /**
- * Balaie le journal d'appels, puis remet à Odoo tout ce qui est en attente.
+ * Remet à Odoo tout ce qui attend dans la file locale.
  *
- * Un seul worker pour les deux étapes : elles ont exactement le même
- * déclencheur (un appel vient de finir, ou l'utilisateur demande une
- * synchronisation), et les séparer imposerait de garantir leur ordre à travers
- * deux planifications indépendantes.
+ * ⚠️ **Ce worker ne balaie plus le journal d'appels** — c'est le rôle de
+ * [BalayageWorker], et la séparation n'est pas un rangement. Le balayage
+ * héritait ici de la contrainte réseau : hors réseau, rien n'était capturé, et
+ * la file locale — présentée partout comme le rempart — ne se remplissait
+ * qu'après le retour du réseau. Le second effet était plus retors : le
+ * balayage planifiait l'envoi différé des appels retenus pour une note, sous
+ * CE nom unique, depuis l'intérieur de CE worker en cours d'exécution — donc
+ * en `KEEP`, donc jeté. Voir [BalayageWorker] pour le détail.
  *
  * `CoroutineWorker` et non `Worker` : l'envoi est bloquant sur le réseau, et
  * WorkManager donne dix minutes avant de tuer la tâche.
@@ -41,12 +44,28 @@ class SyncWorker(
 ) : CoroutineWorker(context, parametres) {
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        CallLogScanner.balayer(applicationContext)
+        try {
+            envoyerLaFile()
+        } catch (erreur: Exception) {
+            // Sans cette enveloppe, une adresse mal formée (préférences
+            // restaurées, provisionnement automatisé) faisait échouer le
+            // worker AVANT d'avoir rien inscrit : la file ne partait pas, et
+            // l'écran n'affichait aucun motif. Le motif est ce qui manquait le
+            // plus à ce dispositif — autant ne pas le perdre là où il naît.
+            Log.e(TAG, "Envoi interrompu", erreur)
+            val message = erreur.message ?: erreur.javaClass.simpleName
+            CallStore(applicationContext).use { store ->
+                store.aEnvoyer().forEach { store.noterEchecTemporaire(it.id, message) }
+            }
+            Result.retry()
+        }
+    }
 
+    private suspend fun envoyerLaFile(): Result {
         val reglages = SecureSettings(applicationContext)
         val store = CallStore(applicationContext)
-        val aEnvoyer = store.aEnvoyer()
-        if (aEnvoyer.isEmpty()) return@withContext Result.success()
+        val aEnvoyer = store.aEnvoyer(LIMITE)
+        if (aEnvoyer.isEmpty()) return Result.success()
 
         if (!reglages.configured) {
             // Rien à réessayer tant que l'utilisateur n'a pas renseigné
@@ -55,7 +74,7 @@ class SyncWorker(
             aEnvoyer.forEach {
                 store.noterEchecTemporaire(it.id, "Adresse ou jeton non configure")
             }
-            return@withContext Result.success()
+            return Result.success()
         }
 
         val cible = URL(reglages.serverUrl.trimEnd('/') + CHEMIN)
@@ -82,7 +101,16 @@ class SyncWorker(
             }
         }
 
-        if (aReessayer) Result.retry() else Result.success()
+        if (aReessayer) return Result.retry()
+
+        // Le lot est plafonné. Sans ce réenchaînement, 180 appels accumulés
+        // pendant une coupure partaient par tranches de 50, une tranche par
+        // déclencheur — et le bandeau « 130 en attente » persistait après un
+        // appui sur « Synchroniser maintenant », ce qui se lit comme une panne.
+        if (aEnvoyer.size == LIMITE && store.nombreEnAttente() > 0) {
+            forcer(applicationContext)
+        }
+        return Result.success()
     }
 
     private fun envoyer(
@@ -178,17 +206,22 @@ class SyncWorker(
         private const val CHAMP_RETENTION = "retention_days"
         private const val TRAVAIL = "call_tracker_sync"
 
+        /** Appels remis par passage. Voir le réenchaînement dans [envoyerLaFile]. */
+        private const val LIMITE = 50
+
         /**
-         * Planifie un balayage puis un envoi.
+         * Planifie un envoi.
          *
-         * `delai` de quelques secondes après un appel : le système écrit dans
-         * `CallLog` de façon asynchrone, et lire à l'instant où le téléphone
-         * repasse au repos ne trouve rien. C'est le défaut le plus courant de
-         * ce type de capture, et il est silencieux — l'appel n'est pas
-         * journalisé, sans la moindre erreur.
+         * `KEEP` et non `REPLACE` : un envoi déjà en attente de réessai sait ce
+         * qu'il fait, et le redemander sans cesse remettrait son compteur de
+         * tentatives à zéro — on martèlerait un serveur indisponible.
          *
-         * `KEEP` et non `REPLACE` : plusieurs diffusions de PHONE_STATE pour un
-         * même appel ne doivent pas repousser indéfiniment l'échéance.
+         * ⚠️ Ne jamais appeler ceci depuis l'intérieur de ce worker : sous le
+         * même nom unique, `KEEP` voit le travail en cours comme « non
+         * terminé » et jette la demande sans rien dire. C'est le défaut qui
+         * faisait dormir le dernier appel de la journée jusqu'au lendemain.
+         * Le balayage, qui a besoin de poser ce rendez-vous, vit désormais
+         * dans un travail portant un autre nom.
          */
         fun planifier(context: Context, delaiSecondes: Long = 0) {
             val requete = OneTimeWorkRequestBuilder<SyncWorker>()

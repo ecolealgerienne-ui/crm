@@ -111,6 +111,19 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get syncBlocked => 'محظور';
+
+  @override
+  String syncBlockedWithReason(String reason) {
+    return 'محظور: $reason';
+  }
+
+  @override
+  String callsBlockedReason(String reason) {
+    return 'الخادم يرفض: $reason';
+  }
+
+  @override
   String durationSeconds(int seconds) {
     final intl.NumberFormat secondsNumberFormat =
         intl.NumberFormat.decimalPattern(localeName);
@@ -312,10 +325,14 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get noticeIntro =>
-      'هذا الهاتف أداة عمل: يرسل التطبيق مكالماتك المهنية إلى نظام إدارة العملاء الخاص بالشركة. وفيما يلي بالضبط ماذا يُرسل، ولمن، ولأي مدة.';
+      'هذا الهاتف أداة عمل: يرسل التطبيق المكالمات الصادرة والواردة على هذا الجهاز إلى نظام إدارة العملاء الخاص بالشركة. وفيما يلي بالضبط ماذا يُرسل، ولمن، ولأي مدة.';
 
   @override
   String get noticeRecordedTitle => 'ما الذي يُسجَّل';
+
+  @override
+  String get noticeRecordedAllLines =>
+      'جميع مكالمات هذا الجهاز، أيًّا كانت شريحة الاتصال المستعملة: لا يميّز التطبيق بين خط مهني وخط شخصي. ولمنع إرسال مكالمة، أوقف التسجيل من الإعدادات قبل إجرائها.';
 
   @override
   String get noticeRecordedNumber =>
@@ -354,11 +371,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get noticeWhoYou => 'أنت، على مكالماتك وحدها.';
 
   @override
-  String get noticeWhoManager => 'مسؤولك، على مكالمات فريقه.';
+  String get noticeWhoManager =>
+      'مسؤولو المبيعات، على جميع مكالمات النظام — لا على مكالمات فريقهم وحدها.';
 
   @override
   String get noticeWhoAudited =>
-      'كل عملية اطّلاع تُسجَّل بدورها، بما في ذلك اطّلاع مسؤولك.';
+      'تُسجَّل عمليات الاطّلاع التي تتم من هذا التطبيق. أما التي تتم مباشرة داخل النظام، كتصدير يقوم به مسؤولك، فلا تُسجَّل.';
 
   @override
   String get noticeHowLongTitle => 'لأي مدة';

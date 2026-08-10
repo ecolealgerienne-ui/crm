@@ -1,0 +1,135 @@
+# =============================================================================
+# Tests automatiques — EchangoCrm
+# =============================================================================
+# Il n'existait aucune intégration continue : les tests ne s'exécutaient que si
+# quelqu'un collait une commande d'un README. Pour un système dont la propriété
+# principale est d'échouer EN SILENCE — un curseur qui n'avance plus, une file
+# qui ne part pas, un rapprochement qui vise le mauvais client —, c'est le
+# point le plus rentable du chantier : les trois suites existent déjà, il
+# manquait seulement de quoi les lancer.
+#
+# Trois travaux indépendants, volontairement : un échec Odoo ne doit pas
+# masquer un échec Android, et l'inverse. Chacun dit lequel des trois plans a
+# cédé.
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+
+  odoo:
+    name: Addon Odoo
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: odoo
+          POSTGRES_PASSWORD: odoo
+          POSTGRES_DB: postgres
+        options: >-
+          --health-cmd "pg_isready -U odoo"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lancer la suite du module
+        # `--test-tags=/call_tracker` n'est pas optionnel : sans lui,
+        # `--test-enable` lance les 2296 tests de tous les modules installés,
+        # dont des parcours navigateur qui échouent dans un conteneur sans
+        # `websocket-client`. On croirait alors avoir cassé quelque chose.
+        #
+        # `--log-handler=odoo.tests:INFO` non plus : les résultats sont
+        # journalisés en INFO, et `--log-level=warn` seul ne montre RIEN, pas
+        # même le succès.
+        #
+        # ⚠️ CALL_TRACKER_RETENTION_DAYS reste à 0 — « aucune purge ». C'est ce
+        # que teste `test_horodatage.test_la_purge_desactivee_ne_ferme_pas_la_route`,
+        # et le poser à autre chose ici retirerait sa raison d'être à ce test.
+        run: |
+          docker run --rm --network host \
+            -v "${{ github.workspace }}/addons:/mnt/extra-addons:ro" \
+            -e HOST=127.0.0.1 -e PORT=5432 -e USER=odoo -e PASSWORD=odoo \
+            -e CALL_TRACKER_RETENTION_DAYS=0 \
+            -e CALL_TRACKER_SEARCH_SCOPE=all \
+            odoo:19 odoo \
+            --database=call_tracker_ci --init=call_tracker \
+            --test-enable --test-tags=/call_tracker --stop-after-init \
+            --log-level=warn --log-handler=odoo.tests:INFO 2>&1 | tee sortie.log
+          # Odoo rend 0 même quand des tests échouent : c'est le journal qui
+          # fait foi. Sans cette ligne, la CI serait verte sur une suite rouge.
+          grep -q "0 failed, 0 error(s)" sortie.log
+
+  flutter:
+    name: Interface Flutter
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      # Les AppLocalizations sont versionnées, mais ce sont des DÉRIVÉS des
+      # `.arb`. Les régénérer ici fait échouer la CI quand quelqu'un modifie
+      # une traduction sans relancer `flutter gen-l10n` — un décalage qui, sans
+      # cette étape, ne se verrait qu'à l'exécution sur le téléphone.
+      - run: flutter gen-l10n
+
+      - run: flutter analyze
+
+      - run: flutter test
+
+  android:
+    name: Capture Android
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      # C'est la moitié du système qui échoue en silence, et elle n'a longtemps
+      # eu aucun test : la file, le curseur, la plage horaire, la purge locale.
+      # Les quatre défauts les plus coûteux de la revue du 2026-08-10 étaient
+      # tous ici.
+      - name: Tests unitaires Kotlin
+        working-directory: apps/mobile/android
+        run: ./gradlew :app:testDebugUnitTest
+
+      - name: Rapport en cas d'échec
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapport-tests-android
+          path: apps/mobile/build/app/reports/tests/testDebugUnitTest

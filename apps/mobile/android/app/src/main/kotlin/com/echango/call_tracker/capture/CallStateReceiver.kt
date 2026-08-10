@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.telephony.TelephonyManager
 import android.util.Log
-import com.echango.call_tracker.sync.SyncWorker
 
 /**
  * Détecte la fin d'un appel et déclenche la lecture du journal.
@@ -56,7 +55,7 @@ class CallStateReceiver : BroadcastReceiver() {
         if (!appelTermine) return
 
         Log.i(TAG, "Fin d'appel detectee, balayage planifie")
-        SyncWorker.planifier(context, delaiSecondes = DELAI_ECRITURE_JOURNAL)
+        BalayageWorker.planifier(context, delaiSecondes = DELAI_ECRITURE_JOURNAL)
     }
 
     private companion object {
@@ -65,13 +64,18 @@ class CallStateReceiver : BroadcastReceiver() {
         /**
          * Laisse au système le temps d'écrire l'appel dans `CallLog`.
          *
-         * Cinq secondes : l'écriture est quasi immédiate sur la plupart des
-         * appareils, mais peut traîner sur les surcouches constructeur. Le
-         * délai est sans conséquence sur le résultat — un appel manqué par ce
-         * balayage-ci sera rattrapé par le suivant, le curseur
-         * `lastScanMillis` ne progressant que sur ce qui a été lu.
+         * Quinze secondes : l'écriture est quasi immédiate sur la plupart des
+         * appareils, mais peut traîner sur les surcouches constructeur, et
+         * certaines complètent la ligne en deux temps — insérée au décrochage
+         * avec une durée nulle, mise à jour au raccrochage. Lire trop tôt
+         * figerait la durée à zéro, que l'index unique (numéro, début)
+         * empêcherait ensuite de corriger.
+         *
+         * Le délai est sans conséquence sur le résultat : un appel manqué par
+         * ce balayage-ci sera rattrapé par le suivant, le curseur
+         * `lastScanMillis` gardant désormais une marge de recouvrement.
          */
-        const val DELAI_ECRITURE_JOURNAL = 5L
+        const val DELAI_ECRITURE_JOURNAL = 15L
 
         /**
          * État précédent, en mémoire de processus.

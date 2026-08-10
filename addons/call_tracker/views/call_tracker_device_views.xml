@@ -5,13 +5,16 @@
         <field name="name">call.tracker.device.list</field>
         <field name="model">call.tracker.device</field>
         <field name="arch" type="xml">
-            <list string="Appareils">
+            <list string="Appareils"
+                  decoration-warning="silencieux"
+                  decoration-muted="not active">
                 <field name="name"/>
                 <field name="user_id"/>
                 <field name="log_count" string="Appels"/>
                 <field name="device_model"/>
                 <field name="os_version"/>
                 <field name="last_seen"/>
+                <field name="silencieux" column_invisible="True"/>
                 <field name="active" column_invisible="True"/>
             </list>
         </field>
@@ -23,8 +26,12 @@
         <field name="arch" type="xml">
             <form string="Appareil">
                 <header>
+                    <!-- Le responsable a cet écran en lecture seule : lui
+                         montrer un bouton qui échouera sur un refus de droits
+                         serait pire que ne pas le montrer. -->
                     <button name="action_generer_jeton" type="object"
                             string="Générer un jeton" class="btn-primary"
+                            groups="base.group_system"
                             invisible="not id"
                             confirm="Générer un nouveau jeton révoque immédiatement le précédent : l'appareil ne pourra plus remonter d'appel tant que le nouveau jeton n'y est pas saisi. Continuer ?"/>
                 </header>
@@ -53,6 +60,41 @@
                     </div>
                 </sheet>
             </form>
+        </field>
+    </record>
+
+    <!-- Sans vue recherche, un appareil révoqué (donc archivé) disparaissait
+         de la liste sans aucun moyen de le retrouver ni de le rétablir. -->
+    <record id="view_call_tracker_device_search" model="ir.ui.view">
+        <field name="name">call.tracker.device.search</field>
+        <field name="model">call.tracker.device</field>
+        <field name="arch" type="xml">
+            <search string="Appareils">
+                <field name="name"/>
+                <field name="user_id"/>
+                <field name="device_model"/>
+                <!-- Seuil aligné sur SILENCE_JOURS du modèle : il ne peut pas
+                     s'exprimer via le champ calculé, qui n'est pas stocké et
+                     ne se cherche donc pas. Les deux sont à changer ensemble. -->
+                <filter name="silencieux" string="Silencieux depuis 3 jours"
+                        domain="['|',
+                                 ('last_seen', '=', False),
+                                 ('last_seen', '&lt;', (datetime.datetime.now() - datetime.timedelta(days=3)).strftime('%Y-%m-%d %H:%M:%S'))]"/>
+                <filter name="jamais_vu" string="N'a jamais rien envoyé"
+                        domain="[('last_seen', '=', False)]"/>
+                <separator/>
+                <filter name="inactif" string="Révoqués"
+                        domain="[('active', '=', False)]"/>
+                <separator/>
+                <!-- Filtres de regroupement à plat : voir le commentaire de la
+                     vue recherche des appels. Le RelaxNG d'Odoo 19 rejette
+                     `<group expand="0">` dans une vue recherche, et l'échec
+                     est à l'INSTALLATION du module, pas à l'affichage. -->
+                <filter name="par_commercial" string="Commercial"
+                        context="{'group_by': 'user_id'}"/>
+                <filter name="par_modele" string="Modèle d'appareil"
+                        context="{'group_by': 'device_model'}"/>
+            </search>
         </field>
     </record>
 

@@ -275,16 +275,39 @@ invisibles depuis la fiche client.
 
 ## 8. Ce qui est éprouvé, et comment
 
-197 tests Odoo, 44 tests Flutter, 0 échec.
+287 tests Odoo, 44 tests Flutter, **29 tests Kotlin**, 0 échec. Les trois
+suites tournent à chaque poussée (`.github/workflows/tests.yml`).
 
 Chaîne validée de bout en bout sur émulateur **et sur un téléphone réel**
 (OnePlus 7 Pro, Android 12, 2026-08-10) : appel → capture → file → Wi-Fi →
 Odoo → rattachement au bon contact → note → retour au Caller ID.
 
+### Le déséquilibre corrigé le 2026-08-10
+
+Jusqu'à cette date, **la couche Kotlin n'avait aucun test** : 2 084 lignes,
+dont la file, le curseur de balayage, la classification des erreurs et le
+stockage du jeton. Les tests Dart s'arrêtaient au `MethodChannel`, qu'ils
+remplacent par un mock.
+
+Ce n'était pas une lacune répartie au hasard. Les 262 tests existants
+couvraient la moitié du système qui échoue **bruyamment** — codes HTTP,
+contraintes, droits — et zéro couvrait celle qui échoue **en silence**. Une
+revue en six volets a trouvé quatre défauts critiques ; les quatre étaient
+côté Kotlin, aucun n'était visible à l'écran, et chacun aurait été pris par un
+test unitaire pur :
+
+| Défaut | Ce que voyait l'utilisateur |
+|---|---|
+| Le balayage héritait de la contrainte réseau du worker d'envoi | Hors réseau, rien n'était capturé — alors que la file locale est présentée comme le rempart |
+| Le rendez-vous d'envoi différé était jeté par `KEEP` | Le dernier appel de la journée dormait jusqu'au lendemain |
+| Le curseur avançait jusqu'au présent | Un appel long apparu derrière un appel court n'était jamais lu |
+| Un curseur parti dans le futur ne redescendait jamais | Capture morte définitivement, « Tout est synchronisé » à l'écran |
+
 **Ce qu'aucun banc ne dira** : la survie en arrière-plan sur plusieurs jours.
 On sait déjà qu'OxygenOS gèle l'application écran éteint — observé douze
-secondes après l'installation. Le design se rattrape au réveil, donc le risque
-est le **retard**, pas la perte. L'ampleur de ce retard reste à mesurer.
+secondes après l'installation. Le balayage périodique de quinze minutes et la
+relance à l'ouverture sont les deux filets posés depuis ; leur efficacité
+réelle reste à mesurer sur le terrain.
 
 ---
 

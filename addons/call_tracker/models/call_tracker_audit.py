@@ -36,6 +36,11 @@ class CallTrackerAudit(models.Model):
             ('invalid', "Charge utile refusée"),
             ('too_short', "Refusé — fragment trop court"),
             ('unauthorized', "Refusé — jeton"),
+            # Jeton valide, mais qui vise l'appel d'un autre appareil. Ne
+            # devrait jamais apparaître : un `client_event_id` est un UUID.
+            # S'il apparaît, c'est qu'on cherche à écrire dans le fil d'un
+            # client au nom de quelqu'un d'autre.
+            ('forbidden', "Refusé — appareil étranger à l'appel"),
         ],
         required=True,
         index=True,

@@ -141,11 +141,33 @@ class CallStore(context: Context) : SQLiteOpenHelper(context, NOM, null, VERSION
     fun parId(id: Long): CallEvent? =
         lire("id = ?", arrayOf(id.toString()), "id DESC", 1).firstOrNull()
 
-    /** Attache la note et libère l'appel : il part à la prochaine occasion. */
+    /**
+     * Attache la note et libère l'appel : il part à la prochaine occasion.
+     *
+     * ⚠️ Repasse en attente un appel DÉJÀ REMIS, et ce n'est pas un détail de
+     * confort. La retenue de deux minutes qui laisse le temps d'écrire est du
+     * même ordre de grandeur que le temps qu'on met à écrire : le commercial
+     * qui valide sa note quelques secondes trop tard la voyait enregistrée en
+     * base locale, affichée dans sa liste, confirmée par un « Note
+     * enregistrée » — et jamais remontée, puisque seuls les `pending` sont
+     * envoyés. La perte était silencieuse, et la fenêtre tombe pile au moment
+     * où le commercial agit.
+     *
+     * Le serveur accepte désormais la note en complément d'un appel déjà reçu,
+     * sans rien écraser. Le renvoi est donc sûr : il répond « duplicate » et
+     * ne fait qu'ajouter ce qui manquait.
+     */
     fun enregistrerNote(id: Long, note: String?) {
+        // Cadré sur `sent` : un appel en échec DÉFINITIF (horodatage aberrant,
+        // charge refusée) ne doit pas être ressuscité par une note — il
+        // repartirait pour être refusé à l'identique, en boucle.
         writableDatabase.execSQL(
-            "UPDATE $TABLE SET note = ?, awaiting_note_until = 0 WHERE id = ?",
-            arrayOf(note?.take(1000), id),
+            "UPDATE $TABLE SET note = ?, awaiting_note_until = 0, " +
+                "sync_status = CASE " +
+                "WHEN sync_status = ? AND ? IS NOT NULL AND ? <> '' THEN ? " +
+                "ELSE sync_status END " +
+                "WHERE id = ?",
+            arrayOf(note?.take(1000), ENVOYE, note, note, EN_ATTENTE, id),
         )
     }
 
@@ -158,6 +180,41 @@ class CallStore(context: Context) : SQLiteOpenHelper(context, NOM, null, VERSION
 
     fun derniers(limite: Int = 200): List<CallEvent> =
         lire(null, null, "started_at_millis DESC", limite)
+
+    /**
+     * Efface les appels déjà remis et sortis de la durée de conservation.
+     *
+     * L'écran d'information annonce « les appels sont effacés automatiquement
+     * au bout de N jours ». C'était vrai côté Odoo et faux sur le téléphone :
+     * rien n'était jamais supprimé ici. Un commercial à trente appels par jour
+     * accumulait onze mille lignes par an — numéros et notes comprises — dans
+     * un SQLite non chiffré, sur un appareil qui se perd. La durée venait
+     * pourtant du serveur et dormait déjà dans les réglages.
+     *
+     * ⚠️ Seuls les `sent` sont effacés. Un appel encore en file n'a pas été
+     * remis : le purger le ferait disparaître pour de bon, alors que la copie
+     * locale est justement tout ce qui en reste.
+     *
+     * Le plafond dur s'applique même sans rétention connue : la base ne doit
+     * pas croître sans fin parce que le serveur n'a jamais répondu.
+     */
+    fun purger(jours: Int, plafond: Int = PLAFOND_LIGNES) {
+        if (jours > 0) {
+            val limite = System.currentTimeMillis() - jours * 24L * 60 * 60 * 1000
+            writableDatabase.execSQL(
+                "DELETE FROM $TABLE WHERE sync_status = ? AND started_at_millis < ?",
+                arrayOf(ENVOYE, limite),
+            )
+        }
+        writableDatabase.execSQL(
+            """
+            DELETE FROM $TABLE WHERE sync_status = ? AND id NOT IN (
+                SELECT id FROM $TABLE ORDER BY started_at_millis DESC LIMIT ?
+            )
+            """.trimIndent(),
+            arrayOf(ENVOYE, plafond),
+        )
+    }
 
     fun nombreEnAttente(): Int {
         readableDatabase.rawQuery(
@@ -246,6 +303,14 @@ class CallStore(context: Context) : SQLiteOpenHelper(context, NOM, null, VERSION
         const val EN_ATTENTE = "pending"
         const val ENVOYE = "sent"
         const val ECHEC = "failed"
+
+        /**
+         * Appels déjà remis conservés au maximum, rétention ou non.
+         *
+         * L'écran Appels n'en affiche que 200 : au-delà, ces lignes ne servent
+         * plus qu'à faire grossir un fichier que personne ne consulte.
+         */
+        const val PLAFOND_LIGNES = 500
 
         const val ENTRANT = "inbound"
         const val SORTANT = "outbound"

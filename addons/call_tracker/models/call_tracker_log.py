@@ -210,6 +210,14 @@ class CallTrackerLog(models.Model):
         string="Délai de remise (min)",
         compute='_compute_delivery_lag',
         store=True,
+        # ⚠️ `avg` et non la somme, qui est le défaut d'Odoo pour un entier.
+        # Sommé, ce champ croît mécaniquement avec le nombre d'appels : le
+        # commercial le plus actif porterait le plus gros total et serait
+        # désigné comme celui dont le téléphone décroche — l'inverse exact du
+        # signal cherché. C'est la mesure que `REPORTING_KPI.md` pose comme
+        # préalable à toute comparaison entre personnes ; elle ne vaut qu'en
+        # moyenne, et l'interface pivot ne permet pas de le choisir à la main.
+        aggregator='avg',
         help="Minutes écoulées entre l'appel et son arrivée dans Odoo.",
     )
 
@@ -372,6 +380,33 @@ class CallTrackerLog(models.Model):
                 # doit dire QUI a passé l'appel.
                 author_id=appel.user_id.partner_id.id or False,
             )
+
+    def completer_note(self, note):
+        """Ajoute une note à un appel déjà remis. Retourne True si elle a pris.
+
+        Le rejeu d'un ``client_event_id`` déjà connu répondait « duplicate » et
+        jetait la charge utile sans la lire. C'était juste pour tous les champs
+        — l'appel est un fait, il ne se réécrit pas — sauf pour un seul : la
+        note arrive légitimement APRÈS. La retenue de deux minutes qui laisse
+        le temps de l'écrire est du même ordre de grandeur que le temps qu'on
+        met à l'écrire ; le commercial qui valide sa note quelques secondes
+        trop tard la voyait acceptée par le téléphone, affichée dans sa liste,
+        et jamais remontée. La perte était silencieuse des deux côtés.
+
+        Le complément est **monotone** : il ne remplit que le vide, n'écrase
+        jamais et n'efface jamais. Un rejeu reste donc sans effet, et deux
+        envois concurrents ne peuvent pas se contredire — c'est ce qui permet
+        de le faire sur un chemin conçu pour être rejoué.
+        """
+        self.ensure_one()
+        if self.note or not note:
+            return False
+        self.sudo().note = note
+        # La note est ce qui vaut d'être relu avant de décrocher : sans cette
+        # publication, elle vivrait sur l'appel sans jamais atteindre le fil du
+        # client ni le Caller ID, soit les deux endroits où elle sert.
+        self._publier_note()
+        return True
 
     def _resume_sans_note(self):
         """Corps du message pour un appel sans note : durée et issue.
@@ -578,18 +613,37 @@ class CallTrackerLog(models.Model):
     def _compatible(self, enregistrement, numero):
         """L'un des numéros de cet enregistrement peut-il être `numero` ?
 
-        Faux uniquement quand TOUS ses numéros portent un indicatif pays qui
+        Faux uniquement quand tout ce qu'on SAIT du pays de cet enregistrement
         contredit celui de `numero`. Voir `pays_incompatibles`.
+
+        ⚠️ Le tri entre formes internationales et nationales n'est pas une
+        élégance : sans lui, ce garde-fou ne mord pas sur les fiches les mieux
+        tenues. `COLONNES_TELEPHONE` contient à la fois `phone`, souvent saisi
+        en national (`0555123456`), et `phone_sanitized`, qu'Odoo calcule en
+        E.164 dès que la fiche porte un pays (`+213555123456`). Le même numéro
+        est donc présent deux fois, sous deux formes — et la forme nationale
+        répond toujours « compatible », puisqu'on ne peut rien déduire de son
+        pays. Un `any` sur l'ensemble suffisait à faire passer un appel de
+        Dubaï pour un client algérien : exactement le défaut que ce garde-fou
+        ferme. Constaté à la relecture le 2026-08-10, non couvert par les
+        tests d'origine, qui créaient tous la fiche sans pays.
+
+        Seules les formes qui PORTENT une information de pays ont donc voix au
+        chapitre. Quand il n'y en a aucune, ou quand c'est l'appel qui est
+        national, on ne sait rien et on ne refuse rien — c'est la règle
+        d'origine, et c'est elle qui permet à une fiche saisie `0555123456` de
+        retrouver un `+213555123456` remonté du téléphone.
         """
-        if not numero:
+        if not numero or not est_international(numero):
             return True
         valeurs = [
             enregistrement[c] for c in COLONNES_TELEPHONE
             if c in enregistrement._fields and enregistrement[c]
         ]
-        if not valeurs:
+        connus = [v for v in valeurs if est_international(v)]
+        if not connus:
             return True
-        return any(not pays_incompatibles(numero, v) for v in valeurs)
+        return any(not pays_incompatibles(numero, v) for v in connus)
 
     @api.model
     def _chercher_partenaire(self, cle, numero=None):

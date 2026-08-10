@@ -49,6 +49,27 @@
       }
     }
   },
+  "syncBlocked": "Bloqué",
+  "@syncBlocked": {
+    "description": "Appel en attente dont l'envoi a échoué pour une raison que l'attente ne résoudra pas : jeton refusé, adresse absente. Distinct de « En attente », qui se résout tout seul."
+  },
+  "syncBlockedWithReason": "Bloqué : {reason}",
+  "@syncBlockedWithReason": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "callsBlockedReason": "Le serveur refuse : {reason}",
+  "@callsBlockedReason": {
+    "description": "Sous le compteur d'appels en attente. Sans cette ligne, le commercial voit un compteur qui monte, appuie sur « Synchroniser maintenant » sans effet, et n'a aucun moyen d'apprendre que son jeton est refusé.",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
   "durationSeconds": "{seconds} s",
   "@durationSeconds": {
     "description": "⚠️ `format: decimalPattern` est indispensable, pas décoratif. Sans lui, intl rend l'entier par toString() : l'arabe affiche « 8 ث » en chiffres latins juste à côté d'une date en chiffres arabes (٩ أغسطس ٢٠٢٦), que DateFormat localise, lui. Constaté à l'écran le 2026-08-09.",
@@ -138,8 +159,12 @@
   "screeningAction": "Accorder le rôle",
   "screeningGranted": "Numéro entrant accessible",
   "noticeTitle": "Ce que cette application enregistre",
-  "noticeIntro": "Ce téléphone est un outil de travail : l'application transmet vos appels professionnels au CRM de l'entreprise. Voici exactement quoi, pour qui, et pendant combien de temps.",
+  "noticeIntro": "Ce téléphone est un outil de travail : l'application transmet au CRM de l'entreprise les appels passés et reçus sur cet appareil. Voici exactement quoi, pour qui, et pendant combien de temps.",
+  "@noticeIntro": {
+    "description": "⚠️ Ne dit plus « vos appels professionnels ». L'application lit le journal d'appels du système sans filtrer sur la carte SIM : en double SIM, les appels de la ligne personnelle remontent aussi. Promettre le contraire rendait l'avis faux sur le point qui touche le plus le commercial. Corrigé le 2026-08-10 — décision de dire la vérité plutôt que de filtrer la SIM."
+  },
   "noticeRecordedTitle": "Ce qui est enregistré",
+  "noticeRecordedAllLines": "Tous les appels de cet appareil, quelle que soit la carte SIM : l'application ne distingue pas une ligne professionnelle d'une ligne personnelle. Pour qu'un appel ne remonte pas, coupez la capture dans les réglages avant de le passer.",
   "noticeRecordedNumber": "Le numéro appelé, ou celui qui vous appelle.",
   "noticeRecordedWhen": "La date, l'heure et la durée de l'appel.",
   "noticeRecordedDirection": "Le sens de l'appel : entrant, sortant ou manqué.",
@@ -150,8 +175,14 @@
   "noticeNotRecordedHours": "Rien en dehors de la plage horaire indiquée dans les réglages.",
   "noticeWhoTitle": "Qui peut les lire",
   "noticeWhoYou": "Vous, sur vos propres appels.",
-  "noticeWhoManager": "Votre responsable, sur ceux de son équipe.",
-  "noticeWhoAudited": "Chaque consultation est elle-même journalisée, y compris celles de votre responsable.",
+  "noticeWhoManager": "Les responsables des ventes, sur l'ensemble des appels du CRM — et non sur ceux de leur seule équipe.",
+  "@noticeWhoManager": {
+    "description": "⚠️ Disait « sur ceux de son équipe ». La règle d'enregistrement du responsable est [(1,'=',1)] : tous les appels de l'instance. Le modèle ne porte aucun team_id, donc le cloisonnement par équipe n'est pas seulement absent, il n'est pas exprimable en l'état. Un avis plus généreux que la réalité est exactement ce qui, découvert par hasard, détruit la confiance."
+  },
+  "noticeWhoAudited": "Les consultations faites depuis cette application sont journalisées. Celles faites directement dans le CRM, par exemple un export par votre responsable, ne le sont pas.",
+  "@noticeWhoAudited": {
+    "description": "⚠️ Disait « chaque consultation est journalisée, y compris celles de votre responsable ». Les appels à tracer() sont tous dans le contrôleur mobile ; read() n'est surchargé nulle part. Le cas que la phrase existait pour couvrir — le responsable qui filtre et exporte depuis Odoo — était précisément le seul non couvert."
+  },
   "noticeHowLongTitle": "Combien de temps",
   "noticeRetentionDays": "Les appels sont effacés automatiquement au bout de {days, plural, =1{un jour} other{{days} jours}}",
   "@noticeRetentionDays": {

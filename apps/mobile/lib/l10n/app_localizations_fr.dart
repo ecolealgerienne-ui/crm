@@ -108,6 +108,19 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get syncBlocked => 'Bloqué';
+
+  @override
+  String syncBlockedWithReason(String reason) {
+    return 'Bloqué : $reason';
+  }
+
+  @override
+  String callsBlockedReason(String reason) {
+    return 'Le serveur refuse : $reason';
+  }
+
+  @override
   String durationSeconds(int seconds) {
     final intl.NumberFormat secondsNumberFormat =
         intl.NumberFormat.decimalPattern(localeName);
@@ -312,10 +325,14 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get noticeIntro =>
-      'Ce téléphone est un outil de travail : l\'application transmet vos appels professionnels au CRM de l\'entreprise. Voici exactement quoi, pour qui, et pendant combien de temps.';
+      'Ce téléphone est un outil de travail : l\'application transmet au CRM de l\'entreprise les appels passés et reçus sur cet appareil. Voici exactement quoi, pour qui, et pendant combien de temps.';
 
   @override
   String get noticeRecordedTitle => 'Ce qui est enregistré';
+
+  @override
+  String get noticeRecordedAllLines =>
+      'Tous les appels de cet appareil, quelle que soit la carte SIM : l\'application ne distingue pas une ligne professionnelle d\'une ligne personnelle. Pour qu\'un appel ne remonte pas, coupez la capture dans les réglages avant de le passer.';
 
   @override
   String get noticeRecordedNumber =>
@@ -354,11 +371,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get noticeWhoYou => 'Vous, sur vos propres appels.';
 
   @override
-  String get noticeWhoManager => 'Votre responsable, sur ceux de son équipe.';
+  String get noticeWhoManager =>
+      'Les responsables des ventes, sur l\'ensemble des appels du CRM — et non sur ceux de leur seule équipe.';
 
   @override
   String get noticeWhoAudited =>
-      'Chaque consultation est elle-même journalisée, y compris celles de votre responsable.';
+      'Les consultations faites depuis cette application sont journalisées. Celles faites directement dans le CRM, par exemple un export par votre responsable, ne le sont pas.';
 
   @override
   String get noticeHowLongTitle => 'Combien de temps';

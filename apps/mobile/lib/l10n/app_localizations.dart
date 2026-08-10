@@ -262,6 +262,24 @@ abstract class AppLocalizations {
   /// **'Échec : {reason}'**
   String syncFailedWithReason(String reason);
 
+  /// Appel en attente dont l'envoi a échoué pour une raison que l'attente ne résoudra pas : jeton refusé, adresse absente. Distinct de « En attente », qui se résout tout seul.
+  ///
+  /// In fr, this message translates to:
+  /// **'Bloqué'**
+  String get syncBlocked;
+
+  /// No description provided for @syncBlockedWithReason.
+  ///
+  /// In fr, this message translates to:
+  /// **'Bloqué : {reason}'**
+  String syncBlockedWithReason(String reason);
+
+  /// Sous le compteur d'appels en attente. Sans cette ligne, le commercial voit un compteur qui monte, appuie sur « Synchroniser maintenant » sans effet, et n'a aucun moyen d'apprendre que son jeton est refusé.
+  ///
+  /// In fr, this message translates to:
+  /// **'Le serveur refuse : {reason}'**
+  String callsBlockedReason(String reason);
+
   /// ⚠️ `format: decimalPattern` est indispensable, pas décoratif. Sans lui, intl rend l'entier par toString() : l'arabe affiche « 8 ث » en chiffres latins juste à côté d'une date en chiffres arabes (٩ أغسطس ٢٠٢٦), que DateFormat localise, lui. Constaté à l'écran le 2026-08-09.
   ///
   /// In fr, this message translates to:
@@ -610,10 +628,10 @@ abstract class AppLocalizations {
   /// **'Ce que cette application enregistre'**
   String get noticeTitle;
 
-  /// No description provided for @noticeIntro.
+  /// ⚠️ Ne dit plus « vos appels professionnels ». L'application lit le journal d'appels du système sans filtrer sur la carte SIM : en double SIM, les appels de la ligne personnelle remontent aussi. Promettre le contraire rendait l'avis faux sur le point qui touche le plus le commercial. Corrigé le 2026-08-10 — décision de dire la vérité plutôt que de filtrer la SIM.
   ///
   /// In fr, this message translates to:
-  /// **'Ce téléphone est un outil de travail : l\'application transmet vos appels professionnels au CRM de l\'entreprise. Voici exactement quoi, pour qui, et pendant combien de temps.'**
+  /// **'Ce téléphone est un outil de travail : l\'application transmet au CRM de l\'entreprise les appels passés et reçus sur cet appareil. Voici exactement quoi, pour qui, et pendant combien de temps.'**
   String get noticeIntro;
 
   /// No description provided for @noticeRecordedTitle.
@@ -621,6 +639,12 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Ce qui est enregistré'**
   String get noticeRecordedTitle;
+
+  /// No description provided for @noticeRecordedAllLines.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tous les appels de cet appareil, quelle que soit la carte SIM : l\'application ne distingue pas une ligne professionnelle d\'une ligne personnelle. Pour qu\'un appel ne remonte pas, coupez la capture dans les réglages avant de le passer.'**
+  String get noticeRecordedAllLines;
 
   /// No description provided for @noticeRecordedNumber.
   ///
@@ -682,16 +706,16 @@ abstract class AppLocalizations {
   /// **'Vous, sur vos propres appels.'**
   String get noticeWhoYou;
 
-  /// No description provided for @noticeWhoManager.
+  /// ⚠️ Disait « sur ceux de son équipe ». La règle d'enregistrement du responsable est [(1,'=',1)] : tous les appels de l'instance. Le modèle ne porte aucun team_id, donc le cloisonnement par équipe n'est pas seulement absent, il n'est pas exprimable en l'état. Un avis plus généreux que la réalité est exactement ce qui, découvert par hasard, détruit la confiance.
   ///
   /// In fr, this message translates to:
-  /// **'Votre responsable, sur ceux de son équipe.'**
+  /// **'Les responsables des ventes, sur l\'ensemble des appels du CRM — et non sur ceux de leur seule équipe.'**
   String get noticeWhoManager;
 
-  /// No description provided for @noticeWhoAudited.
+  /// ⚠️ Disait « chaque consultation est journalisée, y compris celles de votre responsable ». Les appels à tracer() sont tous dans le contrôleur mobile ; read() n'est surchargé nulle part. Le cas que la phrase existait pour couvrir — le responsable qui filtre et exporte depuis Odoo — était précisément le seul non couvert.
   ///
   /// In fr, this message translates to:
-  /// **'Chaque consultation est elle-même journalisée, y compris celles de votre responsable.'**
+  /// **'Les consultations faites depuis cette application sont journalisées. Celles faites directement dans le CRM, par exemple un export par votre responsable, ne le sont pas.'**
   String get noticeWhoAudited;
 
   /// No description provided for @noticeHowLongTitle.

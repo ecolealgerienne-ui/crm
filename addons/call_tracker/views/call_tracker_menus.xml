@@ -38,13 +38,19 @@
               action="action_call_tracker_dashboard"
               sequence="15"/>
 
-    <!-- Réservé aux administrateurs : c'est d'ici que se génèrent et se
-         révoquent les jetons. -->
+    <!-- Administrateurs en écriture — c'est d'ici que se génèrent et se
+         révoquent les jetons — et responsables EN LECTURE.
+         Le responsable est celui qui compare les commerciaux entre eux ;
+         lui fermer cet écran l'oblige à le faire sans pouvoir distinguer
+         « Farid n'a passé aucun appel » de « le téléphone de Farid n'envoie
+         plus rien depuis lundi », qui produisent exactement le même tableau.
+         Le jeton n'apparaît nulle part dans ces vues : il n'est affiché
+         qu'une fois, par l'assistant, réservé aux administrateurs. -->
     <menuitem id="menu_call_tracker_device"
               name="Appareils"
               parent="menu_call_tracker_root"
               action="action_call_tracker_device"
-              groups="base.group_system"
+              groups="base.group_system,group_call_tracker_manager"
               sequence="20"/>
 
     <menuitem id="menu_call_tracker_audit"

@@ -100,7 +100,43 @@ android {
             isShrinkResources = false
         }
     }
+
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+            isReturnDefaultValues = true
+        }
+    }
 }
+
+val preparerRobolectric by tasks.registering(Copy::class) {
+    from(robolectricRuntime)
+    into(layout.buildDirectory.dir("robolectric-runtime"))
+}
+
+tasks.withType<Test>().configureEach {
+    dependsOn(preparerRobolectric)
+    systemProperty("robolectric.offline", "true")
+    systemProperty(
+        "robolectric.dependency.dir",
+        layout.buildDirectory.dir("robolectric-runtime").get().asFile.absolutePath,
+    )
+}
+
+/**
+ * Runtime Android de Robolectric, fourni hors ligne.
+ *
+ * Robolectric telecharge normalement lui-meme le jar `android-all` au premier
+ * test, avec son propre client HTTP. Derriere un proxy TLS d'entreprise, ce
+ * client echoue sur la chaine de certificats alors que Gradle, lui, passe :
+ * les 29 tests tombaient sur `SSLHandshakeException`, ce qui ressemble a un
+ * bogue de code et n'en est pas un. On laisse donc Gradle resoudre le jar, et
+ * on met Robolectric hors ligne (voir `tasks.withType<Test>` plus bas).
+ *
+ * Effet de bord souhaitable : en CI, le runtime est mis en cache avec les
+ * autres dependances au lieu d'etre retelecharge a chaque execution.
+ */
+val robolectricRuntime: Configuration by configurations.creating
 
 dependencies {
     // Envoi differe, avec reprise et contrainte reseau. C'est le seul
@@ -120,6 +156,32 @@ dependencies {
     //
     // Pas d'OkHttp non plus : HttpURLConnection et org.json sont dans le
     // framework Android et suffisent pour un POST JSON.
+
+    // Tests unitaires sur la JVM. Robolectric fournit un vrai SQLite et de
+    // vraies SharedPreferences sans appareil ni emulateur : c'est ce qui rend
+    // testable la moitie du systeme qui echoue en SILENCE — le curseur de
+    // balayage, la file, la plage horaire. Les quatre defauts les plus couteux
+    // de la revue du 2026-08-10 etaient tous ici, et aucun n'etait couvert.
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("androidx.test:core:1.6.1")
+    // Runtime Android de Robolectric, recupere par GRADLE et non par le
+    // resolveur interne de Robolectric. Voir la configuration
+    // `robolectricRuntime` plus bas : sans cela, la premiere execution tente
+    // un telechargement qui echoue derriere un proxy TLS, et TOUS les tests
+    // tombent sur une erreur de certificat sans rapport avec ce qu'ils
+    // verifient.
+    //
+    // ⚠️ Cette version suit le `targetSdk` de l'application, que Robolectric
+    // simule par defaut : `15-…` correspond a l'API 35. Le jour ou Flutter
+    // fera monter `targetSdk`, les tests echoueront tous sur
+    // « Path is not a file: …android-all-instrumented-<N>-… » — c'est le nom
+    // du fichier attendu qu'il faudra reprendre ici, et probablement la
+    // version de Robolectric avec.
+    robolectricRuntime("org.robolectric:android-all-instrumented:15-robolectric-12650502-i7")
+    // Le balayage planifie du travail : sans WorkManager initialise, le test
+    // echouerait sur l'ordonnanceur au lieu de mesurer le curseur.
+    testImplementation("androidx.work:work-testing:2.9.1")
 }
 
 flutter {

@@ -116,6 +116,58 @@ class TestRapprochementEntrePays(HttpCase, BancCallTracker):
         appel = self.journaliser('+971555123456', 'evt-pays-5')
         self.assertEqual(appel.partner_id, emirati)
 
+    # ── La fiche bien tenue : numéro national ET pays renseigné ──────────────
+    #
+    # Le trou laissé par le premier correctif, et le plus courant en
+    # production : dès qu'une fiche porte un pays, Odoo lui calcule un
+    # `phone_sanitized` en E.164 à côté du `phone` saisi en national. Le
+    # garde-fou voyait alors deux numéros, dont un national, et la forme
+    # nationale suffisait à tout laisser passer.
+
+    def creer_fiche_nationale_avec_pays(self):
+        return self.env['res.partner'].create({
+            'name': 'Client algérien bien saisi',
+            'phone': '0555123456',
+            'country_id': self.env.ref('base.dz').id,
+        })
+
+    def test_une_fiche_nationale_avec_pays_refuse_l_appel_etranger(self):
+        """LE cas que le premier correctif ne fermait pas.
+
+        La fiche porte `0555123456` et le pays DZ ; Odoo en tire un
+        `phone_sanitized` à `+213555123456`. Un appel de Dubaï partage les 9
+        derniers chiffres. Sans le tri par forme, la présence du `0555123456`
+        national suffisait à déclarer la fiche compatible.
+        """
+        self.algerien.unlink()  # ne garder qu'une seule fiche sur la clé
+        fiche = self.creer_fiche_nationale_avec_pays()
+        self.assertTrue(
+            fiche.phone_sanitized and fiche.phone_sanitized.startswith('+213'),
+            "prérequis du test : Odoo doit avoir calculé la forme E.164",
+        )
+
+        appel = self.journaliser('+971555123456', 'evt-pays-6')
+        self.assertFalse(
+            appel.partner_id,
+            "une fiche algérienne ne doit pas capter un appel émirati, même "
+            "quand son numéro est saisi en forme nationale",
+        )
+
+    def test_la_meme_fiche_capte_toujours_son_propre_pays(self):
+        """Non-régression : le correctif ne doit rien fermer de légitime."""
+        self.algerien.unlink()
+        fiche = self.creer_fiche_nationale_avec_pays()
+
+        appel = self.journaliser('+213555123456', 'evt-pays-7')
+        self.assertEqual(appel.partner_id, fiche)
+
+    def test_la_meme_fiche_capte_toujours_un_appel_national(self):
+        self.algerien.unlink()
+        fiche = self.creer_fiche_nationale_avec_pays()
+
+        appel = self.journaliser('0555123456', 'evt-pays-8')
+        self.assertEqual(appel.partner_id, fiche)
+
     def test_la_fiche_a_la_sonnerie_applique_le_meme_filtre(self):
         """Les deux routes de lecture doivent s'accorder : afficher le client
         algérien pendant qu'un émirati appelle serait pire qu'afficher
