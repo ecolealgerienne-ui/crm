@@ -44,11 +44,17 @@ class DevProvisionReceiver : BroadcastReceiver() {
         if (intent.hasExtra("toHour")) {
             reglages.toHour = intent.getIntExtra("toHour", 24)
         }
-        // Repart de zéro : sans cela, un appel simulé avant le
-        // provisionnement resterait derrière le curseur et ne serait
-        // jamais lu.
+        // Repart du début : sans cela, un appel simulé avant le
+        // provisionnement resterait derrière le curseur et ne serait jamais lu.
+        //
+        // ⚠️ `1` et non `0`, et la différence compte. Zéro est le sentinelle
+        // « curseur jamais posé » : `CallLogScanner` le rattrape et démarre le
+        // suivi à l'instant présent, pour ne jamais verser dans le CRM
+        // l'historique d'appels d'un vrai téléphone. Un `0` ici rendrait donc
+        // ce drapeau silencieusement inopérant. `1` veut dire « avant tout »
+        // sans se confondre avec « pas encore initialisé ».
         if (intent.getBooleanExtra("resetCursor", false)) {
-            reglages.lastScanMillis = 0
+            reglages.lastScanMillis = 1
         }
 
         Log.i(

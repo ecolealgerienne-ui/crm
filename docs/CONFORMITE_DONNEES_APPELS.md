@@ -36,7 +36,31 @@ connaissent pas l'existence.
 
 ---
 
-## 2. Les trois filtres à la source
+## 2. Le passé n'est jamais collecté
+
+**Le suivi démarre à l'activation de la capture.** Le journal d'appels du
+téléphone est antérieur à l'installation ; il n'est pas remonté. Le curseur de
+balayage est posé à l'instant de l'activation, et l'application ne lit que
+ce qui vient après.
+
+Sans cette règle, la première activation verserait dans le CRM des **années**
+d'appels privés. Mesuré le 2026-08-10 sur le premier téléphone réel branché :
+**3000 appels** dans son journal, tous candidats au départ. Le défaut était
+invisible sur émulateur, dont le journal est vide.
+
+Ce n'est pas seulement de l'hygiène. L'avis affiché au commercial dit que
+« l'application transmet vos appels professionnels », **au présent** ; une
+collecte rétroactive de cette ampleur contredirait l'information donnée et ne
+serait pas proportionnée à la finalité poursuivie.
+
+Deux barrières redondantes côté application, décrites dans
+`apps/mobile/README.md` — la seconde tient l'invariant là où il est consommé,
+pour qu'aucun chemin détourné (restauration de sauvegarde, provisionnement
+automatisé) ne le contourne en silence.
+
+---
+
+## 3. Les trois filtres à la source
 
 La meilleure protection reste de ne pas collecter. Trois limites sont en
 place, et ce sont les seules que l'application applique :
@@ -56,11 +80,11 @@ prévoyait ; l'item est retiré.
 ⚠️ **Ce que cette décision ne règle pas.** Le CORRESPONDANT, lui, peut être un
 particulier appelant depuis son mobile personnel. Ce n'est plus une question de
 vie privée du salarié, c'est celle de la conservation et de l'effacement —
-traitée au §3 et au §4.
+traitée au §4 et au §5.
 
 ---
 
-## 3. Où vivent les données, et combien de temps
+## 4. Où vivent les données, et combien de temps
 
 | Emplacement | Contenu | Durée |
 |---|---|---|
@@ -90,11 +114,11 @@ le fil `mail.message` associé.
 
 **La file locale du téléphone n'est jamais purgée non plus.** Les appels déjà
 remis y restent indéfiniment, en état `sent` — une copie des mêmes données, sur
-un appareil qui se perd et se revend. Voir §6.
+un appareil qui se perd et se revend. Voir §8.
 
 ---
 
-## 4. Le réglage de rétention
+## 5. Le réglage de rétention
 
 `CALL_TRACKER_RETENTION_DAYS`, dans `.env.production` du serveur. Une tâche
 planifiée quotidienne supprime au-delà.
@@ -114,7 +138,7 @@ dans `.env.production.example`.
 
 ---
 
-## 5. Qui accède à quoi
+## 6. Qui accède à quoi
 
 | Rôle | Appels | Journal d'audit | Jetons |
 |---|---|---|---|
@@ -132,7 +156,7 @@ Tout accès, en lecture comme en écriture, laisse une trace dans
 
 ---
 
-## 6. L'information des commerciaux — fait
+## 7. L'information des commerciaux — fait
 
 Un écran d'avis s'ouvre au **premier lancement** de l'application et barre
 l'accès aux onglets tant qu'il n'a pas été lu. Il dit, dans cet ordre : ce qui
@@ -194,7 +218,7 @@ la capture dans les réglages.
 
 ---
 
-## 7. Ce qui reste à faire
+## 8. Ce qui reste à faire
 
 Par ordre de ce qui bloquerait un usage réel :
 
@@ -206,6 +230,6 @@ Par ordre de ce qui bloquerait un usage réel :
    le premier client.
 
 **Réglé depuis la première version de ce document** : l'information des
-commerciaux (§6), la durée de rétention (1095 jours), la suppression de la
+commerciaux (§7), la durée de rétention (1095 jours), la suppression de la
 création automatique de pistes, et le marquage « appel privé », écarté parce
 que la ligne est professionnelle.

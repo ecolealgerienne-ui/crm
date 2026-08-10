@@ -123,6 +123,42 @@ Trois choix qui ne se devinent pas :
 Côté Odoo, la note est publiée dans le fil de la piste, et **revient au
 Caller ID de l'appel suivant**.
 
+## Le suivi commence à l'activation, jamais avant
+
+**L'historique d'appels du téléphone n'est jamais remonté.** Le curseur de
+balayage est posé à l'instant où la capture est activée ; tout ce qui précède
+reste sur l'appareil.
+
+Deux barrières, volontairement redondantes :
+
+| Où | Quand |
+|---|---|
+| `MainActivity.saveSettings` | À chaque passage de la capture de désactivé à activé — le repère est posé là |
+| `CallLogScanner.balayer` | Filet : un curseur à `0` signifie « jamais posé ». Ce balayage-là ne remonte rien, il pose le repère et sort |
+
+La seconde existe parce que l'invariant doit tenir **là où il est consommé**.
+Une restauration de sauvegarde, des préférences recopiées ou un
+provisionnement automatisé laisseraient un zéro, et un zéro ici ne fait pas
+rien : il verse dans le CRM tout le passé téléphonique du commercial.
+
+⚠️ **Le défaut était invisible en développement** : un émulateur neuf n'a
+qu'une poignée d'appels de test. Constaté le 2026-08-10 en branchant un vrai
+téléphone — **3000 appels** dans son journal, tous candidats au départ. Il ne
+se serait vu que sur le premier téléphone de production, une fois les données
+parties.
+
+C'est aussi une exigence de conformité, pas seulement d'hygiène : l'avis
+d'information promet que « l'application transmet vos appels professionnels »,
+au présent. Une collecte rétroactive de cette ampleur ne serait pas
+proportionnée à la finalité (loi 18-07).
+
+Corollaire assumé : couper puis rallumer la capture repose le repère. Les
+appels de l'intervalle ne remontent pas — couper est un acte délibéré, le
+rallumer ne doit pas rattraper ce qu'on avait choisi de ne pas journaliser.
+
+Le drapeau de débogage `resetCursor` pose `1`, pas `0`, pour rester distinct
+du sentinelle et continuer à rejouer tout un journal d'émulateur.
+
 ## Le cache des fiches contact
 
 Une fiche trouvée est gardée **30 minutes**, un numéro inconnu **2 minutes

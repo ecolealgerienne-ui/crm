@@ -36,6 +36,22 @@ object CallLogScanner {
             return 0
         }
 
+        // Filet de sécurité sur l'invariant « on ne remonte jamais avant
+        // l'activation ». Le curseur est normalement posé à l'activation de la
+        // capture (voir MainActivity), mais un chemin oublié — restauration de
+        // sauvegarde, préférences recopiées, provisionnement automatisé —
+        // laisserait un zéro. Et un zéro ici ne fait pas rien : il verse dans
+        // le CRM tout l'historique d'appels du téléphone, vie privée comprise,
+        // sans qu'aucune erreur ne le signale.
+        //
+        // L'invariant est donc vérifié là où il est CONSOMMÉ, pas seulement là
+        // où il est établi. Ce balayage-ci ne remonte rien : il pose le repère.
+        if (reglages.lastScanMillis == 0L) {
+            reglages.lastScanMillis = System.currentTimeMillis()
+            Log.i(TAG, "Premier balayage : le suivi demarre maintenant, pas dans le passe")
+            return 0
+        }
+
         val store = CallStore(context)
         val depuis = reglages.lastScanMillis
         var plusRecent = depuis

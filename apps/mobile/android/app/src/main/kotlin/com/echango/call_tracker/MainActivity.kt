@@ -88,7 +88,34 @@ class MainActivity : FlutterActivity() {
                 // Absent = inchangé. C'est ce qui permet à l'écran de réglages
                 // de laisser le champ vide sans effacer un jeton déjà en place.
                 appel.argument<String>("token")?.let { reglages.token = it.trim() }
+
+                // ⚠️ **Le suivi commence à l'activation, jamais avant.**
+                //
+                // Le curseur de balayage vaut 0 tant qu'aucun appel n'a été lu,
+                // et le balayage interroge `DATE > curseur`. Sans cette ligne,
+                // la première activation verse dans le CRM **tout l'historique
+                // d'appels du téléphone** — des années, la vie privée du
+                // commercial comprise.
+                //
+                // Le défaut est invisible en développement : un émulateur neuf
+                // n'a qu'une poignée d'appels de test. Il ne se serait vu que
+                // sur le premier vrai téléphone, une fois les données parties.
+                //
+                // Il est aussi contraire à ce que l'avis d'information promet
+                // — « l'application transmet vos appels professionnels », au
+                // présent — et une collecte rétroactive de cette ampleur ne
+                // serait pas proportionnée à la finalité (loi 18-07).
+                //
+                // Positionné à chaque passage de désactivé à activé, pas
+                // seulement au tout premier : couper la capture est un acte
+                // délibéré, et la rallumer ne doit pas rattraper ce qu'on avait
+                // choisi de ne pas journaliser.
+                val etaitActive = reglages.captureEnabled
                 reglages.captureEnabled = appel.argument<Boolean>("captureEnabled") ?: false
+                if (!etaitActive && reglages.captureEnabled) {
+                    reglages.lastScanMillis = System.currentTimeMillis()
+                }
+
                 reglages.fromHour = appel.argument<Int>("fromHour") ?: 8
                 reglages.toHour = appel.argument<Int>("toHour") ?: 19
 
