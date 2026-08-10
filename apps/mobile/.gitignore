@@ -43,3 +43,17 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Secrets de signature — NE JAMAIS COMMITTER
+# ─────────────────────────────────────────────────────────────────────────────
+# Le magasin de cles signe les APK de production. Le perdre interdit DEFINITIVEMENT
+# toute mise a jour de l'application : Android refuse une mise a jour signee par
+# une autre cle, et il n'existe aucun recours hors Play App Signing.
+# Le publier laisserait n'importe qui distribuer une contrefacon que les
+# telephones installeraient sans broncher, par-dessus la vraie.
+#
+# A sauvegarder hors du depot, chiffre, en plusieurs exemplaires.
+key.properties
+*.jks
+*.keystore

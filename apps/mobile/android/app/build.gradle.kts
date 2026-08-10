@@ -1,9 +1,26 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+// Secrets de signature, lus dans android/key.properties — un fichier hors du
+// depot (voir .gitignore). Absent, le build de release retombe sur la cle de
+// DEBOGAGE et le dit bruyamment.
+//
+// Pourquoi un fichier plutot que des valeurs dans ce build.gradle : ce fichier
+// est versionne, les mots de passe non. Et pourquoi un repli plutot qu'un
+// echec : un poste de developpement, une CI ou un `flutter test` n'ont aucune
+// raison de detenir la cle de production, et un `assembleRelease` qui echoue
+// chez tout le monde sauf une personne finit par etre contourne.
+val fichierSignature = rootProject.file("key.properties")
+val signature = Properties().apply {
+    if (fichierSignature.exists()) fichierSignature.inputStream().use { load(it) }
+}
+val signatureDisponible = signature.getProperty("storeFile") != null
 
 android {
     namespace = "com.echango.call_tracker"
@@ -32,11 +49,55 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (signatureDisponible) {
+            create("release") {
+                storeFile = rootProject.file(signature.getProperty("storeFile"))
+                storePassword = signature.getProperty("storePassword")
+                keyAlias = signature.getProperty("keyAlias")
+                keyPassword = signature.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: signature de production a mettre en place avant toute
-            // distribution reelle (APK signe ou Managed Google Play).
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (signatureDisponible) {
+                signingConfigs.getByName("release")
+            } else {
+                // ⚠️ Repli sur la cle de DEBOGAGE, et il faut qu'il s'entende.
+                //
+                // Un APK signe en debogage s'installe et fonctionne : rien ne
+                // le distingue a l'usage. Mais il ne se met pas a jour
+                // par-dessus un APK de production, il ne passe pas Managed
+                // Google Play, et sa cle est publique — n'importe qui peut
+                // signer une contrefacon que le telephone acceptera comme une
+                // mise a jour.
+                //
+                // C'est exactement le genre de defaut qu'on decouvre le jour
+                // de la distribution. D'ou l'avertissement, plutot qu'un
+                // commentaire que personne ne lit.
+                logger.warn(
+                    "\n" +
+                    "  ============================================================\n" +
+                    "   Call Tracker : APK de RELEASE signe avec la cle de DEBOGAGE\n" +
+                    "   android/key.properties est absent.\n" +
+                    "   Cet APK ne doit pas etre distribue.\n" +
+                    "   Voir apps/mobile/README.md, section Signature.\n" +
+                    "  ============================================================\n"
+                )
+                signingConfigs.getByName("debug")
+            }
+
+            // Pas de minification (R8) pour l'instant, et c'est un choix :
+            // WorkManager et les receveurs declares au manifeste sont resolus
+            // par NOM de classe. R8 est capable de les conserver via les
+            // regles fournies par les bibliotheques, mais une erreur y est
+            // silencieuse — la capture cesserait simplement de fonctionner sur
+            // les appareils de production, sans plantage ni journal.
+            // A activer separement, avec un essai sur un vrai telephone.
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }

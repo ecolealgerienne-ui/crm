@@ -272,9 +272,16 @@ un Odoo mobile.
 **Pas d'enregistrement audio, pas d'iOS, pas de multi-CRM** — hors périmètre
 de la spec d'origine §4.3, et toujours.
 
-**L'APK est signé avec la clé de débogage.** C'est le blocage réel avant toute
-distribution : un APK debug ne se met pas à jour proprement et ne passe pas
-Managed Google Play.
+**L'APK n'est pas encore signé par une clé de production.** La configuration
+Gradle est en place et vérifiée ; il manque la clé elle-même, que seul
+l'exploitant peut créer — une clé dont le mot de passe aurait circulé serait
+compromise dès sa naissance. Sans `android/key.properties`, le build de release
+retombe sur la clé de débogage et l'annonce. Procédure dans
+[`apps/mobile/README.md`](../apps/mobile/README.md), section Signature.
+
+⚠️ **Perdre cette clé interdit définitivement toute mise à jour de
+l'application** : Android refuse une mise à jour signée autrement, et il
+n'existe aucun recours hors Play App Signing.
 
 ---
 

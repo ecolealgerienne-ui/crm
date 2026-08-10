@@ -159,6 +159,82 @@ rallumer ne doit pas rattraper ce qu'on avait choisi de ne pas journaliser.
 Le drapeau de débogage `resetCursor` pose `1`, pas `0`, pour rester distinct
 du sentinelle et continuer à rejouer tout un journal d'émulateur.
 
+## Signature — a faire avant toute distribution
+
+Un APK de release non signe par une cle a vous est **inutilisable en
+production**, meme s'il s'installe et fonctionne. Il ne se met pas a jour
+par-dessus un APK signe autrement, il ne passe pas Managed Google Play, et la
+cle de debogage est publique : n'importe qui peut signer une contrefacon que le
+telephone acceptera comme une mise a jour.
+
+### 1. Creer le magasin de cles — une seule fois, par vous
+
+```bash
+keytool -genkeypair -v   -keystore ~/echango-call-tracker.jks   -storetype JKS -keyalg RSA -keysize 2048   -validity 10000   -alias echango
+```
+
+`-validity 10000` — environ 27 ans. Une cle qui expire interdit toute mise a
+jour ulterieure, exactement comme une cle perdue.
+
+### 2. Declarer les secrets
+
+`apps/mobile/android/key.properties`, **hors du depot** (voir `.gitignore`) :
+
+```properties
+storeFile=/chemin/absolu/vers/echango-call-tracker.jks
+storePassword=...
+keyAlias=echango
+keyPassword=...
+```
+
+### 3. Construire et verifier
+
+```bash
+flutter build apk --release
+
+# QUI a signe l'APK — la seule verification qui compte
+apksigner verify --print-certs build/app/outputs/flutter-apk/app-release.apk
+```
+
+Attendu : votre nom. Si vous lisez `CN=Android Debug`, `key.properties` n'a pas
+ete lu et l'APK ne doit pas etre distribue.
+
+### Le repli, et pourquoi il existe
+
+Sans `key.properties`, le build de release **retombe sur la cle de debogage**
+et l'ecrit en clair dans la sortie Gradle. Un echec pur serait plus severe,
+mais il casserait les postes de developpement et la CI, qui n'ont aucune raison
+de detenir la cle de production — et un build qui echoue chez tout le monde
+sauf une personne finit par etre contourne.
+
+### ⚠️ Ce qui arrive si vous perdez cette cle
+
+**Aucune mise a jour de l'application ne sera plus jamais possible.** Android
+refuse une mise a jour signee par une autre cle ; il faudrait publier une
+nouvelle application, sous un autre identifiant, et reinstaller sur chaque
+telephone. Il n'existe aucun recours hors Play App Signing.
+
+A sauvegarder hors du depot, chiffree, en plusieurs exemplaires et en plusieurs
+endroits. Le mot de passe avec, et pas au meme endroit.
+
+### ⚠️ Un APK de release ne parle pas en clair
+
+Le manifeste de production porte `usesCleartextTraffic="false"`. Une build de
+release ne peut donc **pas** viser l'Odoo de developpement en `http://` — seule
+la variante de debogage le peut. C'est voulu : le jeton d'appareil voyage dans
+un en-tete `Authorization`, et l'accepter en clair en ferait un secret lisible
+par n'importe quel reseau wifi traverse.
+
+Pour essayer une build de release, il faut donc viser le VPS en `https://`.
+
+### Minification
+
+Desactivee (`isMinifyEnabled = false`), et c'est un choix. WorkManager et les
+receveurs declares au manifeste sont resolus par NOM de classe ; R8 sait les
+conserver, mais une erreur y est **silencieuse** — la capture cesserait de
+fonctionner sur les appareils de production, sans plantage ni journal. A
+activer separement, avec un essai sur un vrai telephone.
+
 ## A appeler — le premier onglet, et pourquoi
 
 Les activites de type appel programmees dans le CRM, en retard d'abord. On
