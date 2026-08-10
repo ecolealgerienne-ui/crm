@@ -534,8 +534,53 @@ class CallTrackerLog(models.Model):
     #: lentement que ça.
     RESULTATS_MAX = 10
 
+    #: Périmètre par défaut quand la variable d'environnement est absente.
+    #: `all` = le comportement historique, celui des instances déjà déployées.
+    PERIMETRE_DEFAUT = 'all'
+
     @api.model
-    def rechercher_contacts(self, fragment, limite=None):
+    def _perimetre_recherche(self):
+        """`all` ou `own` — jusqu'où va la recherche depuis l'application.
+
+        `CALL_TRACKER_SEARCH_SCOPE`, dans le `.env` du serveur, au même endroit
+        que la durée de rétention. Un réglage de cette portée n'a rien à faire
+        dans une interface où personne ne le retrouverait le jour où il faut
+        répondre à une question de conformité.
+
+        - `all` — tout le carnet d'adresses, comportement historique et défaut.
+        - `own` — les clients du commercial de l'appareil, et ceux des
+          affaires qui lui sont assignées.
+
+        ⚠️ **Les deux replis ne vont pas dans le même sens, et c'est voulu.**
+
+        Variable *absente* → `all` : ne rien configurer est une situation
+        normale, et changer le comportement sous les pieds d'un exploitant qui
+        n'a rien demandé serait pire que de le laisser tel quel.
+
+        Valeur *illisible* → `own` : c'est une erreur, et une faute de frappe
+        ne doit pas ouvrir le carnet d'adresses en silence. Restreindre à tort
+        se remarque en une heure — un commercial ne retrouve plus ses clients.
+        Ouvrir à tort ne se remarque jamais.
+
+        ⚠️ **Ne s'applique qu'à la recherche par fragment.** La fiche à la
+        sonnerie reste ouverte quel que soit ce réglage : quand le téléphone
+        sonne, il faut savoir qui appelle, même si la fiche appartient à un
+        collègue. Afficher « inconnu » ferait décrocher à l'aveugle — pire que
+        de ne rien afficher du tout.
+        """
+        brut = (os.environ.get('CALL_TRACKER_SEARCH_SCOPE') or '').strip().lower()
+        if not brut:
+            return self.PERIMETRE_DEFAUT
+        if brut in ('all', 'own'):
+            return brut
+        _logger.warning(
+            "Call Tracker : CALL_TRACKER_SEARCH_SCOPE=%r illisible, "
+            "recherche restreinte au portefeuille du commercial", brut,
+        )
+        return 'own'
+
+    @api.model
+    def rechercher_contacts(self, fragment, limite=None, commercial=None):
         """Contacts dont le numéro contient ce fragment de chiffres.
 
         Sert la recherche manuelle de l'application, distincte du Caller ID :
@@ -573,13 +618,40 @@ class CallTrackerLog(models.Model):
         # dans le numéro. Un commercial se souvient rarement de la fin exacte,
         # plus souvent d'un morceau du milieu.
         condition = ' OR '.join(
-            "regexp_replace(coalesce(%s, ''), '\\D', '', 'g') LIKE %%s" % colonne
+            "regexp_replace(coalesce(p.%s, ''), '\\D', '', 'g') LIKE %%s" % colonne
             for colonne in colonnes
         )
         parametres = ['%' + chiffres + '%'] * len(colonnes)
+
+        # Cloisonnement, quand l'exploitant l'a demandé. Trois façons d'être
+        # « à moi », et il faut les trois : la fiche m'est assignée, la SOCIÉTÉ
+        # dont elle dépend m'est assignée — un interlocuteur n'a presque jamais
+        # de commercial propre —, ou une affaire à mon nom la désigne : un
+        # prospect n'a souvent aucun commercial sur sa fiche, seulement sur sa
+        # piste, et l'oublier rendrait la recherche aveugle là où elle sert le
+        # plus, sur les affaires en cours.
+        cloison = ''
+        if self._perimetre_recherche() == 'own' and commercial:
+            cloison = """
+              AND (
+                p.user_id = %s
+                OR EXISTS (
+                    SELECT 1 FROM res_partner societe
+                    WHERE societe.id = p.commercial_partner_id
+                      AND societe.user_id = %s
+                )
+                OR EXISTS (
+                    SELECT 1 FROM crm_lead affaire
+                    WHERE affaire.partner_id = p.id
+                      AND affaire.user_id = %s
+                      AND affaire.active
+                )
+              )"""
+            parametres += [commercial.id] * 3
+
         self.env.cr.execute(
-            "SELECT id FROM res_partner WHERE active = true AND (%s) "
-            "ORDER BY id LIMIT %%s" % condition,
+            "SELECT p.id FROM res_partner p WHERE p.active = true AND (%s) %s "
+            "ORDER BY p.id LIMIT %%s" % (condition, cloison),
             parametres + [min(limite or self.RESULTATS_MAX, self.RESULTATS_MAX)],
         )
         identifiants = [ligne[0] for ligne in self.env.cr.fetchall()]

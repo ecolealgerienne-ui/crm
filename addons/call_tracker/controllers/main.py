@@ -273,13 +273,21 @@ class CallTrackerController(http.Controller):
                 {'status': 'too_short', 'min_digits': Appel.FRAGMENT_MIN}, 400,
             )
 
-        resultats = Appel.rechercher_contacts(chiffres)
+        resultats = Appel.rechercher_contacts(
+            chiffres, commercial=appareil.user_id,
+        )
         self._tracer(
             'contact_search',
             'ok' if resultats else 'not_found',
             appareil,
             numero=chiffres,
-            detail='%d resultat(s)' % len(resultats),
+            # Le périmètre appliqué accompagne le compte : sans lui, « aucun
+            # résultat » ne dit pas si le client n'existe pas ou s'il
+            # appartient à un collègue, et le premier réflexe serait de
+            # soupçonner une panne.
+            detail='%d resultat(s), perimetre %s' % (
+                len(resultats), Appel._perimetre_recherche(),
+            ),
         )
         return repondre({
             'status': 'found' if resultats else 'not_found',

@@ -154,6 +154,25 @@ note — jamais le courriel, l'adresse ni aucune donnée financière.
 Tout accès, en lecture comme en écriture, laisse une trace dans
 `call.tracker.audit`, y compris les tentatives refusées, avec l'adresse IP.
 
+### ⚠️ L'asymétrie entre le CRM et le téléphone
+
+**Dans Odoo, tout est cloisonné** : un commercial ne voit que ses appels, sa
+couverture, ses affaires — les règles d'enregistrement le garantissent.
+
+**Depuis le téléphone, non.** Les routes tournent en `sudo()` par conception :
+le jeton d'appareil ne porte aucun droit Odoo, et c'est le contrôleur qui
+décide de tout. Vérifié le 2026-08-10 : un appareil retrouvait le client d'un
+autre commercial, sur la recherche comme sur la fiche.
+
+`CALL_TRACKER_SEARCH_SCOPE` permet désormais de cloisonner la **recherche**
+(`own`) ou de la laisser ouverte (`all`, défaut). **Décision du 2026-08-10 :
+ouvert**, l'équipe étant petite et chacun couvrant les clients des autres.
+À revoir dès que l'effectif grandit — c'est le réglage qui divise le dégât
+d'un téléphone volé par le nombre de commerciaux.
+
+La fiche affichée à la sonnerie reste ouverte dans tous les cas : ne pas
+savoir qui appelle ferait décrocher à l'aveugle.
+
 ---
 
 ## 7. L'information des commerciaux — fait

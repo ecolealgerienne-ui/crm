@@ -78,6 +78,7 @@ x-odoo-base: &odoo-base
     # 18-07 — tant qu'il vaut 0, il n'y a pas de politique de rétention, il y a
     # une absence de politique.
     CALL_TRACKER_RETENTION_DAYS: ${CALL_TRACKER_RETENTION_DAYS:-0}
+    CALL_TRACKER_SEARCH_SCOPE: ${CALL_TRACKER_SEARCH_SCOPE:-all}
   volumes:
     # Filestore : pièces jointes, images, documents, sessions.
     # ⚠️ Aussi vital que la base — un dump SQL seul restaure un CRM dont toutes

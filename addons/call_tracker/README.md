@@ -116,8 +116,41 @@ précis :
   aussi, et c'est le cas qui compte le plus.
 
 Elles limitent le débit, **elles n'empêchent pas** une énumération patiente.
-Le jour où ça compte, c'est le périmètre qu'il faut réduire — restreindre aux
-clients du commercial de l'appareil — pas les bornes qu'il faut resserrer.
+Ce qui réduit vraiment le dégât, c'est le périmètre — voir ci-dessous.
+
+### Le périmètre de recherche
+
+`CALL_TRACKER_SEARCH_SCOPE`, dans le `.env` du serveur, au même endroit que la
+durée de rétention.
+
+| Valeur | Effet |
+|---|---|
+| `all` | Tout le carnet d'adresses. **Défaut**, et comportement historique |
+| `own` | Les clients du commercial de l'appareil, ceux de ses sociétés, et ceux des affaires qui lui sont assignées |
+
+Être « à moi » se décline en trois, et il faut les trois : la fiche m'est
+assignée, la **société** dont elle dépend m'est assignée — un interlocuteur
+n'a presque jamais de commercial propre —, ou une **affaire** à mon nom la
+désigne : un prospect n'a souvent aucun commercial sur sa fiche, seulement sur
+sa piste. En oublier un rendrait la recherche aveugle là où elle sert le plus.
+
+⚠️ **Les deux replis ne vont pas dans le même sens, et c'est voulu.** Une
+variable *absente* rend `all` : ne rien configurer est normal, et changer le
+comportement sous les pieds d'un exploitant qui n'a rien demandé serait pire.
+Une valeur *illisible* rend `own` : c'est une erreur, et une faute de frappe
+ne doit pas ouvrir le carnet d'adresses en silence. Restreindre à tort se
+remarque en une heure — un commercial ne retrouve plus ses clients ; ouvrir à
+tort ne se remarque jamais.
+
+⚠️ **La fiche à la sonnerie n'est PAS concernée.** Elle reste ouverte quel que
+soit ce réglage : quand le téléphone sonne, il faut savoir qui appelle, même
+si la fiche appartient à un collègue en congé. Afficher « inconnu » ferait
+décrocher à l'aveugle, ce qui est pire que de ne rien afficher.
+
+Le périmètre appliqué accompagne le nombre de résultats dans la trace
+d'audit : sans lui, « aucun résultat » ne dit pas si le client n'existe pas ou
+s'il appartient à un collègue, et le premier réflexe serait de soupçonner une
+panne.
 
 `400` et non une liste vide sur un fragment trop court : « trop court » et
 « aucun résultat » appellent deux messages différents à l'écran, et l'app ne
@@ -480,7 +513,7 @@ relancés par un seul appel.
 
 ## Tests
 
-172 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
+181 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
 révocation, le rapprochement téléphonique, la qualification manuelle,
 la note post-appel, les liens depuis les fiches CRM, la rétention, le
 journal d'audit, les champs dérivés, le cloisonnement, la
