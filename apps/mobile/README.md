@@ -159,6 +159,22 @@ rallumer ne doit pas rattraper ce qu'on avait choisi de ne pas journaliser.
 Le drapeau de débogage `resetCursor` pose `1`, pas `0`, pour rester distinct
 du sentinelle et continuer à rejouer tout un journal d'émulateur.
 
+## L'adresse du serveur
+
+`https://echangocrm.echango.com` par defaut
+(`SecureSettings.URL_PAR_DEFAUT`). Le champ des Reglages reste modifiable, et
+le provisionnement de developpement le remplace par l'adresse locale.
+
+**Pourquoi un defaut plutot qu'un champ vide.** L'enrolement se fait sur un
+telephone, au clavier tactile : faire saisir l'adresse sans faute est une
+occasion de plus de se tromper, et une faute de frappe se traduit par une file
+qui ne part jamais — sans message clair. Avec le defaut, il ne reste qu'a
+coller le jeton.
+
+⚠️ **A revoir en V2.** Coder le domaine d'un client dans le binaire est juste
+tant qu'il n'y en a qu'un — nous. Le jour ou l'application est installee chez
+des tiers, cette valeur devra venir de l'enrolement.
+
 ## Signature — a faire avant toute distribution
 
 Un APK de release non signe par une cle a vous est **inutilisable en

@@ -17,8 +17,26 @@ class SecureSettings(context: Context) {
 
     private val prefs: SharedPreferences = ouvrir(context)
 
+    /**
+     * Adresse de l'instance Odoo, avec un defaut sur le serveur de production.
+     *
+     * **Pourquoi un defaut plutot qu'un champ vide.** L'enrolement d'un
+     * commercial se fait sur un telephone, au clavier tactile : lui faire
+     * saisir `https://echangocrm.echango.com` sans faute est une occasion de
+     * plus de se tromper, et une faute de frappe se traduit par une file qui
+     * ne part jamais — sans message clair. Avec le defaut, il ne reste qu'a
+     * coller le jeton.
+     *
+     * Le defaut ne fige rien : le champ des Reglages reste modifiable, et le
+     * provisionnement de developpement le remplace par l'adresse locale.
+     *
+     * ⚠️ **A revoir en V2.** Coder le domaine d'un client dans l'application
+     * est juste tant qu'il n'y en a qu'un — nous. Le jour ou l'app est
+     * installee chez des tiers, cette valeur devra venir de l'enrolement, pas
+     * du binaire.
+     */
     var serverUrl: String
-        get() = prefs.getString(CLE_URL, "").orEmpty()
+        get() = prefs.getString(CLE_URL, "").orEmpty().ifBlank { URL_PAR_DEFAUT }
         set(value) = prefs.edit().putString(CLE_URL, value).apply()
 
     var token: String
@@ -91,6 +109,13 @@ class SecureSettings(context: Context) {
     }
 
     private companion object {
+        /**
+         * Instance visee par defaut. HTTPS obligatoire : le manifeste de
+         * release interdit le trafic en clair, et le jeton voyage dans un
+         * en-tete `Authorization`.
+         */
+        const val URL_PAR_DEFAUT = "https://echangocrm.echango.com"
+
         const val FICHIER = "call_tracker_settings"
         const val CLE_URL = "server_url"
         const val CLE_JETON = "token"
