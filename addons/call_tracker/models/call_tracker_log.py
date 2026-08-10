@@ -34,6 +34,53 @@ CHIFFRES_SIGNIFICATIFS = 9
 COLONNES_TELEPHONE = ('phone_sanitized', 'phone', 'mobile')
 
 
+def est_international(numero):
+    """Le numéro porte-t-il explicitement un indicatif pays ?
+
+    `+213…` ou `00213…`. Un numéro national — `0555…` — n'en porte pas, et
+    c'est précisément le cas qui a imposé de ne comparer que les derniers
+    chiffres.
+    """
+    return bool(numero) and (numero.strip().startswith('+')
+                             or re.sub(r'\D', '', numero).startswith('00'))
+
+
+def chiffres_internationaux(numero):
+    """Tous les chiffres d'un numéro international, indicatif compris.
+
+    `00` de tête retiré : `00213555…` et `+213555…` désignent le même
+    correspondant et doivent se comparer à l'identique.
+    """
+    chiffres = re.sub(r'\D', '', numero or '')
+    return chiffres[2:] if chiffres.startswith('00') else chiffres
+
+
+def pays_incompatibles(a, b):
+    """Deux numéros INTERNATIONAUX qui ne désignent pas le même correspondant.
+
+    ⚠️ **Le garde-fou qui manquait au rapprochement.** La clé de rapprochement
+    ne retient que les 9 derniers chiffres — voir `CHIFFRES_SIGNIFICATIFS` —
+    et deux pays différents peuvent parfaitement la partager :
+
+        Algérie  +213 555 12 34 56   ->  555123456
+        Dubaï    +971 55 512 3456    ->  555123456
+
+    Sans ce contrôle, un appel dubaïote se rattachait au client algérien, et
+    publiait une note dans son fil. Silencieusement : rien dans l'interface ne
+    distingue un rattachement juste d'un rattachement faux.
+
+    **Ne mord que si les DEUX numéros portent un indicatif.** Dès que l'un des
+    deux est national, on ne sait pas de quel pays il vient et on retombe sur
+    la comparaison par les derniers chiffres — le comportement d'origine, celui
+    qui fait qu'un `0555…` saisi dans une fiche retrouve un `+213555…` reçu du
+    téléphone. Ce garde-fou ne peut donc que RETIRER des rapprochements entre
+    pays différents, jamais en casser un qui marchait.
+    """
+    if not (est_international(a) and est_international(b)):
+        return False
+    return chiffres_internationaux(a) != chiffres_internationaux(b)
+
+
 def chiffres_significatifs(numero):
     """Réduit un numéro à ses derniers chiffres, indépendamment de la mise en forme.
 
@@ -342,10 +389,14 @@ class CallTrackerLog(models.Model):
         for appel in self:
             if not appel.phone_key:
                 continue
-            partenaire = self._chercher_partenaire(appel.phone_key)
+            partenaire = self._chercher_partenaire(
+                appel.phone_key, appel.phone_number,
+            )
             if partenaire:
                 appel.partner_id = partenaire
-            appel.lead_id = self._chercher_piste(appel.phone_key, partenaire)
+            appel.lead_id = self._chercher_piste(
+                appel.phone_key, partenaire, appel.phone_number,
+            )
 
     # ── Qualification manuelle ───────────────────────────────────────────────
 
@@ -499,8 +550,29 @@ class CallTrackerLog(models.Model):
         )
         return condition, ['%' + cle] * len(colonnes)
 
+    #: Candidats ramenés avant le filtre par pays. La clé de 9 chiffres écarte
+    #: déjà l'immense majorité du carnet ; ce qui reste tient largement là.
+    CANDIDATS_MAX = 20
+
     @api.model
-    def _chercher_partenaire(self, cle):
+    def _compatible(self, enregistrement, numero):
+        """L'un des numéros de cet enregistrement peut-il être `numero` ?
+
+        Faux uniquement quand TOUS ses numéros portent un indicatif pays qui
+        contredit celui de `numero`. Voir `pays_incompatibles`.
+        """
+        if not numero:
+            return True
+        valeurs = [
+            enregistrement[c] for c in COLONNES_TELEPHONE
+            if c in enregistrement._fields and enregistrement[c]
+        ]
+        if not valeurs:
+            return True
+        return any(not pays_incompatibles(numero, v) for v in valeurs)
+
+    @api.model
+    def _chercher_partenaire(self, cle, numero=None):
         """Retrouve un ``res.partner`` dont le téléphone finit par la même clé.
 
         Le rapprochement se fait sur les chiffres du numéro, la mise en forme
@@ -508,6 +580,12 @@ class CallTrackerLog(models.Model):
         Aucun index ne couvre cette expression : à l'échelle du carnet
         d'adresses d'une PME c'est sans conséquence, mais c'est le premier
         endroit à revoir si le rapprochement ralentit.
+
+        `numero` — le numéro complet, tel qu'il a été composé ou reçu — sert au
+        garde-fou par indicatif pays : sans lui, un `+971555123456` se
+        rattacherait au client algérien `+213555123456`, les deux partageant
+        les mêmes 9 derniers chiffres. Facultatif pour ne pas casser les
+        appelants qui n'ont que la clé, mais tous ceux du module le passent.
         """
         Partenaire = self.env['res.partner']
         condition, parametres = self._condition_telephone('res.partner', cle)
@@ -515,11 +593,14 @@ class CallTrackerLog(models.Model):
             return Partenaire
         self.env.cr.execute(
             "SELECT id FROM res_partner WHERE active = true AND (%s) "
-            "ORDER BY id LIMIT 1" % condition,
-            parametres,
+            "ORDER BY id LIMIT %%s" % condition,
+            parametres + [self.CANDIDATS_MAX],
         )
-        ligne = self.env.cr.fetchone()
-        return Partenaire.browse(ligne[0]) if ligne else Partenaire
+        for (identifiant,) in self.env.cr.fetchall():
+            candidat = Partenaire.browse(identifiant)
+            if self._compatible(candidat, numero):
+                return candidat
+        return Partenaire
 
     # ── Recherche par fragment, depuis l'application ─────────────────────────
 
@@ -744,8 +825,14 @@ class CallTrackerLog(models.Model):
         return resultats
 
     @api.model
-    def _chercher_piste(self, cle, partenaire=None):
-        """Piste ouverte la plus récente pour ce contact, sinon pour ce numéro."""
+    def _chercher_piste(self, cle, partenaire=None, numero=None):
+        """Piste ouverte la plus récente pour ce contact, sinon pour ce numéro.
+
+        `numero` sert au même garde-fou par indicatif pays que
+        `_chercher_partenaire`. Il ne s'applique qu'à la recherche PAR NUMÉRO :
+        une piste trouvée par son contact l'a été sans passer par un numéro,
+        et le contact, lui, a déjà été filtré.
+        """
         Piste = self.env['crm.lead']
         if partenaire:
             piste = Piste.search(
@@ -760,11 +847,14 @@ class CallTrackerLog(models.Model):
             return Piste
         self.env.cr.execute(
             "SELECT id FROM crm_lead WHERE active = true AND (%s) "
-            "ORDER BY write_date DESC LIMIT 1" % condition,
-            parametres,
+            "ORDER BY write_date DESC LIMIT %%s" % condition,
+            parametres + [self.CANDIDATS_MAX],
         )
-        ligne = self.env.cr.fetchone()
-        return Piste.browse(ligne[0]) if ligne else Piste
+        for (identifiant,) in self.env.cr.fetchall():
+            candidate = Piste.browse(identifiant)
+            if self._compatible(candidate, numero):
+                return candidate
+        return Piste
 
     # ── Appels à passer, depuis l'application ────────────────────────────────
 
@@ -965,8 +1055,8 @@ class CallTrackerLog(models.Model):
         if not cle:
             return None
 
-        partenaire = self._chercher_partenaire(cle)
-        piste = self._chercher_piste(cle, partenaire)
+        partenaire = self._chercher_partenaire(cle, numero)
+        piste = self._chercher_piste(cle, partenaire, numero)
         if not partenaire and not piste:
             return None
 

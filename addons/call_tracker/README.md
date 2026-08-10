@@ -439,6 +439,33 @@ de l'appel — pas de celui qui clique. Créer un `lead` sur une base où l'éta
 de qualification est désactivée le rendrait **invisible** : le menu
 correspondant est masqué.
 
+### Le garde-fou par indicatif pays
+
+La cle de rapprochement ne retient que les **9 derniers chiffres**, et deux
+pays peuvent la partager :
+
+    Algerie  +213 555 12 34 56   ->  555123456
+    Dubai    +971 55 512 3456    ->  555123456
+
+Sans controle, l'appel dubaiote se rattachait au client algerien et publiait
+une note dans son fil — **silencieusement**, rien a l'ecran ne distinguant un
+rattachement juste d'un faux.
+
+`pays_incompatibles()` refuse le rapprochement quand les **deux** numeros
+portent un indicatif et qu'ils different. Des que l'un des deux est national,
+on ne sait pas de quel pays il vient et on retombe sur la comparaison par les
+derniers chiffres — le comportement d'origine, celui qui fait qu'un `0555…`
+saisi dans une fiche retrouve un `+213555…` recu du telephone.
+
+⚠️ **Ce garde-fou ne peut que RETIRER des rapprochements entre pays
+differents, jamais en casser un qui marchait.** C'est ce qui a permis de
+l'ajouter sur une base en production sans risque de regression, et c'est
+verifie par quatre tests de non-regression.
+
+La recherche remonte desormais jusqu'a `CANDIDATS_MAX` candidats au lieu d'un
+seul, puis filtre : prendre le premier par identifiant choisirait le mauvais
+pays des qu'une fiche etrangere a ete creee avant la bonne.
+
 ## Rétention
 
 `CALL_TRACKER_RETENTION_DAYS`, lue dans l'environnement du serveur (injectée
@@ -591,7 +618,7 @@ relancés par un seul appel.
 
 ## Tests
 
-202 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
+213 tests couvrant le contrat HTTP des deux routes, l'idempotence, la
 révocation, le rapprochement téléphonique, la qualification manuelle,
 la note post-appel, les liens depuis les fiches CRM, la rétention, le
 journal d'audit, les champs dérivés, le cloisonnement, la

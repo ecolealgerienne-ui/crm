@@ -237,6 +237,7 @@ Les questions ouvertes de la spec (§3.3 et §10), tranchées.
 | Numéro inconnu | **Qualification manuelle.** Un bouton, mais un clic humain — une création automatique remplit le pipeline de taxis et de faux numéros | 2026-08-09 (revient sur un premier choix inverse) |
 | Modèle du log | `call.tracker.log` dédié | 2026-08-09 |
 | Multi-numéros par contact | Rapprochement sur les **9 derniers chiffres**, sur `phone_sanitized`, `phone` et `mobile` quand il existe | 2026-08-09 |
+| Collision entre pays | **Refusée** quand les deux numéros portent un indicatif différent — `+971555123456` ne désigne plus le client `+213555123456`. Un numéro national ne déclenche rien : on ignore son pays | 2026-08-10 |
 | Identification du commercial | **Un appareil, un commercial.** Pas de multi-compte — voir §10 | 2026-08-09 |
 | Rétention | 1095 jours, réglable dans le `.env` | 2026-08-09 |
 | Marquage « appel privé » | Abandonné | 2026-08-09 |
