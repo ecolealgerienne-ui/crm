@@ -340,6 +340,20 @@ class CallTrackerLog(models.Model):
         if not self.lead_id:
             self.lead_id = self._creer_piste()
             self._rattacher_appels_du_meme_numero()
+            # ⚠️ Publier MAINTENANT, et pas seulement à la création de l'appel.
+            #
+            # `_publier_note` tourne dans `create()`, où un appel entrant d'un
+            # numéro inconnu n'a encore ni contact ni piste : il n'a donc rien
+            # à quoi se rattacher, et ne publie rien. C'est justement le
+            # chemin normal d'un prospect — appel d'un inconnu, puis
+            # qualification. Sans cette ligne, ces appels-là étaient les SEULS
+            # à ne jamais apparaître dans un fil, ni leur note à revenir au
+            # Caller ID. Le défaut ne se voyait pas sur les appels de clients
+            # déjà connus, c'est-à-dire pendant tous les essais.
+            #
+            # Constaté le 2026-08-10 : une note prise sur un appel sortant
+            # introuvable sur la fiche du client créé juste après.
+            self._publier_note()
         return {
             'type': 'ir.actions.act_window',
             'res_model': 'crm.lead',
@@ -364,6 +378,9 @@ class CallTrackerLog(models.Model):
             ('partner_id', '=', False),
         ])
         autres.write({'lead_id': self.lead_id.id})
+        # Eux aussi arrivent au fil : ils viennent d'être rattachés, et leurs
+        # notes valent celle qui a déclenché la qualification.
+        autres._publier_note()
 
     def _creer_piste(self):
         """Construit la piste correspondant à cet appel."""

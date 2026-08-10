@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
-from odoo.tests import TransactionCase, tagged
+from odoo.tests import HttpCase, TransactionCase, tagged
+
+from .common import BancCallTracker, ChargeUtile
 
 
 @tagged('post_install', '-at_install')
@@ -140,3 +142,82 @@ class TestQualification(TransactionCase):
         })
         appel = self.journaliser('+213555650007', 'evt-q-7')
         self.assertEqual(appel.lead_id, piste)
+
+
+@tagged('post_install', '-at_install')
+class TestPublicationALaQualification(HttpCase, BancCallTracker):
+    """Un appel qualifié après coup arrive au fil, avec sa note.
+
+    Le défaut que ces tests ferment : `_publier_note` ne tournait qu'à la
+    création de l'appel. Un numéro inconnu n'a alors ni contact ni piste — il
+    n'a rien à quoi se rattacher, et rien n'était publié. La qualification
+    manuelle attachait ensuite l'appel à une piste sans jamais rattraper la
+    publication.
+
+    C'est exactement le parcours d'un nouveau prospect : appel d'un inconnu,
+    puis qualification. Ces appels-là étaient donc les SEULS à ne jamais
+    apparaître dans un fil — et le défaut restait invisible sur les clients
+    déjà connus, c'est-à-dire pendant tous les essais.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.appareil = self.creer_appareil()
+        self.Appel = self.env['call.tracker.log']
+
+    def journaliser(self, identifiant, note=None, numero='+213770998877'):
+        charge = ChargeUtile.valide(
+            client_event_id=identifiant, phone_number=numero, note=note,
+        )
+        if note is None:
+            charge.pop('note', None)
+        self.poster(charge)
+        return self.Appel.search([('client_event_id', '=', identifiant)])
+
+    def messages(self, piste):
+        return self.env['mail.message'].search(
+            [('model', '=', 'crm.lead'), ('res_id', '=', piste.id)],
+        )
+
+    def test_la_note_arrive_au_fil_a_la_qualification(self):
+        appel = self.journaliser('evt-qualif-note', 'Rappeler après le 15')
+        self.assertFalse(appel.lead_id, "le numéro doit être inconnu au départ")
+
+        appel.action_creer_piste()
+
+        corps = ' '.join(self.messages(appel.lead_id).mapped('body'))
+        self.assertIn('Rappeler après le 15', corps)
+
+    def test_un_appel_muet_qualifie_est_trace_aussi(self):
+        appel = self.journaliser('evt-qualif-muet')
+        appel.action_creer_piste()
+
+        corps = ' '.join(self.messages(appel.lead_id).mapped('body'))
+        self.assertIn(appel.phone_number, corps)
+
+    def test_les_appels_du_meme_numero_arrivent_aussi(self):
+        """Qualifier un appel qualifie tous ceux du même numéro — leurs notes
+        doivent suivre, sinon seul le dernier prospect rappelé laisse une
+        trace de ce qui s'est dit."""
+        premier = self.journaliser('evt-qualif-1', 'Premier contact, curieux')
+        second = self.journaliser('evt-qualif-2', 'Veut une remise')
+
+        second.action_creer_piste()
+
+        corps = ' '.join(self.messages(second.lead_id).mapped('body'))
+        self.assertIn('Veut une remise', corps)
+        self.assertIn('Premier contact, curieux', corps)
+        self.assertEqual(premier.lead_id, second.lead_id)
+
+    def test_la_note_revient_au_caller_id_apres_qualification(self):
+        """La boucle complète : elle était rompue précisément là.
+
+        Un prospect inconnu appelle, on note, on qualifie. Au rappel suivant,
+        le téléphone doit afficher ce qui s'est dit — c'est toute la raison
+        d'être du report au fil.
+        """
+        appel = self.journaliser('evt-qualif-boucle', 'Budget validé, relancer')
+        appel.action_creer_piste()
+
+        fiche = self.Appel.fiche_contact('+213770998877')
+        self.assertIn('Budget validé, relancer', fiche['last_notes'])
