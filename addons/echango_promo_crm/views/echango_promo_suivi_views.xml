@@ -4,7 +4,17 @@
         <field name="name">echango.promo.suivi.list</field>
         <field name="model">echango.promo.suivi</field>
         <field name="arch" type="xml">
-            <list string="Suivi des commerçants" create="false" edit="false">
+            <!--
+                ⚠️ **Une case vide doit DIRE pourquoi elle est vide.** L'ordre
+                place les commerçants qui n'ont jamais publié en tête — ce sont
+                les plus coûteux, l'onboarding raté — et leurs quatre colonnes
+                de publication sont donc vides par construction. Sans la colonne
+                « Jamais publié » ni la mise en forme, l'écran se lit comme un
+                tableau cassé alors qu'il dit exactement ce qu'il doit dire.
+            -->
+            <list string="Suivi des commerçants" create="false" edit="false"
+                  decoration-muted="jamais_publie"
+                  decoration-danger="not peut_publier">
                 <!-- ⚠️ Une ligne de vue SQL n'a pas de formulaire utile : le
                      clic doit mener au CLIENT, là où vivent les appels, les
                      notes et les activités. D'où ce bouton en tête de ligne. -->
@@ -18,6 +28,8 @@
                      trois gestes différents. -->
                 <field name="geocodage_statut" optional="show"/>
                 <field name="user_id" widget="many2one_avatar_user"/>
+                <field name="jamais_publie" string="Jamais publié"
+                       widget="boolean_favorite" optional="show"/>
                 <field name="date_derniere_publication"/>
                 <field name="jours_depuis_publication"/>
                 <field name="promos_en_ligne"/>
@@ -92,7 +104,14 @@
         <field name="name">Suivi des commerçants</field>
         <field name="res_model">echango.promo.suivi</field>
         <field name="view_mode">list,pivot,graph</field>
-        <field name="context">{'search_default_group_by_none': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aucun commerçant suivi.</p>
+            <p>Les lignes grisées n'ont <b>jamais publié</b> : leurs colonnes de
+               publication sont vides parce qu'il n'y a rien à y mettre, pas
+               parce que la synchronisation a échoué. Le filtre
+               <b>Jamais publié</b> les isole ; <b>À risque</b> et <b>Dormant</b>
+               ne montrent que ceux qui ont déjà publié.</p>
+        </field>
     </record>
 
     <!--
@@ -107,6 +126,13 @@
         <field name="res_model">echango.promo.suivi</field>
         <field name="view_mode">list,pivot</field>
         <field name="domain">[('user_id','=',False)]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Tout le monde est affecté.</p>
+            <p>⚠️ Sans commercial, un commerçant n'apparaît <b>nulle part
+               ailleurs</b> : ni dans les appels (jamais appelé), ni dans la
+               Couverture du portefeuille, qui filtre sur le commercial. Il
+               existe et personne ne le voit.</p>
+        </field>
     </record>
 
     <record id="action_echango_promo_a_debloquer" model="ir.actions.act_window">
