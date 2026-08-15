@@ -112,6 +112,27 @@ class ResPartner(models.Model):
         related='promo_account_id.suspendu_le', store=True,
         string="Suspendu")
 
+    #: ⚠️ **Ces trois-là ne sont pas du confort.** Ils étaient la seule raison
+    #: de garder un menu vers la donnée brute, et leur absence rendait
+    #: invisibles trois faits qui ne se voient nulle part ailleurs :
+    #:
+    #: - `consentement_le` vide = compte créé par un agent, qui n'a accepté
+    #:   aucune CGU. 182 fiches sur 280 au 2026-08-15 — c'est le point de
+    #:   conformité 18-07, pas un détail ;
+    #: - `plafond_propre` renseigné = dérogation négociée, invisible partout
+    #:   ailleurs puisque le plafond effectif l'absorbe ;
+    #: - `promos_masquees` = modération subie, que le commerçant ne voit pas et
+    #:   dont le commercial doit savoir avant d'appeler.
+    promo_consentement_le = fields.Datetime(
+        related='promo_account_id.consentement_le', store=True,
+        string="CGU acceptées le")
+    promo_plafond_propre = fields.Integer(
+        related='promo_account_id.plafond_propre', store=True,
+        string="Dérogation de plafond")
+    promo_masquees = fields.Integer(
+        related='promo_account_id.promos_masquees', store=True,
+        string="Promos masquées")
+
     #: ⚠️ **Non stocké, et c'est délibéré.** Ce nombre dépend d'AUJOURD'HUI :
     #: stocké, il serait juste le jour de son écriture et faux le lendemain,
     #: sans que rien ne le dise. Il ne sert donc qu'à l'affichage — trier par

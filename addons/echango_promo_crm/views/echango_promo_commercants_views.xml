@@ -40,6 +40,11 @@
                        sum="Signalements"/>
                 <field name="promo_motif_blocage" string="Motif de blocage"/>
                 <field name="promo_registre_statut" optional="hide"/>
+                <field name="promo_masquees" string="Masquées" optional="hide"/>
+                <field name="promo_plafond_propre" string="Dérogation"
+                       optional="hide"/>
+                <field name="promo_consentement_le" string="CGU acceptées le"
+                       optional="hide"/>
                 <field name="promo_geocodage_statut" optional="hide"/>
                 <field name="promo_derniere_synchro" string="Reçu le"
                        optional="hide"/>
@@ -101,6 +106,17 @@
                      qu'on puisse quand même le retrouver. -->
                 <filter name="supprime" string="Supprimé côté Promo"
                         domain="[('promo_supprime_le','!=',False)]"/>
+                <separator/>
+                <!-- ⚠️ Vide pour tous les comptes créés par un agent, par
+                     conception du produit : ce filtre montre l'étendue réelle
+                     de l'extension de finalité (loi 18-07), il ne signale pas
+                     une anomalie. -->
+                <filter name="sans_cgu" string="Sans CGU acceptées"
+                        domain="[('promo_consentement_le','=',False)]"/>
+                <filter name="avec_derogation" string="Avec dérogation de plafond"
+                        domain="[('promo_plafond_propre','&gt;',0)]"/>
+                <filter name="avec_masquees" string="Avec promos masquées"
+                        domain="[('promo_masquees','&gt;',0)]"/>
                 <separator/>
                 <filter name="par_ville" string="Ville"
                         context="{'group_by':'promo_ville'}"/>

@@ -18,9 +18,6 @@
               parent="menu_echango_promo_root"
               action="action_echango_promo_analyse" sequence="20"/>
 
-    <menuitem id="menu_echango_promo_comptes" name="Fiches Promo"
-              parent="menu_echango_promo_root"
-              action="action_echango_promo_account" sequence="40"/>
 
     <menuitem id="menu_echango_promo_source" name="Source et jeton"
               parent="menu_echango_promo_root"

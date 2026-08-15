@@ -1,5 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!--
+        ⚠️ **Ce formulaire n'a plus de menu, et c'est voulu** (2026-08-15). On
+        y arrive par le bouton « echango Promo » de la fiche client, pour le
+        commerçant qu'on regarde — pas en parcourant une liste.
+
+        La vue liste et son action ont été RETIRÉES avec le menu, pas laissées
+        « au cas où » : une capacité sans appelant ne produit pas d'erreur, elle
+        produit une fonctionnalité absente que personne ne cherche, puisque le
+        code existe (règle 31).
+
+        Ce que la suppression aurait coûté — repérer d'un coup d'œil les fiches
+        sans CGU ou à plafond dérogatoire — est rendu autrement : ces deux faits
+        sont désormais des colonnes et des filtres de l'écran « Suivi des
+        commerçants ».
+    -->
     <record id="view_echango_promo_account_form" model="ir.ui.view">
         <field name="name">echango.promo.account.form</field>
         <field name="model">echango.promo.account</field>
@@ -60,28 +75,5 @@
         </field>
     </record>
 
-    <record id="view_echango_promo_account_list" model="ir.ui.view">
-        <field name="name">echango.promo.account.list</field>
-        <field name="model">echango.promo.account</field>
-        <field name="arch" type="xml">
-            <list string="Fiches echango Promo" create="false" edit="false">
-                <field name="nom_promo"/>
-                <field name="telephone_e164"/>
-                <field name="categorie"/>
-                <field name="date_derniere_publication"/>
-                <field name="promos_en_ligne"/>
-                <field name="promos_visibles"/>
-                <field name="peut_publier"/>
-                <field name="motif_blocage"/>
-                <field name="derniere_synchro"/>
-            </list>
-        </field>
-    </record>
 
-    <record id="action_echango_promo_account" model="ir.actions.act_window">
-        <field name="name">Fiches echango Promo</field>
-        <field name="res_model">echango.promo.account</field>
-        <field name="view_mode">list,form</field>
-        <field name="context">{'create': False}</field>
-    </record>
 </odoo>
