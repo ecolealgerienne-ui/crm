@@ -8,21 +8,15 @@
               parent="crm.crm_menu_root" sequence="60"
               groups="group_echango_promo_user"/>
 
-    <menuitem id="menu_echango_promo_non_affectes" name="Non affectés"
-              parent="menu_echango_promo_root"
-              action="action_echango_promo_non_affectes" sequence="10"/>
 
     <menuitem id="menu_echango_promo_suivi" name="Suivi des commerçants"
               parent="menu_echango_promo_root"
-              action="action_echango_promo_suivi" sequence="20"/>
+              action="action_echango_promo_suivi" sequence="10"/>
 
-    <menuitem id="menu_echango_promo_a_debloquer" name="À débloquer"
-              parent="menu_echango_promo_root"
-              action="action_echango_promo_a_debloquer" sequence="30"/>
 
-    <menuitem id="menu_echango_promo_analyse" name="Analyse"
+    <menuitem id="menu_echango_promo_analyse" name="Analyses"
               parent="menu_echango_promo_root"
-              action="action_echango_promo_analyse" sequence="35"/>
+              action="action_echango_promo_analyse" sequence="20"/>
 
     <menuitem id="menu_echango_promo_comptes" name="Fiches Promo"
               parent="menu_echango_promo_root"

@@ -117,9 +117,19 @@
         champ stocké ne peut pas donner.
     -->
     <record id="action_echango_promo_analyse" model="ir.actions.act_window">
-        <field name="name">Analyse du suivi</field>
+        <field name="name">Analyses</field>
         <field name="res_model">echango.promo.suivi</field>
         <field name="view_mode">pivot,graph,list</field>
         <field name="context">{'create': False}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Rien à analyser pour l'instant.</p>
+            <p>Cet écran croise les chiffres — par ville, par motif, par
+               ancienneté. ⚠️ Il porte <b>les jours écoulés depuis la dernière
+               publication</b> comme une vraie mesure, ce que l'écran de suivi ne
+               peut pas faire : là-bas ce nombre est recalculé à l'affichage et
+               n'est donc ni cumulable ni moyennable.</p>
+            <p>Pour agir sur un commerçant, passer par <b>Suivi des
+               commerçants</b> : les lignes y ouvrent la fiche client.</p>
+        </field>
     </record>
 </odoo>

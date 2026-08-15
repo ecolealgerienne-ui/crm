@@ -115,10 +115,17 @@
     </record>
 
     <!--
-        ⚠️ Le domaine de base est le MÊME sur les trois écrans :
-        `est_commercant_promo`. C'est l'existence d'une fiche Promo qui fait la
-        provenance — pas une étiquette qu'un commercial peut retirer, pas une
-        équipe qu'une réaffectation déplace.
+        ⚠️ **Un seul écran de travail, et c'est un choix.** « Non affectés » et
+        « À débloquer » étaient la MÊME liste, au filtre près — trois menus pour
+        un seul jeu de données, dont deux qui donnaient l'illusion de périmètres
+        distincts. Ils sont devenus des filtres, et les filtres se combinent :
+        « Sans commercial » ET « À risque » est une question qu'aucun des trois
+        écrans ne savait poser.
+
+        Le domaine de base : `est_commercant_promo` — l'existence d'une fiche
+        Promo, pas une étiquette qu'un commercial peut retirer ni une équipe
+        qu'une réaffectation déplace. Et les comptes supprimés en sont exclus :
+        ils n'ont plus rien à suivre.
     -->
     <record id="action_echango_promo_suivi" model="ir.actions.act_window">
         <field name="name">Suivi des commerçants</field>
@@ -131,40 +138,13 @@
             <p class="o_view_nocontent_smiling_face">Aucun commerçant suivi.</p>
             <p>Les lignes grisées n'ont <b>jamais publié</b> : leurs colonnes de
                publication sont vides parce qu'il n'y a rien à y mettre, pas
-               parce que la synchronisation a échoué.</p>
+               parce que la synchronisation a échoué. Les lignes rouges sont
+               <b>bloquées</b> — elles ne se relancent pas, elles se débloquent.</p>
+            <p>Les filtres portent les questions du quotidien : <b>Sans
+               commercial</b>, <b>À débloquer par nous</b>, <b>À risque</b>,
+               <b>Jamais publié</b> — et ils se combinent.</p>
         </field>
     </record>
 
-    <record id="action_echango_promo_non_affectes" model="ir.actions.act_window">
-        <field name="name">Commerçants non affectés</field>
-        <field name="res_model">res.partner</field>
-        <field name="view_mode">list,form</field>
-        <field name="domain">[('est_commercant_promo','=',True),('promo_supprime_le','=',False),('user_id','=',False)]</field>
-        <field name="search_view_id" ref="view_commercant_promo_search"/>
-        <field name="context">{'create': False}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Tout le monde est affecté.</p>
-            <p>⚠️ Sans commercial, un commerçant n'apparaît <b>nulle part
-               ailleurs</b> : ni dans les appels (jamais appelé), ni dans la
-               Couverture du portefeuille, qui filtre sur le commercial. Il
-               existe et personne ne le voit.</p>
-        </field>
-    </record>
 
-    <record id="action_echango_promo_a_debloquer" model="ir.actions.act_window">
-        <field name="name">À débloquer</field>
-        <field name="res_model">res.partner</field>
-        <field name="view_mode">list,form</field>
-        <field name="domain">[('est_commercant_promo','=',True),('promo_supprime_le','=',False),('promo_peut_publier','=',False)]</field>
-        <field name="search_view_id" ref="view_commercant_promo_search"/>
-        <field name="context">{'create': False, 'search_default_par_motif': 1}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Personne n'est bloqué.</p>
-            <p>⚠️ Deux motifs seulement dépendent de nous : <b>registre en
-               attente</b> et <b>profil en attente</b>. Les autres se lèvent chez
-               le commerçant — l'appeler pour ceux-là serait lui demander ce que
-               nous devons faire nous-mêmes. Le filtre <b>À débloquer par
-               nous</b> ne garde que les deux premiers.</p>
-        </field>
-    </record>
 </odoo>
