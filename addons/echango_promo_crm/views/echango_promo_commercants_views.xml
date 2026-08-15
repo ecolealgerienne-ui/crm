@@ -159,6 +159,31 @@
         <field name="name">Suivi des commerçants</field>
         <field name="res_model">res.partner</field>
         <field name="view_mode">list,form,kanban</field>
+        <!--
+            ⚠️ **Sans `view_ids`, cette action n'ouvrait PAS la liste ci-dessus.**
+            Une action sans vue désignée laisse Odoo choisir celle de plus faible
+            `priority` pour le modèle : `base.view_partner_tree` est à 8, la
+            nôtre à 16 — c'est donc la liste Contacts native qui s'affichait,
+            avec ses colonnes nom / téléphone / ville et aucune des colonnes de
+            Promo. **Constaté le 2026-08-16**, en cherchant pourquoi le bouton
+            « Affecter à un commercial » n'apparaissait pas : il était bien dans
+            une vue, mais dans une vue que personne n'ouvrait (règle #31).
+
+            ⚠️ **Le symptôme est trompeur au dernier degré** : l'écran s'ouvrait,
+            listait les bons commerçants (le `domain`, lui, s'applique), et se
+            comportait normalement. Rien n'indiquait qu'on regardait la mauvaise
+            vue — seulement des colonnes qu'on croyait vides.
+
+            ⚠️ **Ne PAS corriger en abaissant la priorité de notre vue** : elle
+            deviendrait la liste par défaut de `res.partner` pour tout Odoo,
+            application Contacts comprise. On désigne la vue ici ; le formulaire
+            et le kanban restent ceux d'Odoo, volontairement — c'est la fiche
+            client native que l'équipe vient chercher.
+        -->
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('view_commercant_promo_list'), 'sequence': 10}),
+            (0, 0, {'view_mode': 'form', 'sequence': 20}),
+            (0, 0, {'view_mode': 'kanban', 'sequence': 30})]"/>
         <field name="domain">[('est_commercant_promo','=',True),('promo_supprime_le','=',False)]</field>
         <field name="search_view_id" ref="view_commercant_promo_search"/>
         <field name="context">{'create': False}</field>

@@ -3,6 +3,7 @@
 # dans cette liste.
 from . import test_campagne
 from . import test_geocodage_etat
+from . import test_ecrans
 from . import test_jeton
 from . import test_lot
 from . import test_proprietaire
