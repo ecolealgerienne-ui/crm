@@ -51,13 +51,44 @@ telle quelle, il n'y a aucun Dockerfile dans ce dépôt.
 
 ```bash
 sudo mkdir -p /opt/echangocrm
+# ⚠️ **Donner le dossier à l'utilisateur qui exploitera la stack**, tout de
+# suite. `sudo mkdir` le crée en `root` : cloner ou tirer ensuite en tant
+# qu'`ubuntu` échoue, et git refuse même de lire avec un message qui n'oriente
+# pas — « fatal: detected dubious ownership in repository ». Docker, lui,
+# tourne en root et lit quel que soit le propriétaire : rien n'oblige ce
+# dossier à rester à root.
+sudo chown -R "$USER:$USER" /opt/echangocrm
+
 cd /opt/echangocrm
 git clone https://github.com/ecolealgerienne-ui/crm.git .
 
 cp .env.production.example .env.production
-chmod 600 .env.production
+chmod 600 .env.production   # il porte des secrets — à revérifier après tout chown
 nano .env.production
 ```
+
+### ⚠️ « detected dubious ownership » sur un dépôt déjà installé
+
+C'est que le dépôt appartient à un autre utilisateur que celui qui lance git —
+typiquement parce qu'il a été cloné avec `sudo`. Deux issues, et une seule est
+durable :
+
+```bash
+# Voir à qui il appartient réellement
+stat -c '%U:%G' /opt/echangocrm /opt/echangocrm/.git
+
+# Le remède : le rendre à l'utilisateur qui exploite la stack
+sudo chown -R "$USER:$USER" /opt/echangocrm
+chmod 600 /opt/echangocrm/.env.production
+git pull origin main
+```
+
+⚠️ **`git config --global --add safe.directory …` ne suffit pas.** Cette
+commande, que git suggère lui-même, ne fait que taire le contrôle de
+propriété : elle n'accorde aucun droit d'écriture, et le `git pull` échouera
+juste après en « Permission denied ». Et **`sudo git pull` déplace le
+problème** : les fichiers nouveaux arrivent en root, donc le prochain tirage
+sans sudo se heurte au même mur.
 
 Deux valeurs à renseigner, les autres ont un défaut correct :
 
