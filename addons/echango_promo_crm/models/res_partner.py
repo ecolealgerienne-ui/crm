@@ -65,7 +65,8 @@ class ResPartner(models.Model):
         related='promo_account_id.date_derniere_publication', store=True,
         string="Dernière publication")
     promo_jamais_publie = fields.Boolean(
-        string="N'a jamais publié", compute='_compute_promo_jours', store=True)
+        string="N'a jamais publié", compute='_compute_promo_jamais_publie',
+        store=True)
     promo_en_ligne = fields.Integer(
         related='promo_account_id.promos_en_ligne', store=True,
         string="Promos en ligne")
@@ -140,17 +141,29 @@ class ResPartner(models.Model):
     #: stocké.
     promo_jours_depuis_publication = fields.Integer(
         string="Jours depuis la dernière publication",
-        compute='_compute_promo_jours', aggregator='avg')
+        compute='_compute_promo_jours_depuis_publication', aggregator='avg')
+
+    #: ⚠️ **Deux méthodes, et ce n'est pas une redite.** Une seule méthode
+    #: calculant à la fois un champ stocké et un champ non stocké fait lever
+    #: Odoo 19 à l'installation : « inconsistent 'store' for computed fields,
+    #: accessing promo_jours_depuis_publication may recompute and update
+    #: promo_jamais_publie ». Ce n'est pas qu'un avertissement de style —
+    #: **lire** le champ d'affichage déclencherait une **écriture** sur le champ
+    #: stocké, donc une transaction là où l'on croyait ne faire qu'afficher.
+    @api.depends('promo_derniere_publication', 'promo_account_id')
+    def _compute_promo_jamais_publie(self):
+        for partenaire in self:
+            partenaire.promo_jamais_publie = (
+                not partenaire.promo_derniere_publication
+                and bool(partenaire.promo_account_id))
 
     @api.depends('promo_derniere_publication')
-    def _compute_promo_jours(self):
+    def _compute_promo_jours_depuis_publication(self):
         aujourdhui = fields.Date.context_today(self)
         for partenaire in self:
             date = partenaire.promo_derniere_publication
-            partenaire.promo_jamais_publie = not date and bool(
-                partenaire.promo_account_id)
-            # ⚠️ **Vide, pas zéro.** Zéro signifierait « publié aujourd'hui »,
-            # et un tri placerait les plus délaissés en tête des plus actifs.
+            # ⚠️ **Zéro n'est pas « jamais ».** Le champ voisin porte cette
+            # distinction ; ici, zéro veut dire « publié aujourd'hui ».
             partenaire.promo_jours_depuis_publication = (
                 (aujourdhui - date.date()).days if date else 0)
 
