@@ -24,6 +24,18 @@
             <list string="Commerçants echango Promo" create="false"
                   decoration-muted="promo_jamais_publie"
                   decoration-danger="not promo_peut_publier">
+                <!--
+                    ⚠️ Un `<header>` de liste n'apparaît QUE lorsque des lignes
+                    sont cochées, et il porte `active_ids`. C'est ce qui permet
+                    de garder l'action ici sans la faire surgir dans toutes les
+                    listes de contacts d'Odoo — un `binding_model_id` sur
+                    `res.partner` l'aurait posée jusque chez les fournisseurs.
+                -->
+                <header>
+                    <button name="%(echango_promo_crm.action_campagne_wizard)d"
+                            type="action" class="btn-primary"
+                            string="Affecter à un commercial"/>
+                </header>
                 <field name="display_name" string="Commerçant"/>
                 <field name="promo_ville" string="Ville"/>
                 <field name="promo_wilaya" optional="hide"/>

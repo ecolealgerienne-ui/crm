@@ -4,4 +4,5 @@ from . import echango_promo_account
 from . import echango_promo_suivi
 from . import echango_promo_geocodage
 from . import echango_promo_audit
+from . import echango_promo_campagne
 from . import res_partner

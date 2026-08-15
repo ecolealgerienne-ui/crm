@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_campagne_wizard_form" model="ir.ui.view">
+        <field name="name">echango.promo.campagne.wizard.form</field>
+        <field name="model">echango.promo.campagne.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Affecter à un commercial">
+                <!--
+                    ⚠️ Le décompte est en tête, avant les champs à remplir :
+                    « 30 sélectionnés, 12 déjà en cours, 18 à créer » est
+                    exactement ce qu'on veut savoir AVANT de valider, pas
+                    après. Un assistant qui n'annonce pas ce qu'il va faire
+                    fait découvrir son effet dans le pipeline.
+                -->
+                <div class="alert alert-info" role="status">
+                    <field name="nombre_selectionnes" class="oe_inline"/>
+                    commerçant(s) sélectionné(s) —
+                    <field name="nombre_deja_en_cours" class="oe_inline"/>
+                    déjà en cours,
+                    <strong>
+                        <field name="nombre_a_creer" class="oe_inline"/>
+                        opportunité(s) à créer
+                    </strong>.
+                </div>
+                <group>
+                    <group>
+                        <field name="commercial_id"
+                               widget="many2one_avatar_user"/>
+                        <field name="equipe_id"/>
+                        <field name="date_echeance"/>
+                    </group>
+                    <group>
+                        <field name="sujet"/>
+                        <field name="etiquette_ids" widget="many2many_tags"
+                               options="{'color_field': 'color'}"/>
+                    </group>
+                </group>
+                <group>
+                    <field name="motif" nolabel="1"
+                           placeholder="Appeler ces commerçants et comprendre pourquoi ils n'ont pas publié depuis un certain temps."/>
+                </group>
+                <group string="Options">
+                    <field name="affecter_fiche"/>
+                    <field name="planifier_appel"/>
+                    <field name="eviter_doublons"/>
+                </group>
+                <field name="commercant_ids" widget="many2many_tags"
+                       readonly="1" string="Concernés"/>
+                <footer>
+                    <button name="action_creer" type="object" string="Créer"
+                            class="btn-primary" data-hotkey="q"/>
+                    <button string="Annuler" class="btn-secondary"
+                            special="cancel" data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!--
+        ⚠️ **PAS de `binding_model_id` ici, et c'est délibéré.** Une action liée
+        à `res.partner` apparaîtrait dans le menu « Action » de TOUTES les
+        listes de contacts d'Odoo — fournisseurs, employés, clients de vente —
+        où elle n'a aucun sens. Le bouton est posé dans l'en-tête de la seule
+        liste concernée (voir `echango_promo_commercants_views.xml`), ce qui la
+        garde là où elle veut dire quelque chose.
+    -->
+    <record id="action_campagne_wizard" model="ir.actions.act_window">
+        <field name="name">Affecter à un commercial</field>
+        <field name="res_model">echango.promo.campagne.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>
