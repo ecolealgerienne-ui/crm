@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        ⚠️ **Ces trois écrans sont bâtis sur `res.partner`, pas sur la vue SQL.**
+        Un clic sur une ligne de liste ouvre le formulaire du modèle de la
+        liste : sur `echango.promo.suivi`, c'était une ligne de vue SQL — ni
+        appels, ni notes, ni activités, ni commercial. Or c'est exactement ce
+        que l'équipe vient chercher.
+
+        Bâtis sur le client, le clic ouvre la fiche client sans qu'aucun code ne
+        s'en mêle. C'est le comportement natif d'Odoo qui fait le travail.
+    -->
+
+    <record id="view_commercant_promo_list" model="ir.ui.view">
+        <field name="name">res.partner.list.echango.promo</field>
+        <field name="model">res.partner</field>
+        <field name="arch" type="xml">
+            <!--
+                ⚠️ Une case vide doit DIRE pourquoi : les lignes grisées n'ont
+                jamais publié, leurs colonnes de publication sont vides parce
+                qu'il n'y a rien à y mettre — pas parce que la synchronisation
+                a échoué.
+            -->
+            <list string="Commerçants echango Promo" create="false"
+                  decoration-muted="promo_jamais_publie"
+                  decoration-danger="not promo_peut_publier">
+                <field name="display_name" string="Commerçant"/>
+                <field name="promo_ville" string="Ville"/>
+                <field name="promo_wilaya" optional="hide"/>
+                <field name="user_id" widget="many2one_avatar_user"
+                       string="Commercial"/>
+                <field name="phone" optional="show"/>
+                <field name="promo_jamais_publie" string="Jamais publié"
+                       optional="show"/>
+                <field name="promo_derniere_publication"/>
+                <field name="promo_jours_depuis_publication" string="Jours"/>
+                <field name="promo_en_ligne" string="En ligne" sum="En ligne"/>
+                <field name="promo_visibles" string="Visibles" optional="hide"/>
+                <field name="promo_signalements_90j" string="Signalements"
+                       sum="Signalements"/>
+                <field name="promo_motif_blocage" string="Motif de blocage"/>
+                <field name="promo_registre_statut" optional="hide"/>
+                <field name="promo_geocodage_statut" optional="hide"/>
+                <field name="promo_derniere_synchro" string="Reçu le"
+                       optional="hide"/>
+                <field name="promo_peut_publier" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_commercant_promo_search" model="ir.ui.view">
+        <field name="name">res.partner.search.echango.promo</field>
+        <field name="model">res.partner</field>
+        <field name="arch" type="xml">
+            <search string="Commerçants echango Promo">
+                <field name="name" string="Commerçant"/>
+                <field name="promo_ville" string="Ville"/>
+                <field name="phone"/>
+                <field name="user_id" string="Commercial"/>
+
+                <!--
+                    Les six états, dans l'ordre où on les lit : « Bloqué »
+                    d'abord, parce qu'un commerçant bloqué ne se relance pas, il
+                    se débloque.
+
+                    ⚠️ Les seuils vivent ICI, dans des filtres, et non dans une
+                    colonne calculée : les changer ne demande pas de remonter le
+                    module, et l'équipe peut composer ses propres filtres.
+                -->
+                <filter name="bloque" string="Bloqué"
+                        domain="[('promo_peut_publier','=',False)]"/>
+                <filter name="a_debloquer" string="À débloquer par nous"
+                        domain="[('promo_motif_blocage','in',['registre_en_attente','profil_en_revue'])]"/>
+                <filter name="jamais_publie" string="Jamais publié"
+                        domain="[('promo_jamais_publie','=',True)]"/>
+                <filter name="actif" string="Actif"
+                        domain="[('promo_en_ligne','&gt;',0)]"/>
+                <separator/>
+                <filter name="en_pause" string="En pause (moins de 7 j)"
+                        domain="[('promo_derniere_publication','&gt;=',
+                                  (context_today() - datetime.timedelta(days=7)).strftime('%Y-%m-%d 00:00:00'))]"/>
+                <filter name="a_risque" string="À risque (7 à 21 j)"
+                        domain="[('promo_derniere_publication','&lt;',
+                                  (context_today() - datetime.timedelta(days=7)).strftime('%Y-%m-%d 00:00:00')),
+                                 ('promo_derniere_publication','&gt;=',
+                                  (context_today() - datetime.timedelta(days=21)).strftime('%Y-%m-%d 00:00:00'))]"/>
+                <filter name="dormant" string="Dormant (plus de 21 j)"
+                        domain="[('promo_derniere_publication','&lt;',
+                                  (context_today() - datetime.timedelta(days=21)).strftime('%Y-%m-%d 00:00:00'))]"/>
+                <separator/>
+                <filter name="non_affecte" string="Sans commercial"
+                        domain="[('user_id','=',False)]"/>
+                <filter name="sans_ville" string="Sans ville"
+                        domain="[('promo_ville','=',False)]"/>
+                <filter name="signale" string="Signalé"
+                        domain="[('promo_signalements_90j','&gt;',0)]"/>
+                <filter name="suspendu" string="Suspendu"
+                        domain="[('promo_suspendu_le','!=',False)]"/>
+                <!-- ⚠️ Volontairement hors des trois écrans : un compte
+                     supprimé n'a plus rien à suivre. Ce filtre existe pour
+                     qu'on puisse quand même le retrouver. -->
+                <filter name="supprime" string="Supprimé côté Promo"
+                        domain="[('promo_supprime_le','!=',False)]"/>
+                <separator/>
+                <filter name="par_ville" string="Ville"
+                        context="{'group_by':'promo_ville'}"/>
+                <filter name="par_wilaya" string="Wilaya"
+                        context="{'group_by':'promo_wilaya'}"/>
+                <filter name="par_commercial" string="Commercial"
+                        context="{'group_by':'user_id'}"/>
+                <filter name="par_motif" string="Motif de blocage"
+                        context="{'group_by':'promo_motif_blocage'}"/>
+            </search>
+        </field>
+    </record>
+
+    <!--
+        ⚠️ Le domaine de base est le MÊME sur les trois écrans :
+        `est_commercant_promo`. C'est l'existence d'une fiche Promo qui fait la
+        provenance — pas une étiquette qu'un commercial peut retirer, pas une
+        équipe qu'une réaffectation déplace.
+    -->
+    <record id="action_echango_promo_suivi" model="ir.actions.act_window">
+        <field name="name">Suivi des commerçants</field>
+        <field name="res_model">res.partner</field>
+        <field name="view_mode">list,form,kanban</field>
+        <field name="domain">[('est_commercant_promo','=',True),('promo_supprime_le','=',False)]</field>
+        <field name="search_view_id" ref="view_commercant_promo_search"/>
+        <field name="context">{'create': False}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aucun commerçant suivi.</p>
+            <p>Les lignes grisées n'ont <b>jamais publié</b> : leurs colonnes de
+               publication sont vides parce qu'il n'y a rien à y mettre, pas
+               parce que la synchronisation a échoué.</p>
+        </field>
+    </record>
+
+    <record id="action_echango_promo_non_affectes" model="ir.actions.act_window">
+        <field name="name">Commerçants non affectés</field>
+        <field name="res_model">res.partner</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('est_commercant_promo','=',True),('promo_supprime_le','=',False),('user_id','=',False)]</field>
+        <field name="search_view_id" ref="view_commercant_promo_search"/>
+        <field name="context">{'create': False}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Tout le monde est affecté.</p>
+            <p>⚠️ Sans commercial, un commerçant n'apparaît <b>nulle part
+               ailleurs</b> : ni dans les appels (jamais appelé), ni dans la
+               Couverture du portefeuille, qui filtre sur le commercial. Il
+               existe et personne ne le voit.</p>
+        </field>
+    </record>
+
+    <record id="action_echango_promo_a_debloquer" model="ir.actions.act_window">
+        <field name="name">À débloquer</field>
+        <field name="res_model">res.partner</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('est_commercant_promo','=',True),('promo_supprime_le','=',False),('promo_peut_publier','=',False)]</field>
+        <field name="search_view_id" ref="view_commercant_promo_search"/>
+        <field name="context">{'create': False, 'search_default_par_motif': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Personne n'est bloqué.</p>
+            <p>⚠️ Deux motifs seulement dépendent de nous : <b>registre en
+               attente</b> et <b>profil en attente</b>. Les autres se lèvent chez
+               le commerçant — l'appeler pour ceux-là serait lui demander ce que
+               nous devons faire nous-mêmes. Le filtre <b>À débloquer par
+               nous</b> ne garde que les deux premiers.</p>
+        </field>
+    </record>
+</odoo>

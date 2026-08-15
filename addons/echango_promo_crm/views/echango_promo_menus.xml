@@ -20,6 +20,10 @@
               parent="menu_echango_promo_root"
               action="action_echango_promo_a_debloquer" sequence="30"/>
 
+    <menuitem id="menu_echango_promo_analyse" name="Analyse"
+              parent="menu_echango_promo_root"
+              action="action_echango_promo_analyse" sequence="35"/>
+
     <menuitem id="menu_echango_promo_comptes" name="Fiches Promo"
               parent="menu_echango_promo_root"
               action="action_echango_promo_account" sequence="40"/>

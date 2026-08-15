@@ -100,19 +100,6 @@
         </field>
     </record>
 
-    <record id="action_echango_promo_suivi" model="ir.actions.act_window">
-        <field name="name">Suivi des commerçants</field>
-        <field name="res_model">echango.promo.suivi</field>
-        <field name="view_mode">list,pivot,graph</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Aucun commerçant suivi.</p>
-            <p>Les lignes grisées n'ont <b>jamais publié</b> : leurs colonnes de
-               publication sont vides parce qu'il n'y a rien à y mettre, pas
-               parce que la synchronisation a échoué. Le filtre
-               <b>Jamais publié</b> les isole ; <b>À risque</b> et <b>Dormant</b>
-               ne montrent que ceux qui ont déjà publié.</p>
-        </field>
-    </record>
 
     <!--
         ⚠️ **Écran obligatoire, pas un confort.** La Couverture du portefeuille
@@ -121,32 +108,18 @@
         dans les appels (jamais appelé), ni dans la couverture (pas de
         commercial). Il existe et personne ne le voit.
     -->
-    <record id="action_echango_promo_non_affectes" model="ir.actions.act_window">
-        <field name="name">Commerçants non affectés</field>
-        <field name="res_model">echango.promo.suivi</field>
-        <field name="view_mode">list,pivot</field>
-        <field name="domain">[('user_id','=',False)]</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Tout le monde est affecté.</p>
-            <p>⚠️ Sans commercial, un commerçant n'apparaît <b>nulle part
-               ailleurs</b> : ni dans les appels (jamais appelé), ni dans la
-               Couverture du portefeuille, qui filtre sur le commercial. Il
-               existe et personne ne le voit.</p>
-        </field>
-    </record>
 
-    <record id="action_echango_promo_a_debloquer" model="ir.actions.act_window">
-        <field name="name">À débloquer</field>
+    <!--
+        ⚠️ **Cet écran reste sur la vue SQL, et lui seul.** Les trois écrans de
+        travail sont bâtis sur `res.partner` pour que le clic mène à la fiche
+        client ; celui-ci sert à ANALYSER — croiser ville, motif et ancienneté —
+        et il a besoin des jours écoulés recalculés à chaque lecture, ce qu'un
+        champ stocké ne peut pas donner.
+    -->
+    <record id="action_echango_promo_analyse" model="ir.actions.act_window">
+        <field name="name">Analyse du suivi</field>
         <field name="res_model">echango.promo.suivi</field>
-        <field name="view_mode">list,pivot</field>
-        <field name="domain">[('peut_publier','=',False)]</field>
-        <field name="context">{'search_default_par_motif': 1}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Personne n'est bloqué.</p>
-            <p>⚠️ Deux motifs seulement dépendent de nous : « registre en
-               attente » et « profil en attente ». Les autres se lèvent chez le
-               commerçant — l'appeler pour ceux-là serait lui demander ce que
-               nous devons faire nous-mêmes, ou l'inverse.</p>
-        </field>
+        <field name="view_mode">pivot,graph,list</field>
+        <field name="context">{'create': False}</field>
     </record>
 </odoo>

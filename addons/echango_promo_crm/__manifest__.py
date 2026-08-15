@@ -44,6 +44,7 @@ créerait deux endroits où valider un registre.
         'views/echango_promo_token_wizard_views.xml',
         'views/echango_promo_account_views.xml',
         'views/echango_promo_suivi_views.xml',
+        'views/echango_promo_commercants_views.xml',
         'views/echango_promo_audit_views.xml',
         'views/res_partner_views.xml',
         'views/echango_promo_menus.xml',
