@@ -78,7 +78,7 @@ services:
       # développement, cette instance est son banc d'essai. Il n'est pas encore
       # dans la liste de docker-compose.crm.yml, et ne doit pas y entrer avant
       # d'être éprouvé ici.
-      - --init=crm,contacts,calendar,echangocrm_bootstrap,call_tracker
+      - --init=crm,contacts,calendar,echangocrm_bootstrap,call_tracker,echango_promo_crm
       # Données de démonstration : elles rendent le pipeline CRM lisible dès le
       # premier lancement, ce qu'on veut pour développer, et fournissent des
       # contacts avec numéro pour éprouver le rapprochement du Call Tracker.

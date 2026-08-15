@@ -161,7 +161,7 @@ services:
       # `base` est implicite (Odoo l'ajoute lui-même à la création de la base).
       # echangocrm_bootstrap applique le mot de passe administrateur ; voir
       # addons/echangocrm_bootstrap/.
-      - --init=crm,contacts,calendar,echangocrm_bootstrap,call_tracker
+      - --init=crm,contacts,calendar,echangocrm_bootstrap,call_tracker,echango_promo_crm
       # `=True` et pas `=all` : depuis Odoo 19 cette option est un booléen, elle
       # ne prend plus une liste de modules. `all` passe encore — Odoo avertit
       # « invalid boolean value: 'all', assume True » et fait ce qu'on veut —

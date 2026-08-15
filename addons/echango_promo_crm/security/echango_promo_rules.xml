@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!--
+            ⚠️ **Tout le parc est visible, et c'est une DÉCISION** (2026-08-15),
+            pas un oubli de cloisonnement. Le cloisonnement éventuel est une
+            configuration Odoo : il suffira de restreindre cette règle sur
+            `partner_id.user_id`. L'écrire ouvertement vaut mieux que laisser
+            croire à une restriction qui n'existe pas.
+
+            Et il ne pourrait PAS s'appuyer sur la source : celle-ci n'a pas
+            d'utilisateur — ce n'est pas quelqu'un, c'est un serveur.
+        -->
+        <record id="rule_echango_promo_account_all" model="ir.rule">
+            <field name="name">Suivi Promo : tout le parc</field>
+            <field name="model_id" ref="model_echango_promo_account"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_echango_promo_user'))]"/>
+        </record>
+    </data>
+</odoo>

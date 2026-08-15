@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        ⚠️ `position="inside"` sur la boîte à boutons, jamais `replace` : c'est
+        la règle du module voisin, et un `replace` casserait toute autre
+        extension de la même vue.
+    -->
+    <record id="view_partner_form_echango_promo" model="ir.ui.view">
+        <field name="name">res.partner.form.echango.promo</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <div name="button_box" position="inside">
+                <button class="oe_stat_button" type="object"
+                        name="action_voir_suivi_promo" icon="fa-tags"
+                        invisible="not est_commercant_promo"
+                        groups="echango_promo_crm.group_echango_promo_user">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">echango Promo</span>
+                    </div>
+                </button>
+                <field name="est_commercant_promo" invisible="1"/>
+            </div>
+        </field>
+    </record>
+</odoo>

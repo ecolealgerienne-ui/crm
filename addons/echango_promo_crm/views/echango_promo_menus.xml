@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Greffé sous le menu CRM, comme le Call Tracker : un menu racine de plus
+        pour trois écrans éparpillerait l'espace de travail de l'équipe.
+    -->
+    <menuitem id="menu_echango_promo_root" name="echango Promo"
+              parent="crm.crm_menu_root" sequence="60"
+              groups="group_echango_promo_user"/>
+
+    <menuitem id="menu_echango_promo_non_affectes" name="Non affectés"
+              parent="menu_echango_promo_root"
+              action="action_echango_promo_non_affectes" sequence="10"/>
+
+    <menuitem id="menu_echango_promo_suivi" name="Suivi des commerçants"
+              parent="menu_echango_promo_root"
+              action="action_echango_promo_suivi" sequence="20"/>
+
+    <menuitem id="menu_echango_promo_a_debloquer" name="À débloquer"
+              parent="menu_echango_promo_root"
+              action="action_echango_promo_a_debloquer" sequence="30"/>
+
+    <menuitem id="menu_echango_promo_comptes" name="Fiches Promo"
+              parent="menu_echango_promo_root"
+              action="action_echango_promo_account" sequence="40"/>
+
+    <menuitem id="menu_echango_promo_source" name="Source et jeton"
+              parent="menu_echango_promo_root"
+              action="action_echango_promo_source" sequence="80"
+              groups="group_echango_promo_manager"/>
+
+    <menuitem id="menu_echango_promo_audit" name="Journal des lots"
+              parent="menu_echango_promo_root"
+              action="action_echango_promo_audit" sequence="90"
+              groups="group_echango_promo_manager"/>
+</odoo>

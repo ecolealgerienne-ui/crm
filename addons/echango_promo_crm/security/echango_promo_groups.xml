@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        ⚠️ PAS de `noupdate="1"` ici, et c'est un choix payé comptant par le
+        module voisin : un bloc `noupdate` est appliqué à l'INSTALLATION mais
+        ignoré à la MISE À JOUR. Les greffes ci-dessous n'auraient jamais été
+        appliquées sur une instance déjà installée, et plus personne n'aurait eu
+        accès au module — sans le moindre message.
+    -->
+    <data>
+
+        <!--
+            ⚠️ Odoo 19 : `res.groups.category_id` N'EXISTE PLUS, remplacé par un
+            `privilege_id` pointant vers un `res.groups.privilege`. Un
+            `category_id` sur le groupe fait échouer l'INSTALLATION, pas
+            seulement l'affichage.
+
+            Mais le `category_id` vers `ir.module.category` existe toujours —
+            sur le PRIVILÈGE. L'omettre rangerait les groupes nulle part dans la
+            fiche utilisateur.
+        -->
+        <record id="privilege_echango_promo" model="res.groups.privilege">
+            <field name="name">echango Promo</field>
+            <field name="category_id" ref="base.module_category_sales_crm"/>
+            <field name="sequence">30</field>
+        </record>
+
+        <record id="group_echango_promo_user" model="res.groups">
+            <field name="name">Utilisateur : consulte le suivi</field>
+            <field name="privilege_id" ref="privilege_echango_promo"/>
+            <field name="sequence">10</field>
+            <field name="comment">Voit les commerçants d'echango Promo et leur suivi.</field>
+        </record>
+
+        <record id="group_echango_promo_manager" model="res.groups">
+            <field name="name">Responsable : gère la source et le journal</field>
+            <field name="privilege_id" ref="privilege_echango_promo"/>
+            <field name="sequence">20</field>
+            <!-- Le responsable est aussi un utilisateur : sans cette
+                 implication, lui retirer le groupe « utilisateur » lui ferait
+                 tout perdre. -->
+            <field name="implied_ids" eval="[(4, ref('group_echango_promo_user'))]"/>
+            <field name="comment">Gère le jeton de synchronisation et lit le journal des lots.</field>
+        </record>
+
+        <!--
+            Sans ce rattachement, PERSONNE n'aurait accès au module après
+            installation : les groupes existeraient, vides, et il faudrait les
+            attribuer à la main un par un.
+        -->
+        <record id="sales_team.group_sale_salesman" model="res.groups">
+            <field name="implied_ids" eval="[(4, ref('group_echango_promo_user'))]"/>
+        </record>
+
+        <record id="sales_team.group_sale_manager" model="res.groups">
+            <field name="implied_ids" eval="[(4, ref('group_echango_promo_manager'))]"/>
+        </record>
+
+    </data>
+</odoo>

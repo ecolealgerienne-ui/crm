@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_echango_promo_source_form" model="ir.ui.view">
+        <field name="name">echango.promo.source.form</field>
+        <field name="model">echango.promo.source</field>
+        <field name="arch" type="xml">
+            <form string="Source de synchronisation">
+                <header>
+                    <button name="action_generer_jeton" type="object"
+                            string="Générer un jeton" class="btn-primary"
+                            confirm="Générer un jeton révoque immédiatement l'ancien : la synchronisation échouera tant que le nouveau ne sera pas posé côté echango Promo. Continuer ?"/>
+                </header>
+                <sheet>
+                    <widget name="web_ribbon" title="Silencieuse"
+                            bg_color="text-bg-danger"
+                            invisible="not silencieux"/>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group string="État">
+                            <field name="active" widget="boolean_toggle"/>
+                            <field name="silencieux"/>
+                            <field name="last_seen"/>
+                            <field name="last_batch"/>
+                            <field name="last_count"/>
+                        </group>
+                    </group>
+                    <div class="alert alert-info" role="alert">
+                        Le jeton n'est <b>jamais stocké en clair</b> : seule son
+                        empreinte l'est. S'il est perdu, il faut en générer un
+                        nouveau — l'ancien cesse alors de valoir immédiatement.
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_echango_promo_source_list" model="ir.ui.view">
+        <field name="name">echango.promo.source.list</field>
+        <field name="model">echango.promo.source</field>
+        <field name="arch" type="xml">
+            <list string="Sources" decoration-danger="silencieux">
+                <field name="name"/>
+                <field name="active"/>
+                <field name="last_seen"/>
+                <field name="last_count"/>
+                <field name="silencieux"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_echango_promo_source" model="ir.actions.act_window">
+        <field name="name">Source et jeton</field>
+        <field name="res_model">echango.promo.source</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

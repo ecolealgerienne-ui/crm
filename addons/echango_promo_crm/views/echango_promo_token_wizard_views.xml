@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_echango_promo_token_wizard_form" model="ir.ui.view">
+        <field name="name">echango.promo.token.wizard.form</field>
+        <field name="model">echango.promo.token.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Jeton de synchronisation">
+                <div class="alert alert-warning" role="alert">
+                    <b>Copiez-le maintenant.</b> Il n'est stocké nulle part et
+                    ne sera plus jamais affiché — seule son empreinte est
+                    conservée.
+                </div>
+                <group>
+                    <field name="source_id" readonly="1"/>
+                    <field name="token" readonly="1"/>
+                </group>
+                <div class="text-muted">
+                    À poser côté echango Promo dans <code>CRM_SYNC_TOKEN</code>,
+                    avec <code>CRM_SYNC_URL</code>. Tant que les deux sont
+                    absents, la tâche de 04:00 journalise son abstention et
+                    n'envoie rien — ce n'est pas une panne.
+                </div>
+                <footer>
+                    <button string="Fermer" class="btn-primary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

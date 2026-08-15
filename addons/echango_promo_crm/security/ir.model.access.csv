@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_echango_promo_account_user,echango.promo.account utilisateur,model_echango_promo_account,group_echango_promo_user,1,1,0,0
+access_echango_promo_account_manager,echango.promo.account responsable,model_echango_promo_account,group_echango_promo_manager,1,1,0,1
+access_echango_promo_suivi_user,echango.promo.suivi utilisateur,model_echango_promo_suivi,group_echango_promo_user,1,0,0,0
+access_echango_promo_source_manager,echango.promo.source responsable,model_echango_promo_source,group_echango_promo_manager,1,1,1,1
+access_echango_promo_audit_manager,echango.promo.audit responsable,model_echango_promo_audit,group_echango_promo_manager,1,0,0,0
+access_echango_promo_token_wizard,echango.promo.token.wizard responsable,model_echango_promo_token_wizard,group_echango_promo_manager,1,1,1,1

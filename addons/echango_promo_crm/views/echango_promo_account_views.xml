@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_echango_promo_account_form" model="ir.ui.view">
+        <field name="name">echango.promo.account.form</field>
+        <field name="model">echango.promo.account</field>
+        <field name="arch" type="xml">
+            <form string="Fiche echango Promo" create="false" edit="false">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="nom_promo" readonly="1"/></h1>
+                        <h3><field name="partner_id" readonly="1"/></h3>
+                    </div>
+                    <group>
+                        <group string="Ce que Promo sait">
+                            <field name="telephone_e164"/>
+                            <field name="pays"/>
+                            <field name="categorie"/>
+                            <field name="adresse_promo"/>
+                            <field name="origine"/>
+                            <field name="date_creation"/>
+                            <field name="consentement_le"
+                                   help="Vide pour tous les comptes créés par un agent — par conception du produit."/>
+                        </group>
+                        <group string="Publication">
+                            <field name="est_active"/>
+                            <field name="date_derniere_publication"/>
+                            <field name="promos_en_ligne"/>
+                            <field name="promos_visibles"/>
+                            <field name="promos_deja_publiees"/>
+                            <field name="promos_publiees_30j"/>
+                            <field name="promos_sans_publication"/>
+                        </group>
+                        <group string="Ce qui bloque">
+                            <field name="peut_publier"/>
+                            <field name="motif_blocage"/>
+                            <field name="registre_statut"/>
+                            <field name="plafond_effectif"/>
+                            <field name="plafond_propre"/>
+                        </group>
+                        <group string="Audience et risque">
+                            <field name="nouveaux_visiteurs_fiche_30j"/>
+                            <field name="nouveaux_visiteurs_promos_30j"/>
+                            <field name="signalements_90j"/>
+                            <field name="promos_masquees"/>
+                        </group>
+                        <group string="Fraîcheur">
+                            <field name="genere_le"/>
+                            <field name="derniere_synchro"/>
+                            <field name="last_batch"/>
+                            <field name="source_id"/>
+                        </group>
+                        <group string="Compte">
+                            <field name="suspendu_le"/>
+                            <field name="supprime_le"/>
+                            <field name="promo_uuid"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_echango_promo_account_list" model="ir.ui.view">
+        <field name="name">echango.promo.account.list</field>
+        <field name="model">echango.promo.account</field>
+        <field name="arch" type="xml">
+            <list string="Fiches echango Promo" create="false" edit="false">
+                <field name="nom_promo"/>
+                <field name="telephone_e164"/>
+                <field name="categorie"/>
+                <field name="date_derniere_publication"/>
+                <field name="promos_en_ligne"/>
+                <field name="promos_visibles"/>
+                <field name="peut_publier"/>
+                <field name="motif_blocage"/>
+                <field name="derniere_synchro"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_echango_promo_account" model="ir.actions.act_window">
+        <field name="name">Fiches echango Promo</field>
+        <field name="res_model">echango.promo.account</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'create': False}</field>
+    </record>
+</odoo>
