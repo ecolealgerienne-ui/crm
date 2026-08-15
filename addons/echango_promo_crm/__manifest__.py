@@ -39,6 +39,13 @@ créerait deux endroits où valider un registre.
         'security/echango_promo_groups.xml',
         'security/ir.model.access.csv',
         'security/echango_promo_rules.xml',
+        # ⚠️ Aucun équivalent pour les Émirats : Odoo livre déjà ses 7 émirats
+        # (vérifié le 2026-08-15), en anglais et avec les mêmes codes ISO. Un
+        # fichier de référence de plus violait `res_country_state_name_code_uniq`
+        # et empêchait purement et simplement l'installation du module. C'est
+        # `ALIAS_ETATS` qui rattrape l'écart de langue, pas une seconde copie
+        # des données.
+        'data/res_country_state_dz.xml',
         'data/ir_cron.xml',
         'views/echango_promo_source_views.xml',
         'views/echango_promo_token_wizard_views.xml',

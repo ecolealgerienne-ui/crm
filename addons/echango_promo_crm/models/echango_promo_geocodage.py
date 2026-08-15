@@ -17,6 +17,7 @@ import json
 import logging
 import math
 import time
+import unicodedata
 import urllib.parse
 import urllib.request
 
@@ -44,6 +45,97 @@ URL_NOMINATIM = "https://nominatim.openstreetmap.org/reverse"
 #: nom local dans TOUTES ses graphies — « Djelfa ⴵⴻⵍⴼⴰ الجلفة » — et le
 #: regroupement par ville produirait autant de groupes que de variantes.
 LANGUE = "fr"
+
+#: Préfixes et suffixes administratifs que Nominatim ajoute selon la complétude
+#: de la donnée OSM : « Emirate of Dubai », « Wilaya de Djelfa ». Comparés sur
+#: la forme déjà normalisée (sans espace ni accent), donc écrits pareil.
+AFFIXES_ETAT = (
+    'emirateof', 'wilayade', 'wilayad', 'provincede', 'provinceof',
+    'governorateof', 'gouvernoratde',
+)
+SUFFIXES_ETAT = ('emirate', 'governorate', 'gouvernorat', 'province', 'wilaya')
+
+#: ⚠️ **Le nom officiel ne suffit pas à apparier.** Nominatim rend « Dubaï » en
+#: français, « Dubai » en anglais, et « Abu Dhabi » là où la donnée OSM n'est
+#: pas traduite — `accept-language=fr` est une *préférence*, pas une garantie.
+#: Un appariement sur le seul nom échouerait donc en silence : l'État resterait
+#: vide et rien ne dirait pourquoi (règle #29).
+#:
+#: ⚠️ **Les deux pays penchent en sens INVERSE, et c'est tout l'intérêt de
+#: cette table.** Les wilayas viennent du fichier de ce module, écrites en
+#: français : ce sont les graphies *anglaises* qu'il faut rattraper. Les
+#: émirats viennent d'Odoo, écrits en anglais (« Abu Dhabi », « Ras
+#: al-Khaimah ») : ce sont les graphies *françaises* qu'il faut rattraper —
+#: alors même qu'on demande `accept-language=fr`. Une table écrite dans un
+#: seul sens n'en couvrirait que la moitié.
+#:
+#: Clé : code ISO du pays. Valeur : {forme normalisée → code ISO de l'état}.
+#: Les formes sont normalisées par `normaliser_nom_etat` — les écrire ici sous
+#: cette forme évite de dépendre de l'orthographe exacte.
+#:
+#: N'y figurent que les graphies que l'accent-et-casse ne rattrape PAS.
+#: « Sétif » ↔ « Setif » ou « Dubaï » ↔ « Dubai » se règlent tout seuls.
+ALIAS_ETATS = {
+    # Base Odoo : Ajman, Abu Dhabi, Dubai, Fujairah, Ras al-Khaimah, Sharjah,
+    # Umm al-Quwain.
+    'AE': {
+        'aboudabi': 'AZ', 'aboudhabi': 'AZ', 'abouzabi': 'AZ',
+        'abuzaby': 'AZ', 'abuzabi': 'AZ',
+        'doubai': 'DU', 'dubayy': 'DU',
+        'charjah': 'SH', 'chardjah': 'SH', 'ashshariqah': 'SH',
+        'shariqah': 'SH',
+        'adjman': 'AJ', 'ajman': 'AJ',
+        'oummalqaiwain': 'UQ', 'ummalquwain': 'UQ', 'ummalqaywayn': 'UQ',
+        'raselkhaimah': 'RK', 'rasalkhaimah': 'RK', 'rasalkhaymah': 'RK',
+        'fujaira': 'FU', 'foujairah': 'FU', 'alfujayrah': 'FU',
+    },
+    # Base : `data/res_country_state_dz.xml` de ce module, en français.
+    'DZ': {
+        'algiers': '16', 'aljazair': '16',
+        'wahran': '31',
+        'bougie': '06',
+        'elgolea': '58', 'meniaa': '58',
+        'tamanghasset': '11',
+    },
+}
+
+
+class QuotaNominatimDepasse(Exception):
+    """Nominatim a répondu 429 : arrêter le lot, ne pas insister."""
+
+
+def normaliser_nom_etat(nom):
+    """La forme sur laquelle deux noms d'état se comparent.
+
+    Minuscules, accents retirés, **tout séparateur supprimé** — espaces,
+    apostrophes, tirets. « M'Sila », « M Sila » et « Msila » deviennent le même
+    « msila », « Sidi Bel-Abbès » devient « sidibelabbes ».
+
+    ⚠️ **Supprimer les séparateurs plutôt que de les normaliser** est délibéré :
+    c'est sur eux que les graphies divergent le plus (« Ras Al Khaimah » /
+    « Ras al-Khaimah » / « RasAlKhaimah »), et le risque de confondre deux
+    états distincts d'un même pays par ce biais est nul — on ne compare jamais
+    qu'à l'intérieur d'un pays.
+
+    Rend `''` pour une entrée vide, jamais `None` : une chaîne vide ne peut
+    apparier aucun état, alors qu'un `None` ferait planter la comparaison.
+    """
+    if not nom:
+        return ''
+    sans_accent = ''.join(
+        c for c in unicodedata.normalize('NFD', nom)
+        if unicodedata.category(c) != 'Mn'
+    )
+    reduit = ''.join(c for c in sans_accent.lower() if c.isalnum())
+    for affixe in AFFIXES_ETAT:
+        if reduit.startswith(affixe) and len(reduit) > len(affixe):
+            reduit = reduit[len(affixe):]
+            break
+    for suffixe in SUFFIXES_ETAT:
+        if reduit.endswith(suffixe) and len(reduit) > len(suffixe):
+            reduit = reduit[:-len(suffixe)]
+            break
+    return reduit
 
 
 def distance_km(lat1, lng1, lat2, lng2):
@@ -120,13 +212,35 @@ class EchangoPromoAccount(models.Model):
         « sans résultat » est un traitement, pas un échec, et le confondre
         ferait boucler la tâche sur les mêmes points indéfiniment.
         """
-        a_faire = self.search([('geocodage_statut', '=', 'a_faire'),
-                               ('latitude', '!=', 0),
-                               ('longitude', '!=', 0)], limit=limite)
+        avec_position = [('latitude', '!=', 0), ('longitude', '!=', 0)]
+        a_faire = self.search(
+            [('geocodage_statut', '=', 'a_faire')] + avec_position,
+            limit=limite)
+        # ⚠️ **`erreur` n'est PAS un état terminal, et le croire perdait 61
+        # fiches.** Ses causes sont transitoires par nature — réseau coupé,
+        # Nominatim en 429, délai dépassé. Ne chercher que `a_faire` laissait
+        # ces fiches sans ville *pour toujours*, alors qu'un simple second
+        # passage les résout. Elles viennent APRÈS le travail neuf : une panne
+        # persistante ne doit pas monopoliser le lot.
+        if len(a_faire) < limite:
+            a_faire |= self.search(
+                [('geocodage_statut', '=', 'erreur')] + avec_position,
+                limit=limite - len(a_faire))
         traitees = 0
         for compte in a_faire:
-            adresse = self._interroger_nominatim(compte.latitude,
-                                                 compte.longitude)
+            try:
+                adresse = self._interroger_nominatim(compte.latitude,
+                                                     compte.longitude)
+            except QuotaNominatimDepasse:
+                # ⚠️ **On s'arrête, on n'enchaîne pas.** Insister sous 429,
+                # c'est transformer une limitation temporaire en bannissement
+                # d'IP — et le bannissement se découvre des jours après. Les
+                # fiches non traitées gardent leur état : le passage suivant
+                # les reprendra.
+                _logger.warning(
+                    "echango_promo_crm : quota Nominatim atteint, lot "
+                    "interrompu après %d fiche(s)", traitees)
+                break
             if adresse is None:
                 compte.geocodage_statut = 'erreur'
             else:
@@ -142,18 +256,91 @@ class EchangoPromoAccount(models.Model):
                     'geocodage_longitude': compte.longitude,
                 })
                 if ville:
-                    # ⚠️ On n'écrit QUE la ville sur le partenaire, jamais les
+                    # ⚠️ On n'écrit QUE l'adresse sur le partenaire, jamais les
                     # coordonnées : `base_geolocalize`, s'il est installé,
                     # remet `partner_latitude`/`partner_longitude` à 0 dès
                     # qu'un champ d'adresse change. Nos coordonnées vivent sur
                     # CE modèle, hors de sa portée.
-                    compte.partner_id.write({'city': ville})
+                    adresse_partenaire = {'city': ville}
+                    etat = compte._etat_correspondant(adresse.get('state'))
+                    if etat:
+                        adresse_partenaire['state_id'] = etat.id
+                    compte.partner_id.write(adresse_partenaire)
             traitees += 1
-            self.env.cr.commit()
+            self._valider_progression()
             time.sleep(PAUSE_ENTRE_APPELS)
         if traitees:
             _logger.info("echango_promo_crm : %d fiche(s) géocodée(s)", traitees)
         return traitees
+
+    def _valider_progression(self):
+        """Grave ce qui vient d'être géocodé, fiche par fiche.
+
+        ⚠️ **Un lot de 25 fiches dure 30 secondes de réseau.** Sans validation
+        intermédiaire, une coupure à la 24ᵉ perdrait les 23 précédentes — et
+        les ferait toutes redemander au passage suivant, ce qui est justement
+        la façon de se faire bannir par Nominatim.
+
+        ⚠️ **Cette méthode existe pour être remplaçable en test**, parce
+        qu'Odoo interdit `cr.commit()` dans un `TransactionCase` : il casserait
+        le retour arrière de fin de test. Ce qui n'est donc PAS couvert par les
+        bancs, et qu'il faut savoir : la durabilité intermédiaire elle-même.
+        Toute la logique au-dessus — reprise des échecs, arrêt sur quota,
+        appariement d'état — l'est.
+        """
+        self.env.cr.commit()
+
+    def _etat_correspondant(self, nom_etat):
+        """L'`res.country.state` qui porte ce nom, dans le pays du commerçant.
+
+        ⚠️ **Rien n'est créé ici.** Un état inventé à la volée polluerait une
+        table de référence partagée par tout Odoo — et les positions
+        aberrantes en fabriqueraient : le décor porte quatre commerces à
+        « Mountain View, Californie », la position par défaut de l'émulateur
+        Android. Le nom de wilaya reste dans `wilaya_geocodee` quoi qu'il
+        arrive ; c'est l'État natif qui reste vide quand on ne le connaît pas.
+
+        ⚠️ **Odoo ne livre AUCUNE wilaya algérienne ni AUCUN émirat** : sans
+        les fichiers de référence de ce module, cette recherche ne trouverait
+        jamais rien pour `DZ` ni pour `AE`, et l'« État » d'une fiche
+        algérienne ou émiratie resterait vide pour toujours — sans que rien ne
+        dise pourquoi. Vérifié le 2026-08-15 : `res_country_state` portait
+        zéro ligne pour ces deux pays.
+
+        ⚠️ **La comparaison se fait en Python, pas en SQL.** Un `=ilike`
+        rapproche « Setif » de « Sétif » mais **pas** « Abu Dhabi » de
+        « Abou Dabi », et `unaccent` n'est pas garanti installé sur la base.
+        On charge donc les états du pays — 58 au maximum ici — et on compare
+        des formes normalisées. Une recherche par pays, pas une par nom : le
+        coût est le même et la tolérance est celle qu'il faut.
+        """
+        self.ensure_one()
+        pays = self.partner_id.country_id
+        if not nom_etat or not pays:
+            return self.env['res.country.state']
+
+        cherche = normaliser_nom_etat(nom_etat)
+        if not cherche:
+            return self.env['res.country.state']
+
+        etats = self.env['res.country.state'].search([
+            ('country_id', '=', pays.id)])
+        for etat in etats:
+            if normaliser_nom_etat(etat.name) == cherche:
+                return etat
+
+        code = ALIAS_ETATS.get(pays.code, {}).get(cherche)
+        if code:
+            for etat in etats:
+                if etat.code == code:
+                    return etat
+            # ⚠️ Un alias qui désigne un état absent de la base est une erreur
+            # de CE fichier, pas une donnée manquante : le dire, sinon la
+            # faute se confond avec un géocodage qui n'a rien trouvé.
+            _logger.warning(
+                "echango_promo_crm : alias « %s » → %s/%s, mais aucun état de "
+                "ce code en base", nom_etat, pays.code, code)
+        return self.env['res.country.state']
 
     def _interroger_nominatim(self, lat, lng):
         """L'adresse d'un point, ou `None` si l'appel a échoué.
@@ -162,6 +349,13 @@ class EchangoPromoAccount(models.Model):
         premier est un échec réseau (à réessayer), le second un point sans
         adresse connue (à ne pas réessayer indéfiniment). Les confondre ferait
         soit boucler, soit abandonner des fiches réparables.
+
+        ⚠️ **Et un 429 n'est ni l'un ni l'autre** : c'est le service qui dit
+        « trop vite ». Il lève `QuotaNominatimDepasse` plutôt que de rendre
+        `None`, parce que la seule réaction juste est d'arrêter le lot — le
+        marquer en `erreur` comme un échec ordinaire ferait enchaîner
+        vingt-quatre appels de plus, tous refusés, et changerait une
+        limitation en bannissement.
         """
         parametres = urllib.parse.urlencode({
             'format': 'jsonv2', 'lat': lat, 'lon': lng,
@@ -173,7 +367,13 @@ class EchangoPromoAccount(models.Model):
         try:
             with urllib.request.urlopen(requete, timeout=20) as reponse:
                 return json.loads(reponse.read()).get('address', {})
-        except Exception as erreur:  # noqa: BLE001 — réseau, quota, format
+        except urllib.error.HTTPError as erreur:
+            if erreur.code == 429:
+                raise QuotaNominatimDepasse() from erreur
+            _logger.warning("echango_promo_crm : géocodage refusé (HTTP %s)",
+                            erreur.code)
+            return None
+        except Exception as erreur:  # noqa: BLE001 — réseau, format
             _logger.warning("echango_promo_crm : géocodage refusé (%s)", erreur)
             return None
 
