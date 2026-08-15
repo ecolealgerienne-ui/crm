@@ -68,6 +68,32 @@ docker exec "$CONT" odoo --database=echango_crm --db_host=postgres_crm \
 ⚠️ Une suite ajoutée dans `tests/` **et non importée dans `tests/__init__.py`**
 ne s'exécute jamais et ne produit aucune erreur.
 
+## Le journal des lots — à quoi il sert, et sa rétention
+
+Il répond à **une seule question**, celle qu'on se pose quand un chiffre
+paraît faux : *« qu'est-ce qui est arrivé cette nuit, et qu'est-ce qui a été
+refusé ? »*
+
+⚠️ **Un refus qui ne laisse pas de trace est invisible en production.** Un
+export silencieusement rejeté ressemble trait pour trait à un export qui n'est
+jamais parti. C'est le pendant de la source « silencieuse » : celle-ci dit que
+rien n'arrive, celui-là dit ce qui est arrivé.
+
+**Une ligne par LOT, pas par page** (2026-08-15). Une ligne par page rendait le
+journal illisible à mesure que le parc grandit : 280 commerçants font 3 pages,
+10 000 en font 50 — soit 51 lignes par nuit, près de 19 000 par an. Les pages
+sont cumulées ; ce qui garde sa ligne propre, ce sont les **refus**, qui portent
+leur message.
+
+En régime normal : **deux lignes par nuit** — le lot et son acquittement.
+
+⚠️ **La purge ne tourne que si `ECHANGO_PROMO_RETENTION_DAYS` est renseignée.**
+Son repli est `0`, c'est-à-dire **conservation indéfinie** : un fichier
+d'environnement mal renseigné ne doit pas faire disparaître des données. La
+tâche le journalise à chaque passage — « aucune retention configuree, rien a
+purger » — pour que l'absence de politique ne soit pas indiscernable d'une
+purge qui n'a rien trouvé.
+
 ## Ce que ce module ne fait pas
 
 - **Il n'écrit jamais vers echango Promo.** Un commerçant bloqué se débloque

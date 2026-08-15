@@ -11,6 +11,7 @@
                 <field name="route"/>
                 <field name="batch"/>
                 <field name="accepte"/>
+                <field name="pages" optional="show"/>
                 <field name="fiches" sum="Fiches"/>
                 <field name="refusees" sum="Refusées"/>
                 <field name="detail"/>

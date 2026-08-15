@@ -198,10 +198,13 @@ class EchangoPromoController(http.Controller):
             'last_seen': fields.Datetime.now(),
             'last_batch': lot,
         })
-        request.env['echango.promo.audit'].tracer(
-            request.env, source_id=source.id, batch=lot, route='sync',
-            accepte=refusees == 0, fiches=pris, refusees=refusees,
-            detail='; '.join(details)[:300] or 'ok',
+        # ⚠️ **Cumulé sur la ligne du lot, pas empilé page par page** : à
+        # 10 000 commerçants, une ligne par page ferait 51 lignes par nuit pour
+        # une information qui tient en une seule.
+        request.env['echango.promo.audit'].cumuler(
+            request.env, lot, 'sync', pris, refusees,
+            '; '.join(details)[:300] or 'ok',
+            source_id=source.id, pages=1,
             ip=request.httprequest.remote_addr)
 
         return repondre({'prises': pris, 'refusees': refusees,

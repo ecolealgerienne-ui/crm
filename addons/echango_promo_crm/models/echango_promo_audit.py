@@ -11,11 +11,30 @@ _logger = logging.getLogger(__name__)
 class EchangoPromoAudit(models.Model):
     """Ce que le contrôleur a reçu, **accepté comme refusé**.
 
-    ⚠️ **Un refus qui ne laisse pas de trace est invisible en production.** Le
+    ── À quoi ce journal sert, exactement ──────────────────────────────────
+
+    À répondre à une seule question, celle qu'on se pose quand un chiffre
+    paraît faux : **« qu'est-ce qui est arrivé cette nuit, et qu'est-ce qui a
+    été refusé ? »**
+
+    ⚠️ **Un refus qui ne laisse pas de trace est invisible en production.** Un
     banc peut prouver qu'un lot malformé est rejeté ; sans ce journal, personne
     ne peut constater qu'un rejet a eu lieu la nuit dernière — et un export
     silencieusement refusé ressemble trait pour trait à un export qui n'est
-    jamais parti.
+    jamais parti. C'est le pendant de la source « silencieuse » : celle-ci dit
+    que rien n'arrive, celui-là dit ce qui est arrivé.
+
+    ── ⚠️ Une ligne par LOT, pas par page ──────────────────────────────────
+
+    Une ligne par page rendait le journal illisible à mesure que le parc
+    grandit : 280 commerçants font 3 pages, mais 10 000 en font 50 — soit 51
+    lignes par nuit, près de 19 000 par an, pour une information qu'on consulte
+    rarement et qui tient en une ligne.
+
+    Les pages d'un même lot sont donc **cumulées** sur une seule ligne. Ce qui
+    garde sa ligne propre, ce sont les **refus** : un lot rejeté pour jeton
+    invalide ou charge malformée porte son message, et c'est précisément ce
+    qu'on vient chercher.
     """
 
     _name = 'echango.promo.audit'
@@ -25,6 +44,7 @@ class EchangoPromoAudit(models.Model):
     source_id = fields.Many2one('echango.promo.source', string="Source",
                                 readonly=True, ondelete='set null')
     batch = fields.Char(string="Lot", readonly=True, index=True)
+    pages = fields.Integer(string="Pages", readonly=True, aggregator='sum')
     route = fields.Char(string="Route", readonly=True)
     accepte = fields.Boolean(string="Accepté", readonly=True)
     detail = fields.Char(string="Détail", readonly=True)
@@ -71,3 +91,36 @@ class EchangoPromoAudit(models.Model):
             env['echango.promo.audit'].sudo().create(valeurs)
         except Exception as erreur:  # noqa: BLE001 — voir la docstring
             _logger.warning("echango_promo_crm : audit non écrit (%s)", erreur)
+
+    @classmethod
+    def cumuler(cls, env, batch, route, fiches, refusees, detail, **valeurs):
+        """Cumule une page dans la ligne du lot, ou la crée.
+
+        ⚠️ **`accepte` ne se recalcule pas à la hausse.** Une page refusée dans
+        un lot par ailleurs sain doit laisser le lot marqué comme non
+        entièrement accepté : remonter le drapeau à la page suivante effacerait
+        la seule trace du problème.
+        """
+        try:
+            Audit = env['echango.promo.audit'].sudo()
+            ligne = Audit.search([('batch', '=', batch), ('route', '=', route)],
+                                 limit=1)
+            if not ligne:
+                return Audit.create(dict(
+                    valeurs, batch=batch, route=route, fiches=fiches,
+                    refusees=refusees, detail=detail,
+                    accepte=refusees == 0))
+            details = [d for d in (ligne.detail, detail)
+                       if d and d not in ('ok', '')]
+            return ligne.write({
+                # Le compteur de pages se cumule comme le reste : sans ça il
+                # resterait à 1 et le journal annoncerait un lot d'une page là
+                # où il y en a eu cinquante.
+                'pages': ligne.pages + valeurs.get('pages', 1),
+                'fiches': ligne.fiches + fiches,
+                'refusees': ligne.refusees + refusees,
+                'accepte': ligne.accepte and refusees == 0,
+                'detail': ('; '.join(details) or 'ok')[:300],
+            })
+        except Exception as erreur:  # noqa: BLE001 — même raison que `tracer`
+            _logger.warning("echango_promo_crm : audit non cumulé (%s)", erreur)
