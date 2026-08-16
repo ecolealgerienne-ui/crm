@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
 {
     'name': "echango Promo — suivi commerçants",
-    'version': '19.0.1.0.0',
+    # ⚠️ **Ce numéro n'est pas décoratif** : Odoo ne joue les scripts de
+    # `migrations/` que si la version du manifeste est SUPÉRIEURE à celle
+    # inscrite en base. Le laisser à 19.0.1.0.0 aurait laissé la vue SQL
+    # `echango_promo_suivi` orpheline en production, sans le moindre message.
+    'version': '19.0.1.1.0',
     'category': 'Sales/CRM',
     'summary': "Reçoit l'instantané nocturne des commerçants d'echango Promo",
     'description': """
@@ -50,7 +54,6 @@ créerait deux endroits où valider un registre.
         'views/echango_promo_source_views.xml',
         'views/echango_promo_token_wizard_views.xml',
         'views/echango_promo_account_views.xml',
-        'views/echango_promo_suivi_views.xml',
         'views/echango_promo_campagne_views.xml',
         'views/echango_promo_commercants_views.xml',
         'views/echango_promo_audit_views.xml',

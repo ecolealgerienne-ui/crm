@@ -143,6 +143,66 @@
     </record>
 
     <!--
+        ⚠️ **Ces deux vues remplacent l'écran « Analyses »**, retiré le
+        2026-08-16. Celui-ci déclarait `view_mode="pivot,graph,list"` et ne
+        définissait **aucune** des trois : son onglet liste était le doublon
+        exact de l'écran de suivi, en moins bien (11 filtres contre 17, pas de
+        clic vers la fiche client, pas de bouton d'affectation), et ses onglets
+        pivot et graphe étaient ceux qu'Odoo génère faute de mieux.
+
+        ⚠️ **Ce qui est perdu au passage, et c'est assumé** : `jours_depuis_
+        publication` était une colonne SQL agrégeable ; son équivalent ici,
+        `promo_jours_depuis_publication`, est un calculé NON stocké — donc ni
+        mesurable ni regroupable. Le remplacer par un champ stocké serait
+        l'erreur que ce module refuse partout ailleurs : stocké, il vaudrait le
+        jour de son écriture et serait faux le lendemain sans rien dire. Les
+        seuils restent servis par les filtres « En pause / À risque / Dormant »,
+        qui portent sur la DATE, elle stockée.
+    -->
+    <record id="view_commercant_promo_pivot" model="ir.ui.view">
+        <field name="name">res.partner.pivot.echango.promo</field>
+        <field name="model">res.partner</field>
+        <!--
+            ⚠️ **Priorité explicite, et haute.** C'est la SEULE vue pivot de
+            `res.partner` dans toute la base : sans priorité déclarée, toute
+            autre action ajoutant un onglet pivot sur les contacts servirait
+            celle-ci — wilayas et motifs de blocage jusque chez les
+            fournisseurs. C'est le piège de `base.view_partner_tree` dans
+            l'autre sens ; à 16, le jour où Odoo en livre une, elle gagne.
+        -->
+        <field name="priority">16</field>
+        <field name="arch" type="xml">
+            <pivot string="Commerçants echango Promo">
+                <field name="promo_wilaya" type="row"/>
+                <field name="promo_motif_blocage" type="col"/>
+                <field name="promo_en_ligne" type="measure"/>
+                <field name="promo_signalements_90j" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_commercant_promo_graph" model="ir.ui.view">
+        <field name="name">res.partner.graph.echango.promo</field>
+        <field name="model">res.partner</field>
+        <field name="priority">16</field>
+        <field name="arch" type="xml">
+            <!--
+                ⚠️ **Barres empilées, pas un camembert.** On compare des
+                wilayas ENTRE ELLES — où sont les bloqués, où sont les
+                dormants — et non des parts d'un tout. Un camembert de 58
+                wilayas ne se lit pas.
+
+                Mesure implicite : le décompte. Les deux champs sont des
+                regroupements — abscisse, puis série.
+            -->
+            <graph string="Commerçants echango Promo" type="bar" stacked="True">
+                <field name="promo_wilaya"/>
+                <field name="promo_motif_blocage"/>
+            </graph>
+        </field>
+    </record>
+
+    <!--
         ⚠️ **Un seul écran de travail, et c'est un choix.** « Non affectés » et
         « À débloquer » étaient la MÊME liste, au filtre près — trois menus pour
         un seul jeu de données, dont deux qui donnaient l'illusion de périmètres
@@ -158,7 +218,14 @@
     <record id="action_echango_promo_suivi" model="ir.actions.act_window">
         <field name="name">Suivi des commerçants</field>
         <field name="res_model">res.partner</field>
-        <field name="view_mode">list,form,kanban</field>
+        <!--
+            ⚠️ **La liste EN TÊTE, et ce n'est pas cosmétique.** Un `<header>`
+            de liste — donc le bouton « Affecter à un commercial » — n'existe
+            qu'en vue liste. Mettre le pivot en premier ferait atterrir l'équipe
+            sur un tableau croisé au lieu de sa liste de travail, et le bouton
+            n'apparaîtrait qu'après un changement d'onglet.
+        -->
+        <field name="view_mode">list,kanban,pivot,graph,form</field>
         <!--
             ⚠️ **Sans `view_ids`, cette action n'ouvrait PAS la liste ci-dessus.**
             Une action sans vue désignée laisse Odoo choisir celle de plus faible
@@ -180,10 +247,19 @@
             et le kanban restent ceux d'Odoo, volontairement — c'est la fiche
             client native que l'équipe vient chercher.
         -->
+        <!--
+            ⚠️ Un mode déclaré dans `view_mode` mais absent d'ici est ajouté par
+            Odoo **en fin de liste et sans vue désignée** — c'est-à-dire
+            exactement le défaut que ce bloc corrige. Pivot et graphe doivent
+            donc y figurer nommément, sans quoi ils retomberaient sur les vues
+            générées par défaut.
+        -->
         <field name="view_ids" eval="[(5, 0, 0),
             (0, 0, {'view_mode': 'list', 'view_id': ref('view_commercant_promo_list'), 'sequence': 10}),
-            (0, 0, {'view_mode': 'form', 'sequence': 20}),
-            (0, 0, {'view_mode': 'kanban', 'sequence': 30})]"/>
+            (0, 0, {'view_mode': 'kanban', 'sequence': 20}),
+            (0, 0, {'view_mode': 'pivot', 'view_id': ref('view_commercant_promo_pivot'), 'sequence': 30}),
+            (0, 0, {'view_mode': 'graph', 'view_id': ref('view_commercant_promo_graph'), 'sequence': 40}),
+            (0, 0, {'view_mode': 'form', 'sequence': 50})]"/>
         <field name="domain">[('est_commercant_promo','=',True),('promo_supprime_le','=',False)]</field>
         <field name="search_view_id" ref="view_commercant_promo_search"/>
         <field name="context">{'create': False}</field>
@@ -196,6 +272,9 @@
             <p>Les filtres portent les questions du quotidien : <b>Sans
                commercial</b>, <b>À débloquer par nous</b>, <b>À risque</b>,
                <b>Jamais publié</b> — et ils se combinent.</p>
+            <p>Les onglets <b>Pivot</b> et <b>Graphique</b> croisent les mêmes
+               lignes, filtres compris : « combien de dormants par wilaya » se
+               pose en cochant <b>Dormant</b> puis en passant au pivot.</p>
         </field>
     </record>
 

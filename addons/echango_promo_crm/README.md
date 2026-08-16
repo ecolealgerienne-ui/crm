@@ -25,7 +25,8 @@ Caused by: Error: "echango.promo.suivi"."wilaya" field is undefined.
 
 … alors que le champ **existe** en base et dans le code. Vérifié le
 2026-08-15 : la vue SQL portait bien ses 17 colonnes, `wilaya` comprise, et
-l'écran plantait quand même.
+l'écran plantait quand même. *(Le modèle `echango.promo.suivi` a été supprimé
+depuis, le 2026-08-16 ; le piège, lui, n'a pas bougé d'un pouce.)*
 
 **Toujours enchaîner les deux :**
 
@@ -53,8 +54,14 @@ transmis, le script ne s'exécute pas et la commande sort **sans rien dire**.
 inconnu, une vue mal formée ou un groupe manquant.
 
 ```python
-env['echango.promo.suivi'].get_views([(False, 'list'), (False, 'search')])
+action = env.ref('echango_promo_crm.action_echango_promo_suivi')
+env['res.partner'].get_views(action.views)
 ```
+
+⚠️ **Passer `action.views` et non une liste écrite à la main** : c'est la
+résolution de l'action qui a été fausse le 2026-08-16 — les vues existaient et
+se chargeaient, mais l'action en ouvrait d'autres. Un `get_views` sur des vues
+qu'on a choisies soi-même n'aurait rien vu.
 
 ## Les tests
 
@@ -67,6 +74,19 @@ docker exec "$CONT" odoo --database=echango_crm --db_host=postgres_crm \
 
 ⚠️ Une suite ajoutée dans `tests/` **et non importée dans `tests/__init__.py`**
 ne s'exécute jamais et ne produit aucune erreur.
+
+⚠️ **Ne pas lancer cette commande depuis Git Bash sous Windows.** Sa conversion
+automatique des chemins transforme `--test-tags=/echango_promo_crm` en
+`--test-tags=C:/Program Files/Git/echango_promo_crm`. Odoo répond alors :
+
+```
+ERROR   odoo.tests.tag_selector: Invalid tag C:/Program Files/Git/echango_promo_crm
+WARNING odoo.tests.result: 0 failed, 0 error(s) of 0 tests
+```
+
+**« 0 failed » se lit comme un succès** alors qu'aucun test n'a tourné. Lancer
+depuis WSL, ou préfixer par `MSYS_NO_PATHCONV=1`. Le seul contrôle qui ne trompe
+pas : **le nombre de tests exécutés**, qui doit être non nul.
 
 ## Le journal des lots — à quoi il sert, et sa rétention
 

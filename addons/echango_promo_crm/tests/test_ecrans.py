@@ -12,6 +12,8 @@ trouve que parce qu'un bouton ajoute dans la vue n'apparaissait pas.
 Une vue definie mais qu'aucune action n'ouvre est du code mort qui a l'air
 vivant (regle #31).
 """
+from lxml import etree
+
 from odoo.tests import TransactionCase, tagged
 
 
@@ -54,6 +56,56 @@ class TestEcrans(TransactionCase):
                       "la liste ouverte n'a pas d'en-tete de selection")
         self.assertIn(str(action.id), liste.arch,
                       "le bouton d'affectation n'est pas dans la liste ouverte")
+
+    def test_le_suivi_ouvre_NOTRE_pivot_et_NOTRE_graphe(self):
+        """⚠️ Ces deux onglets remplacent l'ecran « Analyses » (2026-08-16), qui
+        declarait `pivot,graph,list` et ne definissait AUCUNE des trois. Un mode
+        absent de `view_ids` est ajoute par Odoo sans vue designee — le defaut
+        reviendrait a l'identique, en silence."""
+        vues = self._vues_de('echango_promo_crm.action_echango_promo_suivi')
+        for mode, xmlid in (('pivot', 'view_commercant_promo_pivot'),
+                            ('graph', 'view_commercant_promo_graph')):
+            attendue = self.env.ref('echango_promo_crm.' + xmlid)
+            self.assertEqual(
+                vues.get(mode), attendue.id,
+                "l'onglet %s n'ouvre pas notre vue : Odoo servira celle qu'il "
+                "genere par defaut" % mode)
+
+    def test_la_liste_est_le_PREMIER_onglet(self):
+        """⚠️ Un `<header>` de liste — donc le bouton « Affecter a un
+        commercial » — n'existe qu'en vue liste. Si le pivot passait en tete,
+        l'equipe atterrirait sur un tableau croise et le bouton n'apparaitrait
+        qu'apres un changement d'onglet."""
+        action = self.env.ref('echango_promo_crm.action_echango_promo_suivi')
+        self.assertEqual(
+            action.views[0][1], 'list',
+            "l'ecran de travail ne s'ouvre plus sur la liste")
+
+    def test_aucun_champ_du_pivot_ni_du_graphe_n_est_NON_stocke(self):
+        """⚠️ **Un calcule non stocke ne peut etre ni mesure ni regroupement** :
+        `read_group` ne sait pas l'agreger. Le placer dans l'une de ces deux
+        vues ne casse ni a l'installation ni au chargement du module — seulement
+        a l'ouverture de l'onglet, donc jamais en CI.
+
+        C'est le sort exact de `promo_jours_depuis_publication` : la vue SQL
+        supprimee savait le mesurer, celle-ci ne le peut pas, et la tentation de
+        l'ajouter ici reviendra."""
+        champs = self.env['res.partner']._fields
+        for xmlid in ('view_commercant_promo_pivot',
+                      'view_commercant_promo_graph'):
+            vue = self.env.ref('echango_promo_crm.' + xmlid)
+            noms = [n.get('name')
+                    for n in etree.fromstring(vue.arch.encode()).iter('field')]
+            # Temoin : une vue videe de ses champs ferait passer la boucle
+            # ci-dessous sans rien eprouver.
+            self.assertTrue(noms, "%s ne declare plus aucun champ" % xmlid)
+            for nom in noms:
+                self.assertIn(nom, champs,
+                              "%s : champ inconnu %s" % (xmlid, nom))
+                self.assertTrue(
+                    champs[nom].store,
+                    "%s : %s n'est pas stocke — l'onglet tombera a "
+                    "l'ouverture, pas a l'installation" % (xmlid, nom))
 
     def test_chaque_action_du_module_designe_une_vue_ou_est_seule_a_pouvoir(self):
         """La generalisation : une action qui ne designe rien n'est sure que si

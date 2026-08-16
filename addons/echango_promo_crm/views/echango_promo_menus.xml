@@ -9,14 +9,18 @@
               groups="group_echango_promo_user"/>
 
 
+    <!--
+        ⚠️ **« Analyses » a été retiré le 2026-08-16, et son modèle avec.**
+        C'était le même jeu de lignes que celui-ci : sur ses trois onglets
+        déclarés, le seul qui affichait quelque chose de lisible était une liste
+        — doublon appauvri de celle-ci, sans clic vers la fiche client ni
+        bouton d'affectation. Le pivot et le graphe vivent désormais comme
+        onglets de cet écran, où ils héritent des filtres au lieu d'en avoir
+        une seconde série à maintenir.
+    -->
     <menuitem id="menu_echango_promo_suivi" name="Suivi des commerçants"
               parent="menu_echango_promo_root"
               action="action_echango_promo_suivi" sequence="10"/>
-
-
-    <menuitem id="menu_echango_promo_analyse" name="Analyses"
-              parent="menu_echango_promo_root"
-              action="action_echango_promo_analyse" sequence="20"/>
 
 
     <menuitem id="menu_echango_promo_source" name="Source et jeton"
