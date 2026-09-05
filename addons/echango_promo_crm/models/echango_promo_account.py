@@ -14,7 +14,12 @@ from odoo.exceptions import AccessError
 #: collision.
 CHAMPS_DE_PROMO = (
     'promo_uuid', 'nom_promo', 'adresse_promo', 'categorie', 'telephone_e164',
-    'pays', 'latitude', 'longitude', 'origine', 'agent_createur_id',
+    'pays', 'latitude', 'longitude',
+    # Géocodage inverse résolu par echango Promo à la pose de la position et
+    # transmis dans le lot depuis le 2026-09-05 : Promo en est propriétaire,
+    # comme la position elle-même.
+    'ville_geocodee', 'wilaya_geocodee', 'geocodage_statut',
+    'origine', 'agent_createur_id',
     'date_creation', 'suspendu_le', 'supprime_le', 'consentement_le',
     'est_active', 'date_derniere_publication', 'promos_sans_publication',
     'promos_deja_publiees', 'promos_en_ligne', 'promos_visibles',
