@@ -17,19 +17,12 @@
         </record>
 
         <!--
-            ⚠️ Toutes les 15 minutes et par lots de 25, PAS d'un coup : la
-            politique d'usage de Nominatim impose une requête par seconde au
-            plus, et la dépasser fait bannir l'adresse IP du serveur — ce qui
-            se découvre bien après.
+            ⚠️ Le cron `cron_echango_promo_geocodage` a été RETIRÉ le
+            2026-09-05 : le géocodage inverse ne se fait plus ici. echango
+            Promo résout la position à la pose (via echango-geo) et transmet
+            `ville`/`wilaya` dans l'instantané. Le fichier étant `noupdate="1"`,
+            retirer le record de l'XML ne le supprime PAS en base — c'est
+            `migrations/19.0.1.2.0/post-migration.py` qui le fait.
         -->
-        <record id="cron_echango_promo_geocodage" model="ir.cron">
-            <field name="name">echango Promo : géocodage inverse des positions</field>
-            <field name="model_id" ref="model_echango_promo_account"/>
-            <field name="state">code</field>
-            <field name="code">model._cron_geocoder()</field>
-            <field name="interval_number">15</field>
-            <field name="interval_type">minutes</field>
-            <field name="active" eval="True"/>
-        </record>
     </data>
 </odoo>

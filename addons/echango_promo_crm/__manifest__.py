@@ -5,7 +5,7 @@
     # `migrations/` que si la version du manifeste est SUPÉRIEURE à celle
     # inscrite en base. Le laisser à 19.0.1.0.0 aurait laissé la vue SQL
     # `echango_promo_suivi` orpheline en production, sans le moindre message.
-    'version': '19.0.1.1.0',
+    'version': '19.0.1.2.0',
     'category': 'Sales/CRM',
     'summary': "Reçoit l'instantané nocturne des commerçants d'echango Promo",
     'description': """

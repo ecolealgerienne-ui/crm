@@ -37,7 +37,13 @@ _logger = logging.getLogger(__name__)
 #: personne ne remarquerait.
 CHAMPS_FICHE = {
     'promo_uuid', 'nom', 'adresse', 'categorie', 'telephone_e164', 'pays',
-    'latitude', 'longitude', 'origine', 'agent_createur_id', 'date_creation',
+    'latitude', 'longitude',
+    # Géocodage inverse fait par echango Promo au moment où la position est
+    # posée (bascule du 2026-09-05 — ce module ne géocode plus). `ville`/
+    # `wilaya` sont `null` ensemble tant que non résolus ; `geocodage_statut`
+    # tranche entre les cinq cas.
+    'ville', 'wilaya', 'geocodage_statut',
+    'origine', 'agent_createur_id', 'date_creation',
     'suspendu_le', 'supprime_le', 'consentement_le', 'est_active',
     'date_derniere_publication', 'promos_sans_publication',
     'promos_deja_publiees', 'promos_en_ligne', 'promos_visibles',
@@ -288,6 +294,11 @@ class EchangoPromoController(http.Controller):
             'pays': _texte(fiche.get('pays'), 'pays', obligatoire=True),
             'latitude': fiche.get('latitude') or 0.0,
             'longitude': fiche.get('longitude') or 0.0,
+            'ville_geocodee': _texte(fiche.get('ville'), 'ville'),
+            'wilaya_geocodee': _texte(fiche.get('wilaya'), 'wilaya'),
+            'geocodage_statut': _texte(
+                fiche.get('geocodage_statut'), 'geocodage_statut',
+            ) or 'sans_position',
             'origine': _texte(fiche.get('origine'), 'origine'),
             'agent_createur_id': _texte(fiche.get('agent_createur_id'),
                                         'agent_createur_id'),
@@ -340,10 +351,7 @@ class EchangoPromoController(http.Controller):
                                  limit=1)
         if existant:
             existant.write(valeurs)
-            # ⚠️ Ré-armé APRÈS l'écriture, et seulement si la position a bougé
-            # de plus de 200 m : sans ce seuil, chaque nuit relancerait une
-            # requête Nominatim par commerçant, pour des dérives de capture GPS.
-            existant._marquer_a_geocoder()
+            self._appliquer_lieu(existant)
             # Le téléphone appartient à Promo : il est la clé de rapprochement
             # des appels entrants, et un commercial n'a pas à le corriger.
             existant.partner_id.write({
@@ -373,8 +381,33 @@ class EchangoPromoController(http.Controller):
         })
         valeurs['partner_id'] = partenaire.id
         compte = Compte.create(valeurs)
-        compte._marquer_a_geocoder()
+        self._appliquer_lieu(compte)
         return compte
+
+    def _appliquer_lieu(self, compte):
+        """Reporte `ville`/`wilaya` reçues sur la fiche client Odoo.
+
+        ⚠️ **Seulement quand le géocodage a abouti** (`geocodage_statut ==
+        'fait'`) : `sans_resultat` (point en mer) ou `a_faire` n'ont pas de
+        `ville` fiable, et écraser `city` avec du vide effacerait une saisie
+        manuelle du commercial.
+
+        ⚠️ **La wilaya → `state_id` reste un appariement Odoo** (`_etat_
+        correspondant`, table `ALIAS_ETATS`) : echango-geo rend un nom en
+        texte, jamais un identifiant de `res.country.state` qu'il ne connaît
+        pas (§4 de ses specs). Une wilaya sans correspondance laisse `state_id`
+        vide et `wilaya_geocodee` renseigné — pas d'invention.
+        """
+        if compte.geocodage_statut != 'fait' or not compte.ville_geocodee:
+            return
+        adresse = {'city': compte.ville_geocodee}
+        etat = compte._etat_correspondant(compte.wilaya_geocodee)
+        if etat:
+            adresse['state_id'] = etat.id
+        # On n'écrit QUE l'adresse sur le partenaire, jamais de coordonnées :
+        # `base_geolocalize`, s'il est installé, remet `partner_latitude`/
+        # `partner_longitude` à 0 dès qu'un champ d'adresse change.
+        compte.partner_id.write(adresse)
 
     def _tag_provenance(self):
         """L'étiquette « echango Promo », créée une fois.
