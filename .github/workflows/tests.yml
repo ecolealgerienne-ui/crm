@@ -118,9 +118,12 @@ jobs:
           grep -q "0 failed, 0 error(s)" sortie.log
           # ⚠️ Et le journal dit « 0 failed » AUSSI quand zéro test n'a tourné
           # (tag mal résolu, suite non importée dans `tests/__init__.py`). Le
-          # seul contrôle qui ne trompe pas : au moins une classe de test du
-          # module a bien démarré.
-          grep -q "odoo.addons.echango_promo_crm.tests" sortie.log
+          # seul contrôle qui ne trompe pas : la ligne de stats du module,
+          # avec un nombre de tests non nul. `--log-handler=odoo.tests:INFO`
+          # la fait apparaître ; les lignes « Starting … » par test, non —
+          # leur logger est `odoo.addons.echango_promo_crm.tests.*`, pas
+          # `odoo.tests`.
+          grep -Eq "odoo\.tests\.stats: echango_promo_crm: [1-9][0-9]* tests" sortie.log
 
   flutter:
     name: Interface Flutter
