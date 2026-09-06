@@ -70,6 +70,58 @@ jobs:
           # fait foi. Sans cette ligne, la CI serait verte sur une suite rouge.
           grep -q "0 failed, 0 error(s)" sortie.log
 
+  odoo_promo:
+    name: Addon Odoo — echango_promo_crm
+    runs-on: ubuntu-latest
+
+    # Travail distinct de `odoo`, pas une étape de plus : un échec de la suite
+    # `call_tracker` ne doit pas empêcher celle-ci de tourner, ni l'inverse.
+    # Chacun dit lequel des deux modules a cédé.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: odoo
+          POSTGRES_PASSWORD: odoo
+          POSTGRES_DB: postgres
+        options: >-
+          --health-cmd "pg_isready -U odoo"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lancer la suite du module
+        # `--init=echango_promo_crm` tire aussi `crm` et `phone_validation`
+        # (dépendances du manifeste). `--test-tags=/echango_promo_crm` borne
+        # l'exécution au module : sans lui, `--test-enable` lancerait les
+        # milliers de tests des dépendances, dont des parcours navigateur qui
+        # échouent dans ce conteneur.
+        #
+        # ⚠️ Aucun `ECHANGO_PROMO_RETENTION_DAYS` ici : son absence VAUT
+        # « conservation indéfinie », et c'est justement l'état que la suite
+        # éprouve. Le renseigner retirerait sa raison d'être à ce test.
+        run: |
+          docker run --rm --network host \
+            -v "${{ github.workspace }}/addons:/mnt/extra-addons:ro" \
+            -e HOST=127.0.0.1 -e PORT=5432 -e USER=odoo -e PASSWORD=odoo \
+            odoo:19 odoo \
+            --database=echango_promo_crm_ci --init=echango_promo_crm \
+            --test-enable --test-tags=/echango_promo_crm --stop-after-init \
+            --log-level=warn --log-handler=odoo.tests:INFO 2>&1 | tee sortie.log
+          # Odoo rend 0 même quand des tests échouent : c'est le journal qui
+          # fait foi. Sans cette ligne, la CI serait verte sur une suite rouge.
+          grep -q "0 failed, 0 error(s)" sortie.log
+          # ⚠️ Et le journal dit « 0 failed » AUSSI quand zéro test n'a tourné
+          # (tag mal résolu, suite non importée dans `tests/__init__.py`). Le
+          # seul contrôle qui ne trompe pas : au moins une classe de test du
+          # module a bien démarré.
+          grep -q "odoo.addons.echango_promo_crm.tests" sortie.log
+
   flutter:
     name: Interface Flutter
     runs-on: ubuntu-latest

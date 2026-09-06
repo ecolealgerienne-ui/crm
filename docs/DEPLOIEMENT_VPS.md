@@ -156,6 +156,61 @@ docker compose --env-file .env.production -f docker-compose.crm.yml \
 docker compose --env-file .env.production -f docker-compose.crm.yml restart odoo
 ```
 
+### La bascule du géocodage (`echango_promo_crm` 19.0.1.2.0) — un ordre à tenir
+
+Depuis le 2026-09-05, **ce module ne géocode plus**. Le géocodage inverse
+(point GPS → ville / wilaya) est centralisé dans le service `echango-geo` ;
+c'est `echangopromo` qui l'appelle à la pose de la position et qui transmet
+`ville`, `wilaya` et `geocodage_statut` dans l'instantané nocturne. Runbook
+complet des trois consommateurs :
+`ecolealgerienne-ui/echango-geo` → `docs/MIGRATION_CONSOMMATEURS.md`.
+
+**Côté CRM, rien à ajouter dans `.env.production`.** Contrairement à
+`echangopromo` et au BFF `echango-delivery`, ce module n'appelle jamais
+`echango-geo` : aucun `GEO_SERVICE_URL` ni `GEO_INTERNAL_TOKEN` ici.
+
+**La mise à jour joue une migration irréversible.** Le passage à
+`19.0.1.2.0` déclenche `migrations/19.0.1.2.0/post-migration.py`, qui
+supprime en base le cron `cron_echango_promo_geocodage` (le fichier XML est
+`noupdate="1"` — le retirer du code ne suffit pas) et retire trois colonnes
+de `echango_promo_account` (`geocodage_le`, `geocodage_latitude`,
+`geocodage_longitude`). Une post-migration Odoo n'a pas de `down()` : revenir
+à `19.0.1.1.0` ne les recrée pas. Aucun consommateur ne les lit ; un vrai
+retour arrière se ferait depuis un dump du §7.
+
+⚠️ **Ce module doit être en `19.0.1.2.0` AVANT que `echangopromo` commence à
+envoyer les nouveaux champs.** Le contrôleur de synchro applique une liste
+blanche stricte : toute fiche portant un champ inconnu est **rejetée**, pas
+ignorée. Un backend promo à jour poussant `ville` / `wilaya` /
+`geocodage_statut` vers un CRM resté en `19.0.1.1.0` fait donc refuser **tout
+le parc** à la synchro de 04:00 — sans erreur visible, seulement un compteur
+`refusees` qui monte dans le journal des lots. Si l'ordre ne peut pas être
+tenu, vider `CRM_SYNC_URL` / `CRM_SYNC_TOKEN` côté `echangopromo` le temps de
+la montée de version.
+
+Après la mise à jour, vérifier :
+
+```bash
+# 1. la migration a bien tourné — dans les logs de l'--update :
+#    "cron_echango_promo_geocodage supprime (1 ligne)"
+#    "suppression de echango_promo_account.geocodage_le" (× 3)
+
+# 2. le cron a disparu de la base
+docker compose --env-file .env.production -f docker-compose.crm.yml \
+  run --rm odoo odoo shell --database=echango_crm --stop-after-init <<'PY'
+env.cr.execute("""
+  SELECT COUNT(*) FROM ir_model_data
+   WHERE module='echango_promo_crm' AND name='cron_echango_promo_geocodage'
+""")
+print("cron restant :", env.cr.fetchone()[0])   # attendu : 0
+PY
+```
+
+**3. La première synchro qui suit le passage de `echangopromo` doit montrer
+`0` refus** dans le journal des lots, `ville` / `wilaya` visibles sur les
+fiches de suivi, et l'« État » du partenaire renseigné quand la wilaya est
+connue.
+
 ---
 
 ## 4. Routage Traefik — ce qui est en place
